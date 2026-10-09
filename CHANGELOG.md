@@ -1,0 +1,412 @@
+# Changelog
+
+Mọi thay đổi đáng kể của dự án được ghi ở đây.
+
+Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
+và dự án tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
+
+> Repo dùng **release-please** (`.github/workflows/release.yml`): vì commit theo *conventional
+> commits*, release PR + ghi chú phát hành được sinh tự động khi phát hành. Phần "Unreleased"
+> dưới đây vẫn cập nhật tay cho thay đổi đáng kể giữa các lần phát hành.
+
+## Chưa phát hành — cầu nối X-Agents
+
+- Changed (2026-10-09, radar): tách `scripts/test-dev-task.sh` (430 dòng > 400) thành `test-dev-task.sh` (resolver + strict gate)
+  và `test-dev-task-evidence.sh` (LD-03 evidence, LD-04 review-check) với helper chung `scripts/_dev-task-test-lib.sh`; 119 ca
+  giữ nguyên (66 + 53), CI Linux/Windows gọi cả hai; radar không còn "Việc cần làm".
+- Changed (2026-10-09, vòng hoàn thiện trên dự án đích thật): `/completion` Pha 0→4 chạy trọn trên một dự án Node/vitest đích
+  (fixture) bằng agent thật — 4 auditor song song, W-1/W-2 TDD, re-audit Cao/Trung 0 (`docs/reports/2026-10-09-target-completion.md`);
+  FEATURE-MAP Luồng chính 5 và FT-01 → ✅ có giới hạn. `pr-policy.yml` đo độ dài ≤ 72 cả tiêu đề COMMIT (squash PR một commit lấy
+  tiêu đề commit — #234 lọt 90 ký tự lên `main`; TRAPS mục 58).
+- Fixed (2026-10-09, F-T01/S-05 — chạy khung trên dự án đích thật): drop-in `ci-workflow-policy.test.ts` tự bỏ qua khi còn nằm trong
+  `_framework-dropins/` (vitest của đích không còn đỏ ngay sau copy); `ci-target.yml` cài dependency có điều kiện (`npm ci` khi có
+  `package-lock.json`, `pip install -r requirements.txt` khi có file) trước `dev-task.sh gate`. TRAPS mục 57.
+- Changed (2026-10-09, nghiệm thu agent): 11 agent `.claude/agents/` được nghiệm thu bằng phiên subagent thật (3 đợt ≤ 5 song song,
+  `docs/reports/2026-10-09-agent-acceptance.md`); FEATURE-MAP cột Test FT-13..20 ghi kết cục. Phát hiện: subagent Claude Code không có
+  tool `Agent` → `coordinator` chỉ dùng được khi phiên chính đóng vai Tầng 2 (ghi vào `orchestration-3-tier.md`, `coordinator.md`).
+- Fixed (2026-10-09, F-309b): `node_has_script` nhánh node — tên script đặt sau `--` (không còn bị node đọc như cờ:
+  `--require=x.js` từng chạy mã), `Object.hasOwn` thay `p.scripts[k]` (khoá kế thừa `toString` không còn là "script"),
+  bỏ BOM UTF-8 trước parse (khớp nhánh jq), không jq lẫn node → cảnh báo stderr thay vì false âm thầm. Phát hiện bởi
+  nghiệm thu agent `reviewer`/`security-reviewer` (TRAPS mục 56); 5 ca test đỏ-trước trong `test-dev-task.sh`.
+- Changed (2026-10-09, ADR-0011): trần subagent đang chạy trong toàn cây 3 → 5 theo chỉ thị chủ repo; coordinator còn bốn
+  slot; điều kiện song song (độc lập, worktree riêng) và trần WIP 3 PR không đổi. Cổng `tests/test_adaptive_process.py`.
+- Fixed (2026-10-09, F-309): `scripts/_stack-detect.sh` `node_has_script` khi KHÔNG có jq đọc `package.json` bằng `node -e`
+  thay cho grep `"<task>":` trên cả file — khoá cùng tên ở `dependencies`/config không còn bị coi là script (test PATH không jq
+  trong `test-dev-task.sh`). Refactor không đổi hành vi: `spec-compiler.py`/`telemetry-log.py` tách helper `_spec_contract_gen.py`/
+  `_telemetry_report.py` (#227); `test-check-scripts.sh` → thêm `test-workflow-guards.sh`, `tests/test_runtime_safety.py` →
+  `_runtime_fixture.py` + `test_git_safety.py` (#228). Tài liệu nội bộ `lean-delivery-benchmark.md` dời sang `docs/reports/`
+  (không còn phát sang dự án đích).
+
+- Fixed (2026-10-09, #224): khối fenced đầu của `docs/ops/repository-settings.md` phát cho dự án đích giờ là required checks chung
+  (`ci.yml: gate`, `pr-policy.yml: metadata`) khớp `ci-target.yml`; bản kê job của riêng repo khung chuyển xuống khối có marker.
+  Trước đó vitest drop-in `ci-workflow-policy.test.ts` đỏ ngay trên dự án đích copy sạch (6 job "không còn tồn tại"). Dự án đích
+  đã sửa khối này bằng tay: giữ bản của mình khi `--upgrade` (merge 3 chiều). Thêm `check-docs-consistency.sh` mục 12 (#225).
+
+- Added (LD-03, nghiệm thu bằng bằng chứng): `dev-task.sh gate --evidence <file>` ghi JSON `gate-evidence/1`
+  (trạng thái từng task PASS/FAIL/N/A/NOT_RUN, HEAD, hash config, vân tay working tree, số ca test hoặc `null`);
+  `dev-task.sh evidence-check <file>` từ chối evidence cũ/thiếu task/không PASS. `spec-compiler` thêm C-4 (spec
+  Approved từ 2026-10-07 phải nối mọi AC tới bằng chứng có thật) và `--trace <spec>`.
+- Changed (**hành vi gate, cần rà khi nâng bản**): command no-op nguyên văn (`true`, `:`, `echo`, `printf`, `exit 0`)
+  và test có `--passWithNoTests` giờ BLOCKED — khai `gate_skip_<task>_reason` có lý do thay cho lệnh giả. File đã theo dõi
+  bị sửa/xoá trong lúc gate chạy → BLOCKED; file chưa theo dõi sinh/ghi lại (output build chưa ignore) chỉ bị cảnh báo kèm tên. Tuỳ chọn mới
+  `gate_test_count_regex` biến test chạy 0 ca thành FAIL.
+
+- Fixed: `pre-commit-gate.sh` đọc nhánh/index/cổng từ cây đang commit (`git rev-parse --show-toplevel` ở cwd của hook) thay vì
+  `CLAUDE_PROJECT_DIR`; trước đó phiên trong `git worktree` bị chặn oan hoặc lọt bí mật/cổng đỏ (3 ca đỏ → xanh,
+  `test-hooks-gate.sh` mục 15, TRAPS 45). Rút từ đối chiếu X-Agents lần 3: `docs/reports/2026-10-07-doi-chieu-x-agents-v3.md`.
+- Fixed: `.claude/hooks/ui-intelligence.sh` mode 100644 làm hook chết im (exit 126) ngoài Windows; nay 100755.
+  `scripts/test-hooks-gate.sh` mục 14 canh mode index của mọi hook nối trong `settings*.json` (kèm negative test).
+  Rút từ đối chiếu X-Agents: `docs/reports/2026-10-06-doi-chieu-x-agents-v2.md`.
+- Fixed: `pre-commit-gate.sh` xét cả thay đổi chưa stage khi lệnh tự stage (`git add … && git commit`, `commit -a`) —
+  trước đó bí mật/file >1 MB đi lọt (3 ca đỏ → xanh); commit thường vẫn chỉ xét index.
+- Added: `check-docs-consistency.sh` mục 11 đối chiếu `scripts/*` ↔ `docs/FEATURE-MAP.md` (F-N01); FEATURE-MAP bổ sung FT-63..70
+  (spec-compiler, radar, dispatch, telemetry, progress-freshness, cổng độ phức tạp, độ phủ dòng, tự kiểm cổng).
+- Fixed: radar nhận test Python ở `tests/` (F-N02); tách `test-engine-characterization.sh` thành `tests/engine_characterization/` (F-N04);
+  3 spec bổ sung mục 11 touchpoints (F-N03); `concurrency` cho dependency-review/pr-policy/scorecard (F-N07).
+- Added: `check-docs-consistency.sh` mục 10 bắt hàng bảng Markdown thừa ô (`|` trong backtick tách ô, GitHub bỏ chữ);
+  sửa 2 hàng đã mất chữ ở `docs/ops/repository-settings.md` và báo cáo audit 2026-10-05.
+- Added: exporter delivery offline nhận policy/schema từ native X-Agents; ghim bytes spec,
+  map đủ AC tới test, JSON có giới hạn và đường dẫn không thoát root. Không chạy command hoặc cấp quyền.
+- Fixed: spec-compiler chỉ nhận State được chọn trong metadata; không nhận câu Approved trong Draft,
+  từ chối key metadata trùng; hỗ trợ CRLF nhưng hash vẫn giữ nguyên bytes nguồn.
+- Test: thêm integrity tests vào runner coverage hiện có, lỗi test làm cổng đỏ; không hạ sàn.
+  Đối chiếu và cách dùng: `docs/reports/2026-09-26-bidirectional-delivery-handoff.md`.
+
+## [Unreleased]
+
+### Điều phối và hồ sơ nối phiên (2026-10-07)
+
+- Phiên chính phân tích số PR: một PR có thể tự làm; từ hai PR giao subagent đủ năng lực,
+  tối đa ba subagent chạy trong toàn cây, kể cả coordinator/reviewer/tester.
+- Mỗi việc có `docs/work/<id>/working.md`; checkpoint trước bàn giao/nén, chỉ rename thành
+  `done.md` sau nghiệm thu và merge thật. SessionStart liệt kê active trước PROGRESS,
+  giữ trần byte và không nạp nội dung/lịch sử done; regression đỏ 4 ca → xanh.
+- Đồng bộ ủy quyền toàn cục chọn phương án tối giản đạt chất lượng cao nhất; cấu hình
+  ngữ cảnh Claude/Codex 500k, ngưỡng nén 450k; runner khác áp contract checkpoint.
+
+### Lean delivery (2026-10-07, issue #198)
+
+- CI Linux giữ đủ 17 shell suite nhưng bỏ lượt chạy lặp qua full local gate; local gate vẫn chạy đủ.
+- Thêm kiểm tra parity có đối chứng thiếu/trùng suite, không tính comment hoặc lượt Windows.
+- Giữ ShellCheck từng file và kiểm cú pháp Python cả scripts/tests, không giảm ngưỡng hay required check.
+
+### Added (Thêm)
+
+- **Đối chiếu 15 repo agent (2026-09-27):** `docs/reports/2026-09-27-agent-frameworks.md` ghi nguồn hiện hành, ba cột tiếp nhận và lý do không đóng gói một runtime mặc định; cổng C7 bổ sung các ca nghiệm thu agent chạy dài, quyền tool, human gate, trace, memory và MCP theo dự án đích.
+
+- **Adapter Impeccable tùy chọn**: contract UI intelligence nay map `pbakaus/impeccable` vào `/ui-ux` theo
+  concern (`shape`/`critique`/`audit`/`polish`...), nhưng không cài/vendoring skill, thêm hook hay nhận
+  `PRODUCT.md`/`DESIGN.md` như nguồn sự thật song song. Detector chỉ là finding phải triage; quyết định
+  được chấp nhận vẫn về feature spec, token/component hoặc ADR.
+  Có thêm hook adapter generic, opt-in qua biến môi trường, chỉ gọi detector local đã tin cậy cho file UI;
+  không tự tải provider và không chặn edit.
+
+- **UI/UX intelligence provider contract**: tích hợp `ui-ux-pro-max` theo hướng provider-neutral thay vì
+  vendor/cài bắt buộc — `docs/framework/ui-ux-intelligence-provider.md` định nghĩa precedence source-of-truth,
+  query nhỏ nhất (design-system/domain/stack), verify + retry một lần + fallback, privacy/ADR-0009 và adapter
+  `nextlevelbuilder/ui-ux-pro-max-skill`; `/ui-ux` audit spec/token/component trước khi query và chỉ đưa phần
+  đã review về artifact chuẩn của dự án. Không tạo `UI_SPEC.md` song song, không persist raw provider output.
+
+- **Dọn luật/tài liệu (Đợt 7)**: `docs/framework/pr-flow.md` giữ luật đầy đủ PR → merge + giải xung đột (CLAUDE.md §8
+  còn tóm tắt; cổng `check-docs-consistency.sh` mục 9 chặn CLAUDE.md > trần byte trượt / dòng > 2 000 ký tự);
+  `standard-delivery.md` §11 đủ 13 file + bảng 9 cổng ↔ 9 GĐ; disclaimer ADR-0004 ở runbook/part-d/part-e/
+  incident-response; bảng rollback theo hồ sơ C1–C10; TRAPS 5b/6b hết trùng số; README yêu cầu máy dev + 7 job CI;
+  CODEOWNERS bỏ `/supabase/` + nói rõ không phải cổng; SECURITY.md kênh báo; FEATURE-MAP FT-51/52; `maintain-cron.sh`
+  `--help` đủ cờ + `--gh-token-file`; `check-shell-complexity.sh` chạy trên macOS (`shasum`); Evidence
+  `repository-settings.md` điền thật.
+- **`dev-task.sh` đa stack thật + hook git harness-agnostic (Đợt 6)** — spec `docs/specs/2026-09-23-dev-task-da-stack-va-githooks.md`:
+  alias script Node (`typecheck→type-check→tsc→check-types`, `lint→check`, `format→fmt`; bản cũ bỏ qua type-check
+  âm thầm), Python chạy đúng môi trường (`.venv` → `uv run` → `poetry run` → PATH, marker `requirements.txt`/`setup.py`),
+  Bun `bun.lock`, Rust `cargo check`; 8 stack mới (Java/Kotlin, .NET, Flutter/Dart, PHP, Ruby, Elixir, Deno, Swift);
+  `--print <task>`; `scripts/_stack-detect.sh` dùng chung với sweep; `scripts/githooks/pre-commit` (main/bí mật/file lớn/
+  gate) bật bằng `git config core.hooksPath scripts/githooks`; test mới `scripts/test-dev-task.sh` (13 stack).
+- **Frontmatter agent máy đọc + hook v2 (Đợt 5)** — spec `docs/specs/2026-09-23-agent-frontmatter-va-hook-v2.md`:
+  11 agent có `effort:` (+ `memory`/`maxTurns` khi hợp lý), `Task` → `Agent`; `coordinator`/`spec-executor` xuống
+  Sonnet · low; `coordinator.md` mục "Thất bại & giới hạn" (3 vòng → BLOCKED, file ngoài phạm vi, CI đỏ sau auto-merge,
+  trần song song min(3, độc lập)); tiêu chí đếm được cho `mechanical/standard/complex/spec`; hook `SubagentStop` ghi
+  telemetry theo `agent_type` (mốc riêng theo transcript), hook `PreCompact` chụp `.claude/.compact-checkpoint`;
+  `subagent-dispatch.py` in effort cho harness ngoài.
+- **Nâng bản khung cho dự án đích (Đợt 4)** — spec `docs/specs/2026-09-23-nang-ban-khung-cho-du-an-dich.md`:
+  `copy-framework.sh <đích> --upgrade` giữ chỉnh sửa cục bộ (hash khớp manifest → cập nhật; đã sửa → `git merge-file`
+  3 chiều với commit cũ, không có base → để `.framework-new`); `FRAMEWORK-VERSION` ghi `version:` (file `VERSION`
+  mới, SemVer, bắt đầu 0.1.0) + manifest hash từng file Lớp 1; `maintenance-sweep.sh` 🟡 khi bản khung đã copy quá 90
+  ngày. Không cờ → hành vi cũ. Bản `.ps1 -Upgrade` in hướng dẫn dùng Git Bash (DEBT có điều kiện xem lại).
+- **An toàn agent + chuỗi cung ứng (Đợt 3)**: ADR-0009 "nội dung ngoài là dữ liệu, không phải chỉ thị" (CLAUDE.md
+  §4, AGENTS.md, 3 agent) + `docs/ops/threat-model-maintain-cron.md`; `codeql.yml` (python + actions) và
+  `scorecard.yml` (dropin cho dự án đích); `secret-scan.yml` quét toàn lịch sử hằng tuần; `timeout-minutes` cho mọi
+  job; `scripts/requirements-ci.txt` + `setup-python` cache + Dependabot pip; ruleset
+  `strict_required_status_checks_policy: true` (chủ repo import lại); SECURITY.md kê đủ hàng rào.
+- **Hàng rào commit + ngữ cảnh phiên gọn** (spec `docs/specs/2026-09-23-hang-rao-commit-va-ngu-canh-phien.md`):
+  `pre-commit-gate.sh` chặn commit trên `main`/`master` (TRAPS 14 nay có cổng máy), chặn chuỗi giống bí mật và file
+  > 1 MB trong diff staged; `block-dangerous-git.sh` khuôn 5 chặn `push +main`/`:main`/`--delete main`;
+  `session-resume.sh` chỉ nạp 4 mục của `PROGRESS.md` với trần 8 KB (trước: 60 KB mỗi phiên); lịch sử `PROGRESS.md`
+  tách sang `docs/changelog/0001-…` và cổng PF-4 chặn tích lại; `pr-policy.yml` thêm trần WIP 3 PR, tiêu đề ≤ 72
+  ký tự không mojibake, cảnh báo `fix:` không chạm `TRAPS.md`; `maintain-run.sh` đóng stdin cho harness nhận prompt
+  qua argv (hết treo khi chạy từ nền).
+- **Audit toàn diện repo khung + kế hoạch 7 đợt** (`docs/reports/2026-09-23-de-xuat-nang-cap-khung-toan-dien.md`):
+  12 phát hiện Cao, 18 Trung; đợt 1 (mất dữ liệu / số sai) đang triển khai.
+
+### Fixed (Sửa)
+
+- **C7 chọn model trung lập provider:** bỏ yêu cầu Claude mặc định trái với quy trình chọn stack theo dự án; chọn bằng eval, độ trễ, giá và quyền riêng tư đã xác minh, ghi fallback.
+
+- **ID model hiện hành ở mọi lệnh/tài liệu**: `claude-opus-4-8`/`claude-fable-5` (không tồn tại) trong `audit-full.md`,
+  `completion.md`; `claude-opus-5` (legacy, đắt hơn) → `claude-opus-5-5` ở 4 lệnh, `models-and-automation.md`,
+  `model-capability-tiers.json`, `copy-framework.sh`; CLAUDE.md §1 hết "Opus 4.8". `fallbackModel` bỏ phần tử trùng
+  model chính. Cổng mới `check-docs-consistency.sh` mục 5b cấm ID cũ sống lại (negative test trong `test-check-scripts.sh`).
+- **`maintenance-sweep.sh` đo đúng chiều + không còn command injection**: Go/pip "gói lỗi thời" trước đây đảo chiều
+  (Go có gói cũ → báo sạch; pip không bao giờ 🟡); quét file lớn không còn nội suy tên file vào `sh -c` (file tên
+  `$(…)` từ PR/fork sẽ chạy lệnh khi `maintain-cron` quét không giám sát); `find` đúng thứ tự `-maxdepth`; regex bí
+  mật thêm `github_pat_`/`glpat-`/`AIza`. Negative test mục 3b–3c trong `test-maintenance-sweep.sh`.
+- **Telemetry ghi số thật** (`scripts/model-rates.json`, `scripts/telemetry-log.py`, `.claude/hooks/telemetry-record.sh`):
+  bảng giá cập nhật theo nguồn sống 2026-09-23 (Fable 5.1 10/50 · Opus 5.5 4/20 · Sonnet 5 2/10; trước đó `opus`
+  15/75 sai ×3.75, thiếu `fable`); engine mặc định token 0 kèm cảnh báo thay vì bịa 1000/500; hook Stop đọc
+  `message.usage` của phần transcript MỚI kể từ lần ghi trước (delta, không cộng dồn cả phiên), model lấy từ message
+  cuối. Test mới `scripts/test-hooks-session.sh` + mục 3–4 của `test-telemetry-and-dispatch.sh`.
+- **`copy-framework.sh`/`.ps1` không còn copy file trạng thái `docs/ops/*-PLAN|LOG|STATUS.md` của repo khung
+  sang dự án đích** — trước đó chạy lại để nâng bản sẽ đè mất nhật ký `/maintain`/`/completion` thật của đích
+  (TRAPS mục 30). Đồng thời copy `docs/specs/README.md` + `docs/goals/README.md` vì dropin `pr-policy.yml` đòi
+  `docs/specs/` cho PR `feat`. Test: sentinel ở đích phải sống sót qua lần copy thứ hai.
+
+- **Nâng cấp `/ui-ux`** (#165, `.claude/commands/ui-ux.md`) theo bản đối chiếu ba cột với skill `ui-ux-design` v6
+  (`docs/reports/2026-09-23-doi-chieu-ui-ux-design-v6.md`): 9 điểm "đã có nhưng nông hơn", mỗi điểm siết một
+  luật cứng đang có — trạng thái tầng component (8 trạng thái, disabled ba kênh), tương phản theo từng khối đổi
+  nền, không nhảy layout ở input/ảnh/lỗi form (CLS), công thức chống cuộn ngang, chuyển động chỉ
+  `transform`/`opacity`, lỗi = nguyên nhân + việc làm tiếp, một primary CTA, không bịa nội dung (§4), a11y chi
+  tiết (label hiển thị, WCAG 2.2.2). Sửa câu "File thật: `styles/theme.css`" sai với ADR-0004. Danh mục "mặc
+  định của AI", vân tay cấu trúc, tự chấm 6 trục xếp "chưa cần" kèm điều kiện xem lại.
+- **Cổng máy CC cho mã shell** (`scripts/check-shell-complexity.sh`, spec:
+  `docs/specs/2026-09-15-cong-may-cc-shell.md`) — nối tiếp cổng CC Python: đo bằng
+  `vendor/shellmetrics` (shellmetrics 0.5.0, MIT, **vendor + ghim SHA256** nên chạy offline và
+  không phụ thuộc GitHub), **hai trần**: hàm ≤ 12 (`SH_CC_MAX`), thân script `<main>` ≤ 45
+  (`SH_CC_MAIN_MAX` — nắp chặn trượt đặt trên mức cao nhất đang có là 41). Negative test
+  `scripts/test-check-shell-complexity.sh` chứng minh cả hai trần đều chặn thật, tách rời nhau, và
+  checksum vendor sai làm cổng ĐỎ. Kèm theo: `dev-task.sh::detected_cmd` (18 → tách 5 hàm theo hệ
+  sinh thái) và `maintenance-sweep.sh::detect_deps_cmd` (13 → tách 4) hạ xuống dưới trần, hành vi
+  giữ nguyên (đối chiếu bản cũ ↔ mới trên fixture node/python/go/rust/make).
+
+- **Cổng máy cưỡng chế ngưỡng độ phức tạp vòng CC ≤ 12 cho engine Python**
+  (`scripts/check-python-complexity.sh`, spec: `docs/specs/2026-09-14-cong-may-cc-12.md`) — trước đây
+  ngưỡng này chỉ nằm trong văn xuôi (ADR-0005, chú thích characterization test) nên không cổng nào đỏ
+  vì nó, đúng khuôn `TRAPS.md` mục 14. Trần mặc định 12 (`PY_CC_MAX`), **không có miễn trừ theo hàm**;
+  thiếu `radon` → ĐỎ chứ không skip. Negative test `scripts/test-check-python-complexity.sh` chứng minh
+  cổng bắt đúng vi phạm. Kèm theo: `format_markdown_report` của `arch-health-radar.py` tách
+  `_optional_report_blocks` để xuống dưới trần (đầu ra báo cáo giữ nguyên) — trả dấu `DEBT:` duy nhất
+  của repo đúng điều kiện xem lại đã ghi.
+
+- **Ba luật rút từ đợt đối chiếu với nguồn ngoài `DietrichGebert/ponytail`** (bản đối chiếu ba cột:
+  `docs/reports/2026-09-14-doi-chieu-ponytail.md`; spec: `docs/specs/2026-09-14-ladder-va-dau-no-ky-thuat.md`)
+  — (1) `CLAUDE.md` §3 mục A4: **thang kiểm trước khi viết code** (có cần tồn tại → repo đã có chưa →
+  thư viện chuẩn → tính năng nền tảng → dependency đã cài → bản tối thiểu), chạy *sau* khi đã hiểu vấn đề,
+  dừng ở nấc đầu tiên khớp; (2) `CLAUDE.md` §3 mục A7: quy ước dấu nợ
+  `DEBT: <gì> | trần: <giới hạn> | xem lại khi: <điều kiện>` — **có cổng thật**: `maintenance-sweep.sh`
+  mảng 3 đếm dấu và cảnh báo 🟡 riêng cho dấu thiếu điều kiện xem lại (khuôn đã tái phát thật ở
+  `TRAPS.md` mục 14), kèm negative+positive test; (3) `/audit-optimize` thêm **nhóm 5 "tự viết lại thứ
+  đã có"** (nhãn `stdlib:`/`native:` — thứ knip/depcheck không đo được) và dòng tổng
+  `net: -N dòng, -M dependency`. Ba mâu thuẫn luật của nguồn (mức cường độ `ultra`, "không bao giờ dừng
+  hỏi khi có thể mặc định", luật rút gọn văn nói) được **nêu ra và từ chối**, không tự hoà giải.
+- **Agent bảo trì toàn diện** (spec `docs/specs/2026-09-14-maintenance-agent.md`) — subagent
+  `maintainer` + lệnh `/maintain` (quét → triage → kế hoạch chờ duyệt → PR nhỏ qua `/gate` → hội tụ)
+  + engine `scripts/maintenance-sweep.sh` (6 mảng mục nát theo thời gian, mức 🔴/🟡, `--strict`,
+  tự dò stack) + runner `scripts/maintain-run.sh` chạy agent bằng **CLI subscription cục bộ của mọi
+  nhà cung cấp AI** (Claude Code/Hermes/Codex/OpenCode, không API key) + workflow tuần
+  `.github/workflows/maintenance.yml` (một issue tổng hợp) + wrapper không giám sát
+  `scripts/maintain-cron.sh` cho VPS/cron (đồng bộ nhánh chính, chạy agent, đẩy CHỈ
+  `docs/ops/MAINTENANCE-*.md` lên nhánh riêng `maint/auto-<ngày>`, không bao giờ đụng nhánh chính,
+  có khoá tiến trình chống chạy chồng). Ba self-test có negative-test/bare-repo thật + stub CLI,
+  nối vào `framework-lint` và smoke dự án đích. **Bổ sung cùng ngày:**
+  `maintain-cron.sh` tự mở PR qua GitHub REST API khi có `GITHUB_TOKEN`/`GH_TOKEN` (kênh báo cáo
+  chính cho chủ dự án khi chạy không giám sát), tránh mở PR trùng; sửa hai lỗi thật bắt được khi
+  viết test (push same-day rerun chỉ "thành công" nhờ trùng giây → đổi sang `--force-with-lease`
+  giới hạn đúng một nhánh; biến gán trong hàm gọi qua subshell không thấy được ở ngoài) — xem
+  `TRAPS.md` mục 16–17.
+
+- **Quick Start + adoption preflight** — thêm `docs/framework/quickstart.md` để định hướng nhanh
+  Greenfield/Brownfield, dẫn về Standard Delivery Contract và cung cấp checklist xác nhận lệnh/gate
+  thật của ứng dụng, CI, bảo mật, ruleset và vận hành. README cùng framework index đã liên kết tới
+  trang này. Checklist là preflight thủ công, không thay thế quality gate hay evidence theo profile.
+
+### Removed (Bỏ)
+
+- **Gỡ hẳn scaffold Web mặc định (Next.js + Supabase) khỏi repo khung — ADR-0004.** Xoá `app/`,
+  `lib/`, `styles/`, `e2e/`, `i18n/`, `messages/`, `components/`, `supabase/`, cấu hình
+  ESLint/Prettier/Vitest/Playwright/Lighthouse/commitlint, `.husky/`, `.env.example`,
+  `.github/workflows/{codeql,lighthouse-ci,verify-dropins}.yml`, `scripts/verify-dropins.sh`.
+  Lý do: nhất quán với nguyên tắc "hỗ trợ mọi loại dự án, chọn công nghệ research-first" — không
+  hồ sơ nào xứng "mặc định" hơn hồ sơ khác (`CLAUDE.md` §0b, KHUNG-3 PHẦN C). `ci.yml` chỉ còn 3
+  job tự kiểm của khung (`framework-lint`, `docs-consistency`, `copy-framework-smoke`) + `gate`.
+  `copy-framework.sh`/`.ps1` Lớp 2 giờ chỉ còn CI/quy ước GitHub tổng quát (không đặc thù stack).
+  Không sửa ADR-0001 (luật bất biến: không sửa ADR cũ) — xem quyết định đảo ngược ở
+  `docs/adr/0004-remove-default-web-scaffold.md`.
+
+### Added (Thêm)
+
+- **Hàng rào thi hành cho các luật trước đây chỉ nằm trên giấy** (audit toàn diện 2026-09-12,
+  kế hoạch `docs/ops/COMPLETION-PLAN.md`):
+  - `scripts/test-hooks-gate.sh` — **chứng minh** `pre-commit-gate.sh` chặn thật (exit 2 khi cổng
+    đỏ) và `block-dangerous-git.sh` chặn đúng khuôn, kèm negative test. Trước đây cổng chặn commit
+    là hàng rào quan trọng nhất mà không có bất kỳ test nào (F-002).
+  - `.claude/hooks/block-dangerous-git.sh` (mới) — chặn force-push nhánh chính, `reset --hard`,
+    `merge/rebase --abort`; cờ bỏ qua tường minh `ALLOW_DANGEROUS_GIT=1` (F-004).
+  - `.husky/pre-commit` quét bí mật bằng `gitleaks protect --staged` trước khi commit — trước đây
+    chỉ quét ở CI, tức bí mật đã vào lịch sử Git rồi mới bị phát hiện (F-005).
+  - `scripts/check-ci-policy.sh` thêm 3 kiểm: mọi action phải ghim full commit SHA (F-003),
+    `node-version` khớp `.nvmrc` (F-011), mọi job `ci.yml` có trong `needs:` của `gate` (F-010).
+  - `scripts/check-docs-consistency.sh` thêm kiểm subagent ↔ bảng `route:` hai chiều + frontmatter
+    `name` khớp tên file (F-006); quét cả file chưa `git add` (F-017).
+  - Job tổng hợp `gate` trong `ci.yml` + **ADR-0003** — branch protection chỉ cần khoá một tên (F-010).
+  - `docs/FEATURE-MAP.md` + `docs/CONVENTIONS.md` cho chính bộ khung (Pha 0 của `/completion`).
+- **Miễn trừ PR của bot trong `pr-policy.yml`** — nguyên nhân gốc khiến 5 PR dependabot (gồm 3 bản
+  nâng cấp công cụ bảo mật) kẹt 19 ngày: required check `metadata` đòi PR body có đủ mục template,
+  thứ dependabot không bao giờ có, nên **không bao giờ xanh được** (F-001).
+
+### Changed (Thay đổi)
+
+- `actions/cache@v4` (tag di động, **Node 20** — bị GitHub xoá khỏi runner 16/09/2026) →
+  `actions/cache@caa2961` ghim SHA, v5.1.0 (Node 24). Đây là action duy nhất còn dùng tag di động
+  trong 13 action của repo.
+- `auto-format.sh` + `test-copy-framework.sh`: fail-open giờ **in cảnh báo** thay vì bỏ qua âm thầm
+  (F-007, F-015); CI chạy `REQUIRE_PWSH=1` nên bỏ qua bản `.ps1` sẽ làm job đỏ.
+- `scripts/check-docs-consistency.sh`: gỡ 4 file đã tồn tại thật khỏi `ALLOW_MISSING_PATH` (F-016).
+
+- **Golden test — cơ chế thật, ví dụ chạy được trong dropins** (PR-C/3 của spec
+  `docs/specs/2026-09-12-golden-tests-and-tdd.md`, đã Approved for implementation — spec hoàn tất
+  3/3 PR). `vitest.config.mts` thêm `resolveSnapshotPath` tường minh (đưa mọi
+  `toMatchSnapshot`/`toMatchFileSnapshot` vào `__golden__/` cạnh file test, khớp quy ước (b) đã viết
+  ở PR-B, thay thư mục `__snapshots__/` mặc định). Thêm `lib/order-summary.ts` (hàm thuần, tiền
+  dùng cents — không float) + `lib/order-summary.golden.test.ts` + baseline
+  `lib/__golden__/order-summary.golden.test.ts.snap` đã sinh THẬT bằng Vitest. **Sửa 1 chỗ sai đã
+  push ở PR-B:** `quality-supplements.md` từng ghi "Vitest có cờ `--ci` chặn tạo snapshot mới" —
+  KHÔNG có cờ đó ở Vitest 5 (`CACError: Unknown option`, xác minh thật). Cơ chế đúng là biến môi
+  trường `CI` (Vitest tự phát hiện `process.env.CI`; GitHub Actions tự đặt `CI=true`) — đã xác minh
+  cả hai chiều: `vitest run` không đặt `CI` tự tạo snapshot thiếu rồi PASS (nguy hiểm); cùng lệnh với
+  `CI=true` thì FAIL đúng, không tạo file (đây là FR-9 của spec: xác minh thật trước khi ghi tài
+  liệu, không suy đoán — CLAUDE.md §4). `copy-framework.sh`/`.ps1` nối 3 file mới vào Layer 2;
+  `test-copy-framework.sh` thêm 2 assertion (đã chạy negative test).
+- **Golden test — tài liệu + template** (PR-B/3 của spec `docs/specs/2026-09-12-golden-tests-and-tdd.md`,
+  đã Approved for implementation). `docs/framework/quality-supplements.md` (Nhóm 2 mục 6) thêm tiểu
+  mục "Golden test" đủ 5 phần: (a) dùng khi nào/KHÔNG dùng khi nào (không mặc định cho snapshot UI
+  diện rộng — nguồn test giòn kinh điển), (b) nơi lưu fixture, (c) **luật chuẩn hoá bắt buộc** trước
+  khi so (timestamp/id/đường dẫn/thứ tự khoá/timezone), (d) **luật cập nhật** — không `-u` phản xạ,
+  PR phải nêu lý do + dán diff golden, (e) CI không được tự tạo snapshot mới. Thêm
+  `docs/framework/templates/GOLDEN-TEST.template.md` (28 dòng, checklist dán được thẳng vào PR
+  body) và nối vào `.claude/commands/gate.md`. `scripts/test-copy-framework.sh` thêm assertion cho
+  template mới (đã chạy negative test: gỡ file → FAIL đúng, phục hồi → PASS lại).
+- **TDD "sửa bug phải có test tái hiện đỏ trước khi sửa" nâng từ luật của một lệnh lên luật của
+  khung** (PR-A/3 của spec `docs/specs/2026-09-12-golden-tests-and-tdd.md`, đã Approved for
+  implementation). Trước đây luật này chỉ sống trong `/completion` + `/audit-full`, nên một PR
+  `fix` thường hoặc phiên `/auto` không đi qua nhánh đó. Nay có ở `CLAUDE.md` §3.6/§5, Báo cáo xác
+  thực §7 (dòng `Test tái hiện (nếu là fix) ✅/❌/n-a` + `Golden ✅/n-a` — golden `n-a` cho tới khi
+  PR-B/PR-C của spec dựng cơ chế thật), `.claude/commands/gate.md` (cảnh báo mềm, không chặn cứng —
+  cố ý, vì chặn cứng sẽ dạy người dùng khai sai loại commit) và `AGENTS.md`. Làm rõ trong
+  `docs/framework/quality-supplements.md` ranh giới đang bị đọc lẫn: vòng đỏ-xanh TỔNG QUÁT cho code
+  MỚI là **khuyến nghị**, còn test-tái-hiện-trước cho bug là **bắt buộc** — hai thứ khác nhau.
+  **Sửa nghiên cứu sai của chính spec:** `.claude/commands/debug.md` Pha 5 hoá ra ĐÃ đúng từ trước
+  (đã nói "trước khi sửa... đỏ → sửa → xanh" từ PR #36) — claim ban đầu trong spec (§1) rằng
+  debug.md yêu cầu test "kèm lúc sửa" là research sai lúc viết spec; không sửa file đó, chỉ ghi
+  nhận đúng sự thật ở đây.
+- **`CODEMAP.md` — bảng "muốn đổi X → sửa file nào → rồi chạy lại gì", nối vào `/completion`**
+  (PR-3/4 của spec `docs/specs/2026-09-12-traps-codemap-ci-policy.md`, đã Approved for implementation).
+  Thêm `docs/framework/templates/CODEMAP.template.md` (mẫu rỗng cho dự án đích) và `CODEMAP.md` ở
+  gốc repo với bảng tra thật cho chính khung (thêm/đổi job CI → sửa file nào → chạy cổng nào; đổi
+  file gốc dự án đích nhận khi copy khung → chạy `test-copy-framework.sh`…). Mảnh còn thiếu giữa
+  `docs/FEATURE-MAP.md` ("có gì") và `docs/CONVENTIONS.md` ("viết thế nào") — mẫu này hội tụ độc lập
+  ở 4 repo dẫn xuất/lân cận nên có giá trị thật. `docs/framework/project-completion.md` (Pha 0) và
+  `.claude/commands/completion.md` nay sinh cả 3 file cùng lượt; nhân đó sửa luôn "Pha 1" → "Pha 0"
+  (lỗi sẵn có, không khớp checklist thật của Pha 0). Nguồn thượng nguồn: `CODEMAP.md` của
+  `Claude-Agents`/`Sales-Hunter`/`X-Agents`/`X-Studio`.
+- **`scripts/ci-workflow-policy.test.ts` — bản vitest của `check-ci-policy.sh` cho dự án đích**
+  (PR-4/4 của spec traps-codemap-ci-policy). Đối chiếu HAI CHIỀU job id thật trong
+  `ci.yml`/`pr-policy.yml` với danh sách khai báo trong `docs/ops/repository-settings.md`; nối vào
+  `stage`/`Add-Dropin` của `copy-framework.sh`/`.ps1` (Layer 2 — không đè file đang chạy). Đã xác
+  minh THẬT bằng `verify-dropins.sh` trên Next.js 16.3.5 sạch: 13/13 test pass, và negative test
+  (đổi tên một job thật) làm đúng 2 test đỏ ở cả hai chiều trước khi hoàn nguyên. `verify-dropins.sh`
+  cũng bắt một lỗi format Prettier do chính đợt sửa `project-completion.md` (PR-3) ở trên gây ra —
+  đã sửa và xác nhận idempotent (chạy `--write` lần hai không đổi gì) trước khi commit.
+- **`TRAPS.md` — sổ bẫy đã mắc thật, nối vào `/debug`** (PR-2/4 của spec
+  `docs/specs/2026-09-12-traps-codemap-ci-policy.md`, đã Approved for implementation).
+  Thêm `docs/framework/templates/TRAPS.template.md` (mẫu rỗng cho dự án đích) và `TRAPS.md`
+  ở gốc repo với 6 mục **có thật**, mỗi mục trỏ tới commit/PR xác minh được (`59a280f` #18,
+  `6a4ac40` #27, `366aeec`, `79dca2f` #43, `d0baf40` #61) — vd bản `copy-framework.ps1` cần BOM
+  cho PowerShell 5.1 dù `.sh` không cần, hay job CI gọi GitHub API thiếu `permissions:` tường
+  minh gây 403 chỉ lộ ra khi chạy PR thật. `/debug` thêm Pha 0 đọc `TRAPS.md` trước khi ra giả
+  thuyết, và Pha 6 ghi mục mới/tái phát sau khi sửa xong. Nối vào `CLAUDE.md` §1 + §3.6 và
+  `AGENTS.md`. Nguồn thượng nguồn: TRAPS.md của repo Claude-Agents.
+- **`scripts/check-ci-policy.sh` — cổng canh cấu hình CI, chặn hỏng-im-lặng của required checks**
+  (PR-1/4 của spec `docs/specs/2026-09-12-traps-codemap-ci-policy.md`, đã Approved for
+  implementation). `docs/ops/repository-settings.md` thêm mục "Required checks — nguồn sự thật"
+  liệt kê đủ 7 job (`ci.yml`: framework-lint/docs-consistency/copy-framework-smoke/quality/
+  source-hygiene/e2e, `pr-policy.yml`: metadata) — trước đây danh sách này KHÔNG tồn tại ở đâu.
+  Script đối chiếu HAI CHIỀU job id thật trong workflow với danh sách đó, chạy trong job
+  `docs-consistency`; đã kiểm chứng bằng negative test (đổi tên một job thật, xác nhận script đỏ
+  đúng cả hai chiều, rồi hoàn nguyên) trước khi nối vào CI.
+- **Feature spec golden test + kỷ luật TDD (`docs/specs/2026-09-12-golden-tests-and-tdd.md`)** — *spec, CHƯA thực thi.*
+  Rà thật cho thấy: **golden test chưa tồn tại như cơ chế** (chỉ 2 lần nhắc thoáng qua ở
+  `01-process-and-standards.md:11` và `03-tech-selection-and-proactive-advice.md:237`, không định nghĩa,
+  không nơi lưu fixture, **không luật cập nhật** — nên golden đỏ sẽ bị `vitest -u` làm xanh, tức ghi nhận
+  bug thành giá trị kỳ vọng mới); và **TDD chỉ bắt buộc ở một ca hẹp trong một nhánh lệnh** ("bug có test
+  tái hiện trước khi sửa" chỉ sống ở `/completion` + `/audit-full`, vắng mặt ở `CLAUDE.md` §3/§5/§6 và
+  `/gate`, nên PR `fix` thường hoặc phiên `/auto` không đi qua). Spec nâng luật lên cấp khung + cổng,
+  giữ vòng đỏ-xanh tổng quát là khuyến nghị, và cố ý KHÔNG ép test-trước lên scaffolding/rename/docs.
+  Nguồn thượng nguồn: repo `Claude-Agents`, workflow eval-record.yml (cập nhật golden là hành động
+  thủ công có người bấm nút, tách khỏi việc phát hiện lệch), `donghanh` (`*-fixtures.json`), `xboss`
+  (allowlist ngoại lệ tường minh). Kế hoạch 3 PR ở §17.
+- **Feature spec gói A+B+C (`docs/specs/2026-09-12-traps-codemap-ci-policy.md`)** — *spec, CHƯA thực thi.*
+  Rút ba lỗ hổng có thật của khung từ lượt quét 15 repo dẫn xuất (2026-09-12): (A) không có nơi tích luỹ
+  bẫy đã mắc qua thời gian → `TRAPS.template.md`; (B) thiếu bảng tra `Muốn | Sửa | Rồi chạy` giữa
+  `FEATURE-MAP` ("có gì") và `CONVENTIONS` ("viết thế nào") → `CODEMAP.template.md`; (C) danh sách
+  required checks của branch protection KHÔNG tồn tại ở đâu và `ci.yml` có 6 job phẳng (`framework-lint`, `docs-consistency`, `copy-framework-smoke`, `quality`, `source-hygiene`, `e2e`), 0 `needs:` —
+  nên đổi tên một job id sẽ làm required check cũ không bao giờ báo cáo nữa và kẹt merge mọi PR mà
+  không PR nào hiện màu đỏ → thêm một script đối chiếu hai chiều (tên dự kiến
+  scripts/check-ci-policy.sh, chưa tồn tại).
+  Nguồn thượng nguồn: `Claude-Agents` (TRAPS/CODEMAP), `donghanh` (policy-as-test).
+  Kế hoạch 4 PR + mục CHANGELOG khi thực thi nằm trong §17–§18 của spec.
+- **Hoàn thiện quản trị OSS (Đợt 4 COMPLETION-PLAN):** thêm `CODE_OF_CONDUCT.md`
+  (Contributor Covenant v2.1 tiếng Việt), `SUPPORT.md` + `GOVERNANCE.md` thật (từ template);
+  dịch `CONTRIBUTING.md` sang tiếng Việt; gộp issue template về một bộ form `.yml`
+  (xóa `bug_report.md`/`feature_request.md` cũ); làm mới `PROGRESS.md` theo
+  `PROGRESS.template.md`; sửa mô tả `ci.yml` trong README và ghi chú release-please ở đây.
+- **`scripts/verify-dropins.sh` + workflow `verify-dropins.yml`** — dựng một dự án Next.js sạch,
+  copy khung vào, làm đúng Phần D của runbook rồi chạy lint/type-check/build/test THẬT.
+  Trước đây các file dropins (`app/`, `components/`, `lib/`, config) chưa từng được biên dịch
+  hay lint lần nào vì repo khung không có `package.json`. Chạy hằng đêm với
+  `create-next-app@latest` nên cũng là cảm biến version drift từ thượng nguồn.
+- **Cổng nhất quán lệnh:** `scripts/check-docs-consistency.sh` kiểm hai chiều giữa
+  `.claude/commands/*.md` và `CLAUDE.md` — lệnh mới mà quên khai TRIGGER, hoặc `CLAUDE.md`
+  trỏ tới lệnh không tồn tại, đều bị CI chặn thay vì phải rà tay.
+- **Dependabot theo dõi `github-actions`** — các action trong `.github/workflows/` đang dùng
+  tag trôi (`@v4`, `@v3`); đây là phụ thuộc thật của chính bộ khung, trước đây không ai canh.
+- **Dấu bản khung ở dự án đích:** `copy-framework.sh`/`.ps1` sinh `docs/framework/FRAMEWORK-VERSION`
+  (commit nguồn + ngày copy, luôn ghi đè theo lần copy gần nhất) — dự án đích biết mình đang dùng
+  khung bản nào và so CHANGELOG này để quyết định khi nào copy lại.
+- **`docs/framework/templates/`** — bản mẫu sạch cho 3 file làm việc của `/completion`:
+  `FEATURE-MAP.template.md`, `CONVENTIONS.template.md`, `COMPLETION-PLAN.template.md`
+  (tách từ khối inline trong `project-completion.md` — một nguồn sự thật, copy thẳng thay vì chép tay).
+
+### Changed (Đổi)
+
+- **Workflow siết quyền tối thiểu:** mọi workflow khai `permissions:` ở cấp workflow
+  (`ci.yml`, `lighthouse-ci.yml`, `codeql.yml` trước đây nhận quyền mặc định của repo).
+- **`concurrency` cho workflow:** push liên tiếp vào cùng một PR hủy lượt chạy cũ;
+  trên `main` không hủy, và `release.yml` xếp hàng (không hủy) để tránh release dở dang.
+
+### Fixed (Sửa)
+
+- **`components/theme-toggle.tsx` fail lint chính config của khung** (`react-hooks/set-state-in-effect`
+  của React Compiler, qua `eslint-config-next` bản mới). Viết lại theo `useSyncExternalStore` —
+  đọc `data-theme` trên `<html>` (nguồn sự thật do script no-flash đặt) thay vì `useState` +
+  `useEffect`; bỏ luôn một lượt render thừa sau hydrate.
+- **`app/sw.ts` không type-check được** (`TS2552: Cannot find name 'ServiceWorkerGlobalScope'`)
+  vì `lib` của Next chỉ có DOM. Thêm `/// <reference lib="webworker" />` theo từng-file.
+
+### Removed (Bỏ)
+
+-
+
+<!--
+Khi phát hành phiên bản, tạo mục mới phía trên, ví dụ:
+
+## [0.1.0] - 2026-01-01
+### Added
+- Phiên bản đầu tiên.
+-->
