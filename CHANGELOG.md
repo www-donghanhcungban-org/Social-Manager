@@ -9,6 +9,11 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 > commits*, release PR + ghi chú phát hành được sinh tự động khi phát hành. Phần "Unreleased"
 > dưới đây vẫn cập nhật tay cho thay đổi đáng kể giữa các lần phát hành.
 
+## Chưa phát hành — mở mã
+
+- Added (2026-11-16): giấy phép MIT (`LICENSE`, `package.json` `"license"`), `NOTICE` (phạm vi giấy phép, thành phần bên thứ ba,
+  nhãn hiệu), mục "Ủng hộ và liên hệ" trong README kèm ảnh VietQR và `.github/FUNDING.yml`.
+
 ## Chưa phát hành — cầu nối X-Agents
 
 - Changed (2026-10-09, radar): tách `scripts/test-dev-task.sh` (430 dòng > 400) thành `test-dev-task.sh` (resolver + strict gate)
