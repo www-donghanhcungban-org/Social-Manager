@@ -1,0 +1,28 @@
+case-study-ft41
+Copyright (c) 2026 www-donghanhcungban-org
+
+Phạm vi giấy phép
+-----------------
+Mã nguồn, cấu hình và tài liệu trong repo này phát hành theo giấy phép MIT (xem LICENSE),
+trừ các thành phần bên thứ ba dưới đây — chúng giữ giấy phép gốc.
+
+Thành phần bên thứ ba
+---------------------
+- Scaffold create-next-app (app/, public/*.svg, app/favicon.ico, cấu hình Next.js/ESLint/
+  TypeScript ban đầu): sinh từ https://github.com/vercel/next.js — MIT, Copyright (c) Vercel, Inc.
+- Khung phát triển (AGENTS.md, CLAUDE.md, GEMINI.md, .claude/, .cursor/, .clinerules,
+  .windsurfrules, .github/, docs/framework/, docs/ops/, scripts/, tests/): chép từ
+  https://github.com/seeker19110/projects-template — MIT, cùng chủ sở hữu.
+- CODE_OF_CONDUCT.md dựa trên Contributor Covenant (https://www.contributor-covenant.org),
+  CC BY 4.0.
+- Font Geist / Geist Mono được tải qua next/font lúc build, không nằm trong repo
+  (SIL Open Font License 1.1).
+- Các phụ thuộc npm (package.json / package-lock.json) không được chép vào repo; mỗi gói
+  giữ giấy phép riêng của nó.
+
+Nhãn hiệu
+---------
+Techcombank, VietQR và NAPAS 247 xuất hiện trên ảnh mã QR ủng hộ
+(docs/assets/donate-vietqr-techcombank.png); Next.js, Vercel, Claude, Cursor, Gemini và các
+tên sản phẩm khác được nhắc đến là nhãn hiệu của chủ sở hữu tương ứng. Dự án không liên kết
+với, và không được bảo trợ bởi, các chủ sở hữu đó.
