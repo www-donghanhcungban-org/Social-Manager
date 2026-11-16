@@ -13,6 +13,8 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 - Added (2026-11-16): giấy phép MIT (`LICENSE`, `package.json` `"license"`), `NOTICE` (phạm vi giấy phép, thành phần bên thứ ba,
   nhãn hiệu), mục "Ủng hộ và liên hệ" trong README kèm ảnh VietQR và `.github/FUNDING.yml`.
+- Changed (2026-11-16): chủ repo chuyển sang `www-donghanhcungban-org` — dòng bản quyền `LICENSE`/`NOTICE` và link
+  `.github/FUNDING.yml`; tham chiếu `seeker19110/projects-template` (repo chưa chuyển) giữ nguyên.
 
 ## Chưa phát hành — cầu nối X-Agents
 
