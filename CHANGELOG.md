@@ -15,6 +15,9 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   nhãn hiệu), mục "Ủng hộ và liên hệ" trong README kèm ảnh VietQR và `.github/FUNDING.yml`.
 - Changed (2026-11-16): chủ repo chuyển sang `www-donghanhcungban-org` — dòng bản quyền `LICENSE`/`NOTICE` và link
   `.github/FUNDING.yml`; tham chiếu `seeker19110/projects-template` (repo chưa chuyển) giữ nguyên.
+- Fixed (2026-11-16): `.github/dependabot.yml` nhóm đa hệ sinh thái `dependencies` có `commit-message.prefix: "chore(deps)"` —
+  thiếu tiền tố thì tiêu đề PR bot `Bump the "dependencies" group …` không theo Conventional Commits nên required check
+  `metadata` đỏ vĩnh viễn (#10, #11).
 
 ## Chưa phát hành — cầu nối X-Agents
 

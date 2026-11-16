@@ -6,10 +6,16 @@ version: 2
 # (test: tests/test_runtime_safety.py). PR cập nhật BẢO MẬT không chịu giới hạn này (GitHub tách riêng).
 # Bản major bị bỏ qua: đi qua /deps-upgrade (đọc changelog, sửa điểm chạm) — PR bot major thường đỏ CI
 # và giữ chỗ WIP mãi.
+#
+# commit-message.prefix: không có tiền tố, PR nhóm có tiêu đề `Bump the "dependencies" group …` → required check
+# `metadata` (pr-policy.yml, regex Conventional Commits, áp cả cho PR bot) đỏ vĩnh viễn (#10, #11). Dependabot tự
+# thêm `: ` sau tiền tố kết thúc bằng `)` → `chore(deps): bump the "dependencies" group …`.
 multi-ecosystem-groups:
   dependencies:
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
 
 updates:
   # Phụ thuộc của DỰ ÁN THẬT (kích hoạt khi có package.json). Repo khung chưa có
