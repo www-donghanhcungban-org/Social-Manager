@@ -15,6 +15,12 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   nhãn hiệu), mục "Ủng hộ và liên hệ" trong README kèm ảnh VietQR và `.github/FUNDING.yml`.
 - Changed (2026-11-16): chủ repo chuyển sang `www-donghanhcungban-org` — dòng bản quyền `LICENSE`/`NOTICE` và link
   `.github/FUNDING.yml`; tham chiếu `seeker19110/projects-template` (repo chưa chuyển) giữ nguyên.
+- Fixed (2026-11-16): `.github/dependabot.yml` nhóm đa hệ sinh thái `dependencies` có `commit-message.prefix: "chore(deps)"` —
+  thiếu tiền tố thì tiêu đề PR bot `Bump the "dependencies" group …` không theo Conventional Commits nên required check
+  `metadata` đỏ vĩnh viễn (#10, #11).
+- Security (2026-11-16): `next`/`eslint-config-next` 16.4.0 → 16.4.6 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r,
+  GHSA-673q-mjm6-r5xr — `next build` dừng với `SecurityFatalError`), `vitest` ^4.1.12, `zod` 4.6.7 (GHSA-mrhx-c7xc-m3w5).
+  Còn 7 cảnh báo moderate `minimatch` qua `typescript-eslint` 8.72.2 (bản mới nhất) — chưa có bản vá trong dải cho phép.
 
 ## Chưa phát hành — cầu nối X-Agents
 
