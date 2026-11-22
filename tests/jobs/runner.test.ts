@@ -46,6 +46,15 @@ function setup() {
       }>
     >(async () => ({ inserted: 4 })),
   };
+  const retention = {
+    purgeExpired: vi.fn(async () => ({
+      inboxItems: 2,
+      sessions: 1,
+      verifications: 0,
+      loginThrottle: 0,
+      more: false,
+    })),
+  };
   const log = createLogger({
     service: "t",
     version: "0",
@@ -56,13 +65,14 @@ function setup() {
     queue: q,
     posts,
     inbox,
+    retention,
     listAccounts: async () => [
       { workspaceId: "w1", accountId: "a1" },
       { workspaceId: "w1", accountId: "a2" },
     ],
     log,
   });
-  return { q, posts, inbox, runner, lines };
+  return { q, posts, inbox, retention, runner, lines };
 }
 
 describe("createJobRunner", () => {
@@ -74,7 +84,53 @@ describe("createJobRunner", () => {
       [QUEUES.runDue]: "* * * * *",
       [QUEUES.recoverStuck]: "*/5 * * * *",
       [QUEUES.syncAll]: "*/5 * * * *",
+      [QUEUES.purgeExpired]: "17 3 * * *",
     });
+  });
+
+  it("job purgeExpired lặp theo lô tới khi hết, cộng dồn kết quả và ghi log", async () => {
+    const { q, runner, retention, lines } = setup();
+    retention.purgeExpired
+      .mockResolvedValueOnce({
+        inboxItems: 5000,
+        sessions: 1,
+        verifications: 0,
+        loginThrottle: 0,
+        more: true,
+      })
+      .mockResolvedValueOnce({
+        inboxItems: 7,
+        sessions: 0,
+        verifications: 2,
+        loginThrottle: 1,
+        more: false,
+      });
+    await runner.start();
+    await q.run(QUEUES.purgeExpired);
+    expect(retention.purgeExpired).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({
+      level: "info",
+      job: QUEUES.purgeExpired,
+      inboxItems: 5007,
+      expiredLogins: 1,
+      verifications: 2,
+      loginThrottle: 1,
+      batches: 2,
+    });
+  });
+
+  it("job purgeExpired có trần số lô, không lặp vô hạn khi luôn còn dữ liệu", async () => {
+    const { q, runner, retention } = setup();
+    retention.purgeExpired.mockResolvedValue({
+      inboxItems: 1,
+      sessions: 0,
+      verifications: 0,
+      loginThrottle: 0,
+      more: true,
+    });
+    await runner.start();
+    await q.run(QUEUES.purgeExpired);
+    expect(retention.purgeExpired).toHaveBeenCalledTimes(20);
   });
 
   it("job runDue gọi dịch vụ đăng bài và ghi log kết quả", async () => {

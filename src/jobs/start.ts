@@ -19,11 +19,12 @@ export async function startWorkers(
     queue: pgBossQueue(boss),
     posts: container.services.posts,
     inbox: container.services.inbox,
+    retention: container.services.retention,
     listAccounts: container.listAccounts,
     log,
   });
   await runner.start();
-  log.info("worker nền đã chạy", { queues: "posts, inbox" });
+  log.info("worker nền đã chạy", { queues: "posts, inbox, maintenance" });
   return async () => {
     await boss.stop({ graceful: true, timeout: 20_000 });
     await container.close();

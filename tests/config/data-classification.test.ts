@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_INBOX_DAYS } from "@/src/retention/service";
+
 const project = readFileSync("PROJECT.md", "utf-8");
 const sql = execFileSync("git", ["ls-files", "-z", "drizzle"], {
   encoding: "utf-8",
@@ -77,7 +79,15 @@ describe("phân loại dữ liệu cá nhân/nhạy cảm (BASE-SEC-013)", () =>
         expect(project).toContain(id.split(".")[1]);
   });
 
-  it("chính sách nêu rõ phần chưa thực thi, không khoe đã tự động dọn", () => {
+  it("thời hạn lưu trong bảng khớp với hằng số của job dọn dữ liệu", () => {
+    const inboxRows = rows.filter((r) => r[1]!.startsWith("`inbox_items."));
+    expect(inboxRows.length).toBeGreaterThan(0);
+    for (const r of inboxRows)
+      expect(r[5], r[1]).toContain(`${DEFAULT_INBOX_DAYS} ngày`);
+    expect(project).toContain("maintenance.purge-expired");
+  });
+
+  it("nói rõ phần chưa làm: xoá dữ liệu theo yêu cầu của chủ dữ liệu", () => {
     expect(project).toMatch(/Chưa thực thi/);
   });
 });

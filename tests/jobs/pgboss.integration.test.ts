@@ -13,6 +13,15 @@ import { createLogger } from "@/src/log/logger";
 // khi người chạy cục bộ đặt biến | xem lại khi: thêm service Postgres ghim digest vào ci.yml (BASE-DEP-008)
 const ADMIN_URL = process.env.TEST_DATABASE_URL;
 const d = ADMIN_URL ? describe : describe.skip;
+const noRetention = {
+  purgeExpired: async () => ({
+    inboxItems: 0,
+    sessions: 0,
+    verifications: 0,
+    loginThrottle: 0,
+    more: false,
+  }),
+};
 
 d("pg-boss trên Postgres thật", () => {
   const dbName = `sm_boss_${randomBytes(4).toString("hex")}`;
@@ -46,6 +55,7 @@ d("pg-boss trên Postgres thật", () => {
           recoverStuck: async () => 0,
         },
         inbox: { syncAsSystem },
+        retention: noRetention,
         listAccounts: async () => [],
         log: createLogger({
           service: "t",
@@ -73,7 +83,7 @@ d("pg-boss trên Postgres thật", () => {
     }
   }, 30_000);
 
-  it("lịch được đăng ký trong DB cho cả ba việc định kỳ", async () => {
+  it("lịch được đăng ký trong DB cho cả bốn việc định kỳ", async () => {
     const boss = await startBoss(url);
     try {
       const runner = createJobRunner({
@@ -83,6 +93,7 @@ d("pg-boss trên Postgres thật", () => {
           recoverStuck: async () => 0,
         },
         inbox: { syncAsSystem: async () => ({ inserted: 0 }) },
+        retention: noRetention,
         listAccounts: async () => [],
         log: createLogger({
           service: "t",
@@ -94,7 +105,12 @@ d("pg-boss trên Postgres thật", () => {
       await runner.start();
       const names = (await boss.getSchedules()).map((s) => s.name).sort();
       expect(names).toEqual(
-        [QUEUES.runDue, QUEUES.recoverStuck, QUEUES.syncAll].sort(),
+        [
+          QUEUES.runDue,
+          QUEUES.recoverStuck,
+          QUEUES.syncAll,
+          QUEUES.purgeExpired,
+        ].sort(),
       );
     } finally {
       await boss.stop({ graceful: false, timeout: 2000 });

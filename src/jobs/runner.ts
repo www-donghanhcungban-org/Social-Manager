@@ -6,7 +6,13 @@ export const QUEUES = {
   recoverStuck: "posts.recover-stuck",
   syncAll: "inbox.sync-all",
   syncAccount: "inbox.sync-account",
+  purgeExpired: "maintenance.purge-expired",
 } as const;
+
+/** Dọn dữ liệu quá hạn lưu mỗi ngày lúc 03:17 UTC (giờ ít người dùng, lệch khỏi phút tròn). */
+const PURGE_CRON = "17 3 * * *";
+/** Chặn vòng lặp xoá theo lô: tối đa chừng này lô mỗi lần chạy, phần còn lại để lần sau. */
+const MAX_PURGE_BATCHES = 20;
 
 const RUN_DUE_LIMIT = 20;
 const STUCK_AFTER_MS = 15 * 60_000;
@@ -37,6 +43,15 @@ export interface JobRunnerDeps {
       accountId: string;
     }): Promise<{ inserted: number }>;
   };
+  retention: {
+    purgeExpired(): Promise<{
+      inboxItems: number;
+      sessions: number;
+      verifications: number;
+      loginThrottle: number;
+      more: boolean;
+    }>;
+  };
   listAccounts(): Promise<{ workspaceId: string; accountId: string }[]>;
   log: Logger;
 }
@@ -61,6 +76,7 @@ export function createJobRunner({
   queue,
   posts,
   inbox,
+  retention,
   listAccounts,
   log,
 }: JobRunnerDeps) {
@@ -114,6 +130,31 @@ export function createJobRunner({
         ),
       );
 
+      await queue.work(
+        QUEUES.purgeExpired,
+        guarded(QUEUES.purgeExpired, async () => {
+          const total = {
+            inboxItems: 0,
+            // Không đặt tên chứa "session": logger che các khóa trông như bí mật.
+            expiredLogins: 0,
+            verifications: 0,
+            loginThrottle: 0,
+            batches: 0,
+          };
+          for (let i = 0; i < MAX_PURGE_BATCHES; i++) {
+            const r = await retention.purgeExpired();
+            total.inboxItems += r.inboxItems;
+            total.expiredLogins += r.sessions;
+            total.verifications += r.verifications;
+            total.loginThrottle += r.loginThrottle;
+            total.batches++;
+            if (!r.more) break;
+          }
+          return total;
+        }),
+      );
+
+      await queue.schedule(QUEUES.purgeExpired, PURGE_CRON);
       await queue.schedule(QUEUES.runDue, "* * * * *");
       await queue.schedule(QUEUES.recoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.syncAll, "*/5 * * * *");

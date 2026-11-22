@@ -9,6 +9,7 @@ import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
 import { createInboxService } from "../inbox/service";
 import { createPostService } from "../posts/service";
+import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
 import { createRegistry } from "../providers/registry";
 import { createSocialApiProvider } from "../providers/socialapi";
@@ -56,6 +57,7 @@ export function createContainer(cfg: Env) {
     connections: createConnectionService({ db, box, registry }),
     posts: createPostService({ db, box, resolveProvider: buildProvider }),
     inbox: createInboxService({ db, box, resolveProvider: buildProvider }),
+    retention: createRetentionService({ db }),
   };
 
   /** Mọi tài khoản mạng xã hội của mọi workspace, cho job đồng bộ định kỳ. */
