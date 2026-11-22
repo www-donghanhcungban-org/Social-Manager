@@ -1,0 +1,98 @@
+name: Field metrics
+on:
+  schedule:
+    - cron: "27 4 * * 1"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: xt-field-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  export:
+    environment: xt-field-read
+    # lịch luôn chạy trên nhánh mặc định, payload của schedule không có `repository`
+    if: github.event_name == 'schedule' || github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      available: ${{ steps.export.outputs.available }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
+      - id: export
+        name: Export aggregate metrics
+        env:
+          XT_FIELD_READ_TOKEN: ${{ secrets.XT_FIELD_READ_TOKEN }}
+        run: |
+          rc=0
+          python3 -I .xtemplates/scripts/xt.py perf field-export > "$RUNNER_TEMP/field.json" || rc=$?
+          case "$rc" in
+            0) echo 'available=true' >> "$GITHUB_OUTPUT" ;;
+            3) echo 'field_export is not configured.' ;;
+            *) exit "$rc" ;;
+          esac
+      - if: steps.export.outputs.available == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: field-window
+          path: ${{ runner.temp }}/field.json
+          if-no-files-found: error
+          retention-days: 2
+  publish:
+    needs: export
+    if: needs.export.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # đẩy nhánh và mở PR bằng XT_STEWARD_TOKEN: PR của github.token không kích CI
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: field-window
+          path: ${{ runner.temp }}/metrics
+      - name: Verify and prepare one report
+        id: prepare
+        run: |
+          input="$RUNNER_TEMP/metrics/field.json"
+          rc=0
+          python3 -I .xtemplates/scripts/xt.py perf field-check --file "$input" --normalize > "$RUNNER_TEMP/checked.json" || rc=$?
+          case "$rc" in 0|1) ;; *) exit "$rc" ;; esac
+          stamp=$(python3 -I -c 'import datetime,json,sys; print(datetime.datetime.fromisoformat(json.load(open(sys.argv[1]))["exported_at"]).strftime("%Y-%m-%d-%H%M%S%fZ"))' "$RUNNER_TEMP/checked.json")
+          path="docs/ops/FIELD-$stamp.json"
+          mkdir -p docs/ops
+          if test -e "$path"; then cmp "$RUNNER_TEMP/checked.json" "$path"; exit 0; fi
+          cp "$RUNNER_TEMP/checked.json" "$path"
+          git add -- "$path"
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -m "docs(field): record $stamp"
+          echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+      - if: steps.prepare.outputs.stamp != ''
+        name: Publish report for review
+        env:
+          GH_TOKEN: ${{ secrets.XT_STEWARD_TOKEN }}
+          BASE: ${{ github.ref_name }} # job export chỉ chạy trên nhánh mặc định
+          STAMP: ${{ steps.prepare.outputs.stamp }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "::error::Cần XT_STEWARD_TOKEN của dự án để mở PR số field và để CI chạy cho PR đó."; exit 1; }
+          branch="xt-field/$STAMP"
+          gh auth setup-git
+          if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null; then
+            git fetch --no-tags origin "refs/heads/$branch"
+            git diff --quiet HEAD FETCH_HEAD
+          else
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          if test -z "$(gh pr list --head "$branch" --base "$BASE" --state all --json number --jq '.[0].number // empty')"; then
+            gh pr create --base "$BASE" --head "$branch" --title "docs(field): $STAMP" --body 'Read-only monitoring export for budget review.'
+          fi

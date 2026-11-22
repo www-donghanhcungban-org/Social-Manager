@@ -1,0 +1,185 @@
+name: Release tag
+
+# VERSION tạo ứng viên. Chữ ký GO trên cùng nội dung có thể đến trong một PR sau.
+# workflow_dispatch nhận SHA đã merge; cả hai đường đều kiểm promotion trước khi ký và đẩy tag.
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - "GO-NO-GO*.md"
+      - "docs/GO-NO-GO*.md"
+      - "docs/ops/GO-NO-GO*.md"
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit đã merge có VERSION, xt.yaml và GO-NO-GO khớp main (để trống = SHA của sự kiện)."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  approve:
+    name: Kiểm ứng viên trên main
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read # release-check đối chiếu nợ review bằng PR đã merge
+    outputs:
+      target: ${{ steps.candidate.outputs.target }}
+      version: ${{ steps.candidate.outputs.version }}
+      main: ${{ steps.candidate.outputs.main }}
+      approved: ${{ steps.approval.outputs.approved }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tìm ứng viên đã merge và phiên bản chưa phát hành
+        id: candidate
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          target=$(git rev-parse --verify --end-of-options "${INPUT_SHA:-$GITHUB_SHA}^{commit}")
+          git merge-base --is-ancestor "$target" "$GITHUB_SHA"
+          git merge-base --is-ancestor "$target" HEAD
+          if ! git cat-file -e "$target:VERSION" 2>/dev/null; then
+            echo "::notice::Không có tệp VERSION ở gốc repo: không có ứng viên phát hành."
+            exit 0
+          fi
+          v=$(git show "$target:VERSION")
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git show "$target:CHANGELOG.md" > "$RUNNER_TEMP/CHANGELOG.md"
+          awk -v header="## [$v]" '$0 == header || index($0, header " ") == 1 {found=1} END {exit !found}' "$RUNNER_TEMP/CHANGELOG.md"
+          if git show-ref --verify --quiet "refs/tags/v$v"; then
+            echo "::notice::v$v đã phát hành. Giữ nguyên tag."
+            exit 0
+          fi
+          git worktree add --detach "$RUNNER_TEMP/candidate" "$target"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "main=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: steps.candidate.outputs.target != ''
+        with:
+          python-version: "3.15.2"
+      - name: Công cụ cho các lệnh kiểm blueprint
+        if: steps.candidate.outputs.target != ''
+        run: |
+          if test -f "$RUNNER_TEMP/candidate/requirements-dev.txt"; then
+            pip install --quiet --require-hashes -r "$RUNNER_TEMP/candidate/requirements-dev.txt"
+          fi
+      - name: Xác nhận promotion của đúng SHA và chữ ký còn hiệu lực trên main
+        id: approval
+        if: steps.candidate.outputs.target != ''
+        env:
+          TARGET: ${{ steps.candidate.outputs.target }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/candidate"
+          # Dự án đích đã cài CLI ở .xtemplates/scripts; chỉ nạp mã kiểm trong checkout nhánh chính.
+          cli="$GITHUB_WORKSPACE/.xtemplates/scripts"
+          if test -f "$GITHUB_WORKSPACE/framework/00-method/README.md"; then cli="$GITHUB_WORKSPACE/scripts"; fi
+          PYTHONPATH="$cli" python3 -P - <<'PY'
+          import os
+          from pathlib import Path
+          import xt
+          from xt_release_ops import approved_for_tag
+
+          approved = approved_for_tag(xt, Path.cwd(), Path(os.environ["GITHUB_WORKSPACE"]), os.environ["TARGET"])
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"approved={str(approved).lower()}", file=output)
+          PY
+
+  tag:
+    name: tag
+    needs: approve
+    if: needs.approve.outputs.approved == 'true'
+    concurrency:
+      group: release-tag-v${{ needs.approve.outputs.version }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.XT_RELEASE_TOKEN || github.token }}
+      - name: Tạo archive và annotated tag
+        id: tag
+        env:
+          TARGET: ${{ needs.approve.outputs.target }}
+          V: ${{ needs.approve.outputs.version }}
+          CHECKED_MAIN: ${{ needs.approve.outputs.main }}
+        run: |
+          set -euo pipefail
+          # Hai run có thể cùng duyệt trước khi một job đẩy tag. Job sau chỉ chấp nhận cùng annotated tag.
+          if git show-ref --verify --quiet "refs/tags/v$V"; then
+            test "$(git rev-parse "refs/tags/v$V^{commit}")" = "$TARGET"
+            test "$(git cat-file -t "refs/tags/v$V")" = tag
+            echo "::notice::v$V đã được phát hành ở đúng SHA."
+            exit 0
+          fi
+          # Kiểm lại chữ ký và cấu hình nếu main tiến trong lúc chờ. Các thay đổi độc lập vẫn có thể merge.
+          cat > "$RUNNER_TEMP/verify-main.sh" <<'SH'
+          set -euo pipefail
+          git fetch --quiet --no-tags origin refs/heads/main
+          git merge-base --is-ancestor "$CHECKED_MAIN" FETCH_HEAD
+          git diff --exit-code --quiet "$CHECKED_MAIN" FETCH_HEAD -- VERSION xt.yaml \
+            ':(glob)GO-NO-GO*.md' ':(glob)docs/GO-NO-GO*.md' ':(glob)docs/ops/GO-NO-GO*.md' || {
+            echo "::error::Quyết định hoặc cấu hình phát hành đã đổi trên main. Chạy lại workflow."
+            exit 1
+          }
+          SH
+          bash "$RUNNER_TEMP/verify-main.sh"
+          git merge-base --is-ancestor "$TARGET" "$CHECKED_MAIN"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$V" -m "v$V" "$TARGET"
+          test "$(git cat-file -t "v$V")" = tag
+          # Tên tệp phát hành theo tên repo (WF-DOC-021): `<repo>-vX.Y.Z.tar.gz`.
+          name="${GITHUB_REPOSITORY#*/}-v$V"
+          git archive --format=tar.gz --prefix="$name/" -o "$RUNNER_TEMP/$name.tar.gz" "$TARGET"
+          echo "archive=$RUNNER_TEMP/$name.tar.gz" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: steps.tag.outputs.archive != ''
+        with:
+          subject-path: ${{ steps.tag.outputs.archive }}
+      - name: Ghi biên nhận promotion gắn với đúng archive
+        id: receipt
+        if: steps.tag.outputs.archive != ''
+        env:
+          ARCHIVE: ${{ steps.tag.outputs.archive }}
+          TARGET: ${{ needs.approve.outputs.target }}
+          V: ${{ needs.approve.outputs.version }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/${GITHUB_REPOSITORY#*/}-v$V.promotion.json"
+          digest=$(sha256sum "$ARCHIVE" | cut -d' ' -f1)
+          printf '{"repo":"%s","tag":"v%s","commit":"%s","sha256":"%s","promotion":"approved"}\n' \
+            "${GITHUB_REPOSITORY,,}" "$V" "$TARGET" "$digest" > "$receipt"
+          echo "file=$receipt" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: steps.receipt.outputs.file != ''
+        with:
+          subject-path: ${{ steps.receipt.outputs.file }}
+      - name: Đẩy tag
+        if: steps.tag.outputs.archive != ''
+        env:
+          V: ${{ needs.approve.outputs.version }}
+          CHECKED_MAIN: ${{ needs.approve.outputs.main }}
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/verify-main.sh"
+          git push origin "refs/tags/v$V"

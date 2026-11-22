@@ -1,0 +1,90 @@
+{
+  "files": {
+    ".claude/agents/acceptance-author.md": "sha256:d33aa89f70be462b16aeabb1aa44b4c13bc4811c115a93b9cdb6dbc44b91cbea",
+    ".claude/agents/executor-deep.md": "sha256:c67dfcd879ce1f86635f91686c922d5af933a9e21bed7451d4bd1d22e3845fa3",
+    ".claude/agents/executor.md": "sha256:8a20d5a1edc2badeb2ce64ce097fbb508ca961ca1fdb50c94bb44d2c9ff4fc2f",
+    ".claude/agents/researcher.md": "sha256:840f129531e81a32fe4ade027ea7d68ae539b30b81d0025845834557c25dacb7",
+    ".claude/agents/reviewer-alt.md": "sha256:4680e8316389689de12e9a3c1f6196d29183ef418d4ed7386112e1034a1c9217",
+    ".claude/agents/reviewer.md": "sha256:cce14e0286d9cc7e78d34635cceb9c7c7062c4f6766071e71c48e978d29fd720",
+    ".claude/hooks/_lib.sh": "sha256:a7dbac77277550b97ee509411390597fd85f05a7cd18c0aa71e1de2290175ec9",
+    ".claude/hooks/auto-format.sh": "sha256:77b66366cf89c2577f2e0397346c2f438fda171629bba458477b016910767345",
+    ".claude/hooks/guard.py": "sha256:b48488817ddce715a858c3e61ac65047f35916939710932af2ed6cfe4c0737d0",
+    ".claude/hooks/permission-request.sh": "sha256:a3707521b7c7ac58f1a9ce0fba18f7cd9d3a64967564b82f1666639e75988c26",
+    ".claude/hooks/post-tool-failure.sh": "sha256:4c495cae9503d80a968443dd2277690ea3769bbff098436e92ab4ab3a440b196",
+    ".claude/hooks/pre-bash-guard.sh": "sha256:0fd7daec70bfed01a3381fad2ce034ca104a4c339967f4f2d9f3abb9952b64bd",
+    ".claude/hooks/pre-compact.sh": "sha256:105e36ae5f75db161cdee63de801e262b5d9d89ad97bec42a1a5a4502fb7c7ad",
+    ".claude/hooks/pre-edit-guard.sh": "sha256:6554aa874433576d8c8cf96435889abc1d250b7867ff6c53237fa1b0f3b55c93",
+    ".claude/hooks/pre-mcp-guard.sh": "sha256:d4b240687a0333e9fcebfaf9a321f503a675e25e02a63ce14d2f453b7f33d2a5",
+    ".claude/hooks/session-start.sh": "sha256:d3aacb35badfb434fe9c3650e6ff64346dc7b3cc32678c9821a80a84698e4ea5",
+    ".claude/hooks/stop-guard.sh": "sha256:dfe64402577d822e1784672e22f05750567853c0e839d66163d279965ef03ba0",
+    ".claude/hooks/subagent-stop.sh": "sha256:e15425344b2fe894d59741db7d3b6b30dfe17473d32052a5dd81ac5c9b124128",
+    ".claude/hooks/task-completed.sh": "sha256:03c078f3fde6155500ef367f74433b19245b917521a1dc096f7158a46f01720f",
+    ".claude/skills/audit/SKILL.md": "sha256:bc7a14c2d9352dadb8a71bac0d2fd7b9655d205db2fd071465d7dcfc5615742d",
+    ".claude/skills/autopilot/SKILL.md": "sha256:edb44b68298b253a025f66dcdec1b90f74831e52873e5def8ab9eb32ee4a356d",
+    ".claude/skills/blueprint/SKILL.md": "sha256:21bf3ea36baae950ae0ef42ce6c65e7ef31d4f6ac18d22c1364583be7941e912",
+    ".claude/skills/complete/SKILL.md": "sha256:51b4358932305f0de58f3e292d975f511593b4627169b8df5c40caa2a508df53",
+    ".claude/skills/factory/SKILL.md": "sha256:bd4140beb5e00b3d66925da0d1af858fd7113cce6f7c45f81911072ca49d0070",
+    ".claude/skills/handover/SKILL.md": "sha256:0b69c0a7690fc85338f5ecf2e8bb6f36b73de95b534526f9bad9a36b470ea062",
+    ".claude/skills/migrate-db/SKILL.md": "sha256:3dfbe347d263555c61d6a58d1fee2109e420452a0b0c7665bf1fb8d8c06e9ee5",
+    ".claude/skills/optimize/SKILL.md": "sha256:9c1d39fe1bb5175a801163f7e7f29a722df5ee5649181778f17683edfdcb60c4",
+    ".claude/skills/research/SKILL.md": "sha256:8ee3f006a560d2283cd9eb3729031186d49ea5dd8800d2e07a2efa3cccb6f538",
+    ".claude/skills/tdd/SKILL.md": "sha256:4cb178d02257314d681f3e714bde98b71d763b912b997eaf28cb56c7e7b1553e",
+    ".claude/skills/ui-verify/SKILL.md": "sha256:790b59ee14202283eb58ddc29af9e822ad3c4e657abcf216c4d027e0fbf98022",
+    ".claude/skills/upgrade/SKILL.md": "sha256:2f4bce89fc9b051cc8ea95d5e31a643bf5f539139299fddc58991d6aefedcac9",
+    ".github/dependabot.yml": "sha256:e996d1f0bc2c0c711022905f0e32da4e87dbb17b733838b8896a01754622520d",
+    ".github/pull_request_template.md": "sha256:b34719431b9a9eb0fac5520a7e85a5956519e43a207e5c72dbd6d7828732f595",
+    ".github/rulesets/main.json": "sha256:d8b467c64569d221c47ad54b75f7350874867d103a2cadd9e3ce29796c20df12",
+    ".github/rulesets/tags.json": "sha256:a34bc859197a70ad9807f460ddaf661065e77d30bb649bcc5427ce3b29b75ecd",
+    ".github/workflows/ci.yml": "sha256:49dee1775cf8b30c15c1c9772b77d9c60cb4ea24656f61ddcd4a9014565bbcf8",
+    ".github/workflows/merge-gate.yml": "sha256:2ce1f13ff5082f7aba6e994ee1afb63857647bf6e72eb901e13950e1110a94cb",
+    ".github/workflows/pr-steward.yml": "sha256:d8137b7870b3b57f02256b375018c96d05711d72d8a68a716b2b902a74d281f6",
+    ".github/workflows/pr-title.yml": "sha256:de14a19d5a4bf3427159a46ee7120f7a7cb86691d95e5cc62b33bd3220c7d7d5",
+    ".github/workflows/release-tag.yml": "sha256:e02e9312ade30ed6de3f6fdc7aa8b1c575a7558eb04887ab593303c0ada9e5ca",
+    ".github/workflows/secret-scan.yml": "sha256:66ccb6a3cd4ec3de0940f47712c03cf40c1eb07c98787d45144c1625fec191b1",
+    ".github/workflows/xt-field.yml": "sha256:fa98aeefd80cebe7aa3a082498cf7cea91007809a3adc60bb38b5c366821f7e8",
+    ".github/workflows/xt-upgrade.yml": "sha256:5c877354db50920fdee37a9bcdbc21ee359c202c00b69c2a4569f217eb62357e",
+    "AGENTS.md": "sha256:38863a5c0314ccf80f45c851d9be9c898f99fe84114f4e3a0617dfd54dde7a7b",
+    "CLAUDE.md": "sha256:9bbad5955b2a8185d3fa16f1700ca845ffec893bf48b39806458692a9f18900d",
+    "PROGRESS.md": "sha256:d80a03db3cb157ee682314787afb2eb15911b2f4f86da2f564e49106f6f76941",
+    "xt.yaml": "sha256:64cf9b78154f78f4b4e9e3b55185426bbca3bd89aa1179b0c132eb00fae35826"
+  },
+  "git_hooks": [
+    ".git/hooks/commit-msg",
+    ".git/hooks/pre-commit",
+    ".git/hooks/pre-push"
+  ],
+  "policy": {
+    "ask_removal": "manifest-only",
+    "install_preset": "safe"
+  },
+  "rules": {
+    "allow": [
+      "Bash"
+    ],
+    "ask": [],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(mkfs*)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(**/*.pfx)",
+      "Read(**/*id_rsa*)",
+      "Read(**/*id_ed25519*)",
+      "Read(**/.envrc)",
+      "Read(**/.npmrc)",
+      "Read(**/.pypirc)",
+      "Read(**/.netrc)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push --mirror *)"
+    ]
+  },
+  "schema": 1,
+  "source": {
+    "untagged": "38698d4511d4a5e17d25416f921b0dcaba49b99b"
+  }
+}
