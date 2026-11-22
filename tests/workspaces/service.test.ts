@@ -58,6 +58,32 @@ describe("create", () => {
     ).resolves.toBeDefined();
   });
 
+  it("tên nhập dạng NFD được lưu thành NFC, so khớp được với dạng NFC (BASE-DATA-002)", async () => {
+    const nfd = "Việt Nam".normalize("NFD");
+    expect(nfd).not.toBe("Việt Nam".normalize("NFC"));
+    const ws = await svc().create({ actorId: "u1", name: nfd });
+    const [row] = await t.db.select().from(workspaces);
+    expect(row!.name).toBe("Việt Nam".normalize("NFC"));
+    expect(ws.name).toBe(row!.name);
+  });
+
+  it("lỗi giữa giao dịch (ghi thành viên hỏng) thì không để lại workspace mồ côi (BASE-DATA-009)", async () => {
+    await t.client.exec(`
+      create function boom() returns trigger language plpgsql as $$
+      begin
+        if new.user_id = 'boom' then raise exception 'lỗi giả'; end if;
+        return new;
+      end $$;
+      create trigger members_boom before insert on members
+        for each row execute function boom();
+    `);
+    await expect(
+      svc().create({ actorId: "boom", name: "W" }),
+    ).rejects.toThrow();
+    expect(await t.db.select().from(workspaces)).toHaveLength(0);
+    expect(await t.db.select().from(members)).toHaveLength(0);
+  });
+
   it("actorId rỗng bị từ chối, không tạo gì", async () => {
     await expect(
       svc().create({ actorId: "", name: "W" }),

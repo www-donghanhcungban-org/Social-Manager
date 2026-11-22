@@ -22,7 +22,7 @@
 
 ## Bàn giao phiên
 
-- Commit cuối: xem `git log -1` trên nhánh · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh (514 test)
+- Nền trên nhánh chính: `a24ca77` · Việc đợt xw-1 nằm ở PR [X-Workspace#23](https://github.com/www-donghanhcungban-org/X-Workspace/pull/23) (nhánh `claude/admiring-tesla-8xd417`) · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh (514 test)
 - Đang chặn (cần người):
   - T-009: tạo `.env.example` (quy tắc quyền chặn agent ghi `.env*`)
   - T-108: gỡ di sản projects-template (guard chặn agent gỡ hook/agent/lệnh). Người chạy ở gốc repo:
