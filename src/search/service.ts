@@ -68,6 +68,11 @@ export function createSearchService({
       limit?: number;
       /** Gồm cả phiên bản cũ của cùng một mục (mặc định không). */
       allVersions?: boolean;
+      /**
+       * `all` (mặc định): mọi từ phải có mặt. `any`: chỉ cần một từ, xếp hạng theo độ khớp, bỏ từ dừng — cho câu hỏi tự
+       * nhiên (truy xuất cho hỏi đáp).
+       */
+      match?: "all" | "any";
     }): Promise<SearchHit[]> {
       await requireAction(
         db,
@@ -94,10 +99,11 @@ export function createSearchService({
       );
       if (typeof input.query !== "string")
         throw new ValidationError("Truy vấn không hợp lệ");
-      const tokens = queryTokens(input.query);
+      const any = input.match === "any";
+      const tokens = queryTokens(input.query, 10, { dropStopwords: any });
       if (tokens.length === 0) return [];
       // Từ đã là chữ/số Unicode (không còn dấu nháy, dấu cách hay toán tử) nên ghép tsquery an toàn.
-      const tsquery = sql`to_tsquery('simple', ${tokens.map((t) => `${t}:*`).join(" & ")})`;
+      const tsquery = sql`to_tsquery('simple', ${tokens.map((t) => `${t}:*`).join(any ? " | " : " & ")})`;
       const vector = sql`to_tsvector('simple', ${searchDocuments.textFolded})`;
 
       const e2 = db

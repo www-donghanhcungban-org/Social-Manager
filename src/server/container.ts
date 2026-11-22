@@ -7,6 +7,7 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
 import { createCoverageService } from "../conversations/coverage";
@@ -71,6 +72,9 @@ export function createContainer(cfg: Env) {
   registry.register(buildProvider("demo", "")!);
   registry.register(buildProvider("socialapi", "-")!);
 
+  const search = createSearchService({ db, evidence });
+  const ai = createAiGateway({ db, model });
+
   const services = {
     workspaces: createWorkspaceService({ db }),
     accounts: createAccountService({ db, registry }),
@@ -87,8 +91,9 @@ export function createContainer(cfg: Env) {
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,
-    ai: createAiGateway({ db, model }),
-    search: createSearchService({ db, evidence }),
+    ai,
+    answers: createAnswerService({ search, ai }),
+    search,
     knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),
   };
