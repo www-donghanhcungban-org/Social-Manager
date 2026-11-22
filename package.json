@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "next typegen && tsc --noEmit",
+    "audit:deps": "npm audit --audit-level=high",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write app src tests e2e",

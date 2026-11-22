@@ -1,0 +1,27 @@
+# Quét lỗ hổng phụ thuộc (BASE-DEP-004): mỗi PR và hằng tuần. Đỏ khi có lỗ hổng mức high trở lên
+# trong cây phụ thuộc đã khoá. Mức moderate chỉ hiện trong báo cáo; ngoại lệ có thời hạn ghi ở
+# docs/ops-notes/dependency-exceptions.md. Lý do thêm file: dự án chưa có bước quét phụ thuộc nào.
+name: Dependency audit
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cài đóng băng từ lockfile
+        run: npm ci --ignore-scripts
+      - name: Quét lỗ hổng (từ high trở lên là đỏ)
+        run: npm audit --audit-level=high

@@ -18,3 +18,17 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+
+  # Gói npm của ứng dụng (lý do thêm: BASE-DEP-007, dự án có package.json thật). Gom bản vá/minor để không
+  # phình WIP; major mở PR riêng (cần đọc hướng dẫn nâng cấp). Cooldown 7 ngày: tránh bản mới bị rút.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
