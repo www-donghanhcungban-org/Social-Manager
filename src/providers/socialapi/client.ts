@@ -27,6 +27,8 @@ export interface SocialApiClientOptions {
   maxRetries?: number;
   /** Trần thời gian chờ mỗi lần thử lại. */
   maxWaitMs?: number;
+  /** Timeout cho MỖI lần gọi (kết nối + đọc body); mặc định 15 giây. */
+  timeoutMs?: number;
 }
 
 export type Query = Record<string, string | number | undefined | null>;
@@ -64,7 +66,10 @@ async function toApiError(res: Response): Promise<SocialApiError> {
   } catch {
     // body không phải JSON: giữ mã http.<status>
   }
-  const retryAfter = Number(res.headers.get("Retry-After")) || undefined;
+  // Chỉ nhận số giây nguyên không âm; dạng ngày HTTP hay giá trị lạ coi như không có (không thử lại).
+  const raw = res.headers.get("Retry-After")?.trim();
+  const retryAfter =
+    raw !== undefined && /^\d{1,9}$/.test(raw) ? Number(raw) : undefined;
   return new SocialApiError(message, res.status, code, requestId, retryAfter);
 }
 
@@ -76,6 +81,7 @@ export function createSocialApiClient(
   const sleep = opts.sleep ?? defaultSleep;
   const maxRetries = opts.maxRetries ?? 2;
   const maxWaitMs = opts.maxWaitMs ?? 30_000;
+  const timeoutMs = opts.timeoutMs ?? 15_000;
 
   async function request<T>(
     method: "GET" | "POST",
@@ -90,6 +96,7 @@ export function createSocialApiClient(
 
     for (let attempt = 0; ; attempt++) {
       let res: Response;
+      const signal = AbortSignal.timeout(timeoutMs);
       try {
         res = await doFetch(`${base}${path}${toQuery(query)}`, {
           method,
@@ -99,9 +106,17 @@ export function createSocialApiClient(
             ...(body !== undefined && { "Content-Type": "application/json" }),
           },
           body: body === undefined ? undefined : JSON.stringify(body),
+          signal,
         });
       } catch {
         // Không đưa nội dung lỗi gốc vào thông báo: nó có thể chứa URL/header có khoá.
+        if (signal.aborted) {
+          throw new SocialApiError(
+            "SocialAPI không phản hồi kịp.",
+            0,
+            "client.timeout",
+          );
+        }
         throw new SocialApiError(
           "Không kết nối được tới SocialAPI.",
           0,

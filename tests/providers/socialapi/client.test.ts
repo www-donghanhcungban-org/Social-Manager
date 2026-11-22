@@ -91,6 +91,54 @@ describe("createSocialApiClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("Retry-After: 0 thử lại ngay; giá trị âm, không phải số hoặc dạng ngày thì không thử lại", async () => {
+    const sleep = vi.fn(async () => {});
+    const retryZero = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("{}", { status: 429, headers: { "Retry-After": "0" } }),
+      )
+      .mockResolvedValueOnce(json({ ok: true }));
+    await expect(
+      createSocialApiClient({ apiKey: "k", fetch: retryZero, sleep }).get(
+        "/me",
+        Ok,
+      ),
+    ).resolves.toEqual({ ok: true });
+    expect(sleep).toHaveBeenCalledWith(0);
+
+    for (const bad of ["-5", "abc", "Wed, 21 Oct 2026 07:28:00 GMT", "1e9x"]) {
+      const f = vi.fn(
+        async () =>
+          new Response("{}", { status: 429, headers: { "Retry-After": bad } }),
+      );
+      await expect(
+        createSocialApiClient({ apiKey: "k", fetch: f, sleep }).get("/me", Ok),
+      ).rejects.toMatchObject({ status: 429 });
+      expect(f).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("mỗi lần gọi có timeout: fetch treo thì bị huỷ và báo client.timeout", async () => {
+    const hang = vi.fn(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(init.signal?.reason),
+          );
+        }),
+    );
+    const c = createSocialApiClient({
+      apiKey: "k",
+      fetch: hang as unknown as typeof fetch,
+      timeoutMs: 20,
+    });
+    await expect(c.get("/me", Ok)).rejects.toMatchObject({
+      code: "client.timeout",
+    });
+    expect(hang).toHaveBeenCalledTimes(1);
+  });
+
   it("429 không có Retry-After: không thử lại (không dội API)", async () => {
     const sleep = vi.fn(async () => {});
     const fetchMock = vi.fn(async () => new Response("{}", { status: 429 }));
