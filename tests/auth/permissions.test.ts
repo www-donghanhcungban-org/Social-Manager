@@ -8,7 +8,13 @@ const allowed = (role: "owner" | "admin" | "member" | null) =>
 describe("can", () => {
   it("member chỉ đọc/trả lời hộp thư, đăng bài và đọc kho bằng chứng", () => {
     expect(allowed("member")).toEqual(
-      ["inbox.read", "inbox.reply", "posts.publish", "evidence.read"].sort(),
+      [
+        "inbox.read",
+        "inbox.reply",
+        "posts.publish",
+        "evidence.read",
+        "projects.read",
+      ].sort(),
     );
   });
 
@@ -20,6 +26,8 @@ describe("can", () => {
         "posts.publish",
         "evidence.read",
         "evidence.write",
+        "projects.read",
+        "projects.write",
         "connections.manage",
         "members.invite",
         "members.remove",

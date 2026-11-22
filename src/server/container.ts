@@ -10,6 +10,7 @@ import { createConnectionService } from "../connections/service";
 import { createFsBlobStore } from "../evidence/blob-store";
 import { createEvidenceService } from "../evidence/service";
 import { createInboxService } from "../inbox/service";
+import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
 import { createRetentionService } from "../retention/service";
@@ -69,6 +70,7 @@ export function createContainer(cfg: Env) {
     }),
     retention: createRetentionService({ db, evidence }),
     evidence,
+    knowledge: createKnowledgeService({ db }),
     webhooks: createWebhookIngest({ db, box, evidence }),
   };
 

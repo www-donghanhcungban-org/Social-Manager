@@ -92,6 +92,9 @@ describe("migration", () => {
     "messages",
     "evidence_blobs",
     "evidence_items",
+    "projects",
+    "project_aliases",
+    "project_links",
   ];
 
   // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,

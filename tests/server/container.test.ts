@@ -21,6 +21,7 @@ describe("createContainer", () => {
       "connections",
       "evidence",
       "inbox",
+      "knowledge",
       "posts",
       "retention",
       "webhooks",

@@ -345,6 +345,100 @@ export const evidenceItems = pgTable(
   ],
 );
 
+export const PROJECT_LINK_TARGETS = ["conversation", "evidence"] as const;
+export type ProjectLinkTarget = (typeof PROJECT_LINK_TARGETS)[number];
+
+/** Khoá so khớp tên/bí danh: NFC + bỏ khoảng thừa + không phân biệt hoa thường (BASE-DATA-002). */
+export const nameKeyOf = (s: string) =>
+  s.normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+
+/** Dự án: nhóm các nguồn (hội thoại, bằng chứng) thành một ngữ cảnh làm việc (M06). */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** `nameKeyOf(name)`: duy nhất trong workspace. */
+    nameKey: text("name_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("projects_ws_name_key").on(t.workspaceId, t.nameKey),
+    check(
+      "projects_name_check",
+      sql`length(btrim(${t.name})) between 1 and 100`,
+    ),
+  ],
+);
+
+/** Bí danh của dự án (tên viết tắt, tên khách gọi…). Duy nhất trong workspace để một bí danh chỉ trỏ một dự án. */
+export const projectAliases = pgTable(
+  "project_aliases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    alias: text("alias").notNull(),
+    aliasKey: text("alias_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("project_aliases_ws_key").on(t.workspaceId, t.aliasKey),
+    check(
+      "project_aliases_alias_check",
+      sql`length(btrim(${t.alias})) between 1 and 100`,
+    ),
+    index("project_aliases_project_idx").on(t.projectId),
+  ],
+);
+
+/**
+ * Liên kết nguồn–dự án: gắn một hội thoại hoặc một bằng chứng vào dự án. Gỡ liên kết không xoá nguồn; xoá nguồn
+ * (hết hạn lưu, xoá tài khoản) xoá liên kết theo tầng.
+ */
+export const projectLinks = pgTable(
+  "project_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    targetType: text("target_type", { enum: PROJECT_LINK_TARGETS }).notNull(),
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "cascade",
+    }),
+    evidenceItemId: uuid("evidence_item_id").references(
+      () => evidenceItems.id,
+      { onDelete: "cascade" },
+    ),
+    /** Người gắn (`user.id` của Better Auth). */
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("project_links_conversation").on(t.projectId, t.conversationId),
+    unique("project_links_evidence").on(t.projectId, t.evidenceItemId),
+    check(
+      "project_links_target_check",
+      sql`(${t.targetType} = 'conversation' and ${t.conversationId} is not null and ${t.evidenceItemId} is null)
+        or (${t.targetType} = 'evidence' and ${t.evidenceItemId} is not null and ${t.conversationId} is null)`,
+    ),
+    index("project_links_workspace_idx").on(t.workspaceId),
+    index("project_links_conversation_idx").on(t.conversationId),
+    index("project_links_evidence_idx").on(t.evidenceItemId),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",
