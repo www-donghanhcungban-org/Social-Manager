@@ -9,6 +9,8 @@ export const ACTIONS = [
   "members.remove",
   "members.changeRole",
   "workspace.delete",
+  /** Đổi cấu hình workspace (thời hạn lưu dữ liệu, D-010): chỉ owner. */
+  "workspace.settings",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

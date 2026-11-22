@@ -41,6 +41,52 @@ export interface InboxItem {
   receivedAt: string;
 }
 
+/** Một trang kết quả; `nextCursor` null = trang cuối. */
+export interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+/** Hội thoại tin nhắn riêng bên nhà cung cấp (khác tin nhắn: một hội thoại có nhiều tin). */
+export interface ConversationSummary {
+  /** Id hội thoại bên nhà cung cấp. */
+  id: string;
+  participantId: string;
+  participantName: string;
+  /** ISO 8601 có múi giờ; null khi nhà cung cấp chưa có tin nào. */
+  lastMessageAt: string | null;
+}
+
+export const MESSAGE_DIRECTIONS = ["incoming", "outgoing"] as const;
+export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number];
+
+export interface ProviderMessage {
+  /**
+   * Định danh ổn định của tin để khử trùng giữa đồng bộ và webhook: id của nền tảng (`platform_id`) khi có, nếu không
+   * thì id của nhà cung cấp và `identityWeak = true` (cùng một tin có thể mang id khác ở webhook).
+   */
+  id: string;
+  identityWeak: boolean;
+  /** Id tin theo nhà cung cấp (vd UUID của SocialAPI). */
+  providerMessageId: string;
+  direction: MessageDirection;
+  author: string;
+  /** Nội dung gốc, không cắt. */
+  text: string;
+  /** ISO 8601 có múi giờ. */
+  sentAt: string;
+}
+
+export interface ConversationQuery {
+  platform: Platform;
+  accountId: string;
+  cursor?: string;
+}
+
+export interface MessageQuery extends ConversationQuery {
+  conversationId: string;
+}
+
 export interface InboxQuery {
   platform: Platform;
   accountId: string;
@@ -57,7 +103,28 @@ export interface PublishInput {
 
 export interface PublishResult {
   id: string;
-  status: "published" | "scheduled";
+  /**
+   * `published`: đã lên mạng · `scheduled`: nhà cung cấp giữ để đăng theo giờ hẹn · `submitted`: đã nhận nhưng chưa
+   * biết kết quả cuối (vd SocialAPI `publishing`) — phải xác nhận lại bằng `getPostStatus` (ADR-0002, H2).
+   */
+  status: "published" | "scheduled" | "submitted";
+}
+
+/** Trạng thái cuối/hiện tại của bài phía nhà cung cấp; `pending` = chưa xong. */
+export const REMOTE_POST_STATUSES = [
+  "pending",
+  "published",
+  "partial",
+  "failed",
+  "cancelled",
+] as const;
+export type RemotePostStatus = (typeof REMOTE_POST_STATUSES)[number];
+
+export interface PostStatusQuery {
+  platform: Platform;
+  accountId: string;
+  /** Id bài bên nhà cung cấp (`PublishResult.id`). */
+  postId: string;
 }
 
 /**
@@ -72,7 +139,15 @@ export interface SocialProvider {
   /** Nền tảng nào làm được việc gì; nền tảng vắng mặt = không hỗ trợ. */
   readonly support: Partial<Record<Platform, readonly Capability[]>>;
   listInbox?(query: InboxQuery): Promise<InboxItem[]>;
+  /** Hội thoại DM, hoạt động gần nhất trước. Khai `dm` mà có hàm này thì đồng bộ đọc theo hội thoại + tin nhắn. */
+  listConversations?(
+    query: ConversationQuery,
+  ): Promise<Page<ConversationSummary>>;
+  /** Tin nhắn của một hội thoại, mới nhất trước. Cài cùng `listConversations`. */
+  listMessages?(query: MessageQuery): Promise<Page<ProviderMessage>>;
   publishPost?(input: PublishInput): Promise<PublishResult>;
+  /** Đọc lại trạng thái bài đã gửi. Provider có thể trả `submitted` thì phải cài hàm này. */
+  getPostStatus?(query: PostStatusQuery): Promise<{ status: RemotePostStatus }>;
 }
 
 /** Provider không làm được việc này trên nền tảng này (hoặc khai hỗ trợ mà chưa cài đặt). */

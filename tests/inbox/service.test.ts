@@ -228,6 +228,49 @@ describe("sync", () => {
     expect(row!.text).toBe("");
   });
 
+  it("provider đọc được hội thoại thì DM đi đường hội thoại + tin nhắn, không dùng listInbox cho DM", async () => {
+    const withConv = (): SocialProvider => ({
+      ...provider(),
+      listConversations: async () => ({
+        items: [
+          {
+            id: "conv-1",
+            participantId: "psid",
+            participantName: "Lan",
+            lastMessageAt: "2026-11-22T08:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+      listMessages: async () => ({
+        items: [
+          {
+            id: "mid.1",
+            identityWeak: false,
+            providerMessageId: "u1",
+            direction: "incoming",
+            author: "Lan",
+            text: "Chào shop",
+            sentAt: "2026-11-22T08:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+    });
+    const r = await createInboxService({
+      db: t.db,
+      box,
+      resolveProvider: () => withConv(),
+    }).sync({ actorId: "member", workspaceId: ws, accountId: account });
+    expect(r).toMatchObject({ inserted: 1, messages: 1, more: false });
+    expect(listFn.mock.calls.map((c) => c[0].kind).sort()).toEqual([
+      "comment",
+      "review",
+    ]);
+    const [row] = await t.db.select().from(inboxItems);
+    expect(row).toMatchObject({ kind: "dm", externalId: "conv-1" });
+  });
+
   it("người ngoài bị Forbidden; tài khoản workspace khác hoặc id lạ là NotFound", async () => {
     await expect(sync({ actorId: "outsider" })).rejects.toBeInstanceOf(
       ForbiddenError,

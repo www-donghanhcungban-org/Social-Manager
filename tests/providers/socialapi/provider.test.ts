@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { listInbox, publishPost } from "@/src/providers/actions";
+import { getPostStatus, listInbox, publishPost } from "@/src/providers/actions";
 import { createSocialApiProvider } from "@/src/providers/socialapi";
 import { UnsupportedError } from "@/src/providers/types";
 
@@ -41,8 +41,11 @@ describe("SocialAPI: phản hồi bất thường (review 🟠)", () => {
     },
   );
 
-  it("`publishing` và `published` là đã nhận để đăng", async () => {
-    for (const status of ["publishing", "published"]) {
+  it("`publishing` chỉ là đã nhận (submitted); chỉ `published` mới là đã đăng", async () => {
+    for (const [status, want] of [
+      ["publishing", "submitted"],
+      ["published", "published"],
+    ]) {
       const p = createSocialApiProvider({
         apiKey: "k",
         fetch: vi.fn(async () => json(post({ status }))),
@@ -52,8 +55,42 @@ describe("SocialAPI: phản hồi bất thường (review 🟠)", () => {
         accountId: "a",
         text: "x",
       });
-      expect(r.status).toBe("published");
+      expect(r.status).toBe(want);
     }
+  });
+
+  it("getPostStatus: GET /posts/{id}, ánh xạ đủ 7 trạng thái; trạng thái lạ là lỗi có mã", async () => {
+    const cases = [
+      ["draft", "pending"],
+      ["scheduled", "pending"],
+      ["publishing", "pending"],
+      ["published", "published"],
+      ["partial", "partial"],
+      ["failed", "failed"],
+      ["cancelled", "cancelled"],
+    ] as const;
+    for (const [status, want] of cases) {
+      const fetchMock = vi.fn(async () => json(post({ status })));
+      const p = createSocialApiProvider({ apiKey: "k", fetch: fetchMock });
+      expect(
+        await getPostStatus(p, {
+          platform: "facebook",
+          accountId: "a",
+          postId: "post/1",
+        }),
+      ).toBe(want);
+      const calls = fetchMock.mock.calls as unknown as [string][];
+      expect(String(calls[0]![0])).toBe(
+        "https://api.social-api.ai/v1/posts/post%2F1",
+      );
+    }
+    const odd = createSocialApiProvider({
+      apiKey: "k",
+      fetch: vi.fn(async () => json(post({ status: "teleported" }))),
+    });
+    await expect(
+      getPostStatus(odd, { platform: "facebook", accountId: "a", postId: "p" }),
+    ).rejects.toMatchObject({ code: "client.invalid_response" });
   });
 
   it.each(["", "not-a-date", "2026-13-40T00:00:00Z"])(
@@ -83,7 +120,7 @@ describe("SocialAPI: phản hồi bất thường (review 🟠)", () => {
 });
 
 describe("publishPost qua SocialAPI", () => {
-  it("đăng ngay: POST /posts với publish_now và targets, trả published", async () => {
+  it("đăng ngay: POST /posts với publish_now và targets; `publishing` trả submitted", async () => {
     const fetchMock = vi.fn(async () => json(post({ status: "publishing" })));
     const p = createSocialApiProvider({ apiKey: "k", fetch: fetchMock });
     const r = await publishPost(p, {
@@ -91,7 +128,7 @@ describe("publishPost qua SocialAPI", () => {
       accountId: "acc1",
       text: "Xin chào",
     });
-    expect(r).toEqual({ id: "post_1", status: "published" });
+    expect(r).toEqual({ id: "post_1", status: "submitted" });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [
       string,
       RequestInit,

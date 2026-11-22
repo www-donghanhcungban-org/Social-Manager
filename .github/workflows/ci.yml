@@ -126,6 +126,21 @@ jobs:
       matrix:
         # Một shard. Thêm shard (vd [1, 2]) chỉ khi đo thấy e2e là đường dài nhất của CI (WF-CI-025, ADR-0039).
         shard: [1]
+    # Postgres thật cho các spec cần DB (trước đây CI không có DB nên các spec đó bị bỏ qua — e2e xanh mà không kiểm luồng
+    # chính). Image ghim digest (BASE-DEP-008). Mật khẩu chỉ dùng cho container dùng một lần trong job, không phải bí mật.
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        env:
+          POSTGRES_USER: e2e
+          POSTGRES_PASSWORD: e2e-ci-only
+          POSTGRES_DB: xw_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U e2e -d xw_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      E2E_DATABASE_URL: postgres://e2e:e2e-ci-only@localhost:5432/xw_e2e
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -161,6 +176,11 @@ jobs:
       - if: steps.mode.outputs.mode == 'shard' || (steps.mode.outputs.mode == 'whole' && matrix.shard == 1)
         name: setup — khoá `setup:` của xt.yaml (vắng = bỏ qua)
         run: bash .xtemplates/scripts/dev-task.sh setup
+      - if: steps.mode.outputs.mode == 'shard' || (steps.mode.outputs.mode == 'whole' && matrix.shard == 1)
+        name: migration lên Postgres của job (đúng script chạy lúc triển khai)
+        env:
+          DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+        run: node scripts/migrate.mjs
       - if: steps.mode.outputs.mode == 'shard' || (steps.mode.outputs.mode == 'whole' && matrix.shard == 1)
         name: e2e — `e2e_setup` rồi `e2e` với XT_SHARD=I/N
         env:

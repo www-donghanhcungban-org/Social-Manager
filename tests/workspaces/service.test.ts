@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { ForbiddenError } from "@/src/auth/errors";
 import { createWorkspaceService } from "@/src/workspaces/service";
 import { ValidationError } from "@/src/providers/types";
 import { members, workspaces } from "@/src/db/schema";
@@ -57,6 +58,32 @@ describe("create", () => {
     ).resolves.toBeDefined();
   });
 
+  it("tên nhập dạng NFD được lưu thành NFC, so khớp được với dạng NFC (BASE-DATA-002)", async () => {
+    const nfd = "Việt Nam".normalize("NFD");
+    expect(nfd).not.toBe("Việt Nam".normalize("NFC"));
+    const ws = await svc().create({ actorId: "u1", name: nfd });
+    const [row] = await t.db.select().from(workspaces);
+    expect(row!.name).toBe("Việt Nam".normalize("NFC"));
+    expect(ws.name).toBe(row!.name);
+  });
+
+  it("lỗi giữa giao dịch (ghi thành viên hỏng) thì không để lại workspace mồ côi (BASE-DATA-009)", async () => {
+    await t.client.exec(`
+      create function boom() returns trigger language plpgsql as $$
+      begin
+        if new.user_id = 'boom' then raise exception 'lỗi giả'; end if;
+        return new;
+      end $$;
+      create trigger members_boom before insert on members
+        for each row execute function boom();
+    `);
+    await expect(
+      svc().create({ actorId: "boom", name: "W" }),
+    ).rejects.toThrow();
+    expect(await t.db.select().from(workspaces)).toHaveLength(0);
+    expect(await t.db.select().from(members)).toHaveLength(0);
+  });
+
   it("actorId rỗng bị từ chối, không tạo gì", async () => {
     await expect(
       svc().create({ actorId: "", name: "W" }),
@@ -81,5 +108,76 @@ describe("listForUser", () => {
       { id: a.id, name: "B-shop", role: "member" },
     ]);
     expect(await svc().listForUser("không-ai")).toEqual([]);
+  });
+});
+
+describe("thời hạn lưu (D-010)", () => {
+  async function seed() {
+    const ws = await svc().create({ actorId: "owner", name: "Shop" });
+    await t.db.insert(members).values([
+      { workspaceId: ws.id, userId: "admin", role: "admin" },
+      { workspaceId: ws.id, userId: "member", role: "member" },
+    ]);
+    return ws.id;
+  }
+  const set = (workspaceId: string, over = {}) =>
+    svc().setRetention({
+      actorId: "owner",
+      workspaceId,
+      days: 90,
+      forever: false,
+      ...over,
+    });
+
+  it("mặc định 365 ngày; owner đặt số ngày, giữ vô thời hạn, rồi về mặc định", async () => {
+    const ws = await seed();
+    const get = () =>
+      svc().getRetention({ actorId: "member", workspaceId: ws });
+    expect(await get()).toEqual({
+      effectiveDays: 365,
+      days: null,
+      forever: false,
+    });
+    expect(await set(ws)).toEqual({
+      effectiveDays: 90,
+      days: 90,
+      forever: false,
+    });
+    expect(await set(ws, { forever: true })).toEqual({
+      effectiveDays: null,
+      days: 90,
+      forever: true,
+    });
+    await set(ws, { days: null });
+    expect(await get()).toEqual({
+      effectiveDays: 365,
+      days: null,
+      forever: false,
+    });
+  });
+
+  it("biên hợp lệ 1 và 36500", async () => {
+    const ws = await seed();
+    expect((await set(ws, { days: 1 })).days).toBe(1);
+    expect((await set(ws, { days: 36_500 })).days).toBe(36_500);
+  });
+
+  it("từ chối 0, âm, quá 36500, số lẻ, NaN", async () => {
+    const ws = await seed();
+    for (const days of [0, -1, 36_501, 1.5, Number.NaN]) {
+      await expect(set(ws, { days })).rejects.toBeInstanceOf(ValidationError);
+    }
+  });
+
+  it("admin, member và người ngoài không đổi được; người ngoài không xem được", async () => {
+    const ws = await seed();
+    for (const actorId of ["admin", "member", "outsider"]) {
+      await expect(set(ws, { actorId })).rejects.toBeInstanceOf(ForbiddenError);
+    }
+    await expect(
+      svc().getRetention({ actorId: "outsider", workspaceId: ws }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    const [row] = await t.db.select().from(workspaces);
+    expect(row!.inboxRetentionDays).toBeNull();
   });
 });

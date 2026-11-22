@@ -4,7 +4,7 @@ import { getContainer, requireUser } from "@/src/server/runtime";
 
 import { CreateWorkspaceForm } from "./create-workspace-form";
 
-export const metadata = { title: "Workspace — Social Manager" };
+export const metadata = { title: "Workspace — X-Workspace" };
 
 export default async function AppHome() {
   const user = await requireUser();

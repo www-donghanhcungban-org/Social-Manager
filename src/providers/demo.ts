@@ -37,6 +37,48 @@ export function createDemoProvider(
         },
       ];
     },
+    async listConversations({ platform, cursor }) {
+      if (cursor !== undefined) return { items: [], nextCursor: null };
+      return {
+        items: [
+          {
+            id: `demo-${platform}-conv-1`,
+            participantId: "demo-customer-1",
+            participantName: "Khách demo",
+            lastMessageAt: now().toISOString(),
+          },
+        ],
+        nextCursor: null,
+      };
+    },
+    async listMessages({ platform, cursor }) {
+      if (cursor !== undefined) return { items: [], nextCursor: null };
+      const at = now().getTime();
+      // Mới nhất trước, như nhà cung cấp thật.
+      return {
+        items: [
+          {
+            id: `demo-${platform}-msg-2`,
+            identityWeak: false,
+            providerMessageId: `demo-${platform}-msg-2`,
+            direction: "outgoing",
+            author: "Shop",
+            text: "Dạ còn ạ.",
+            sentAt: new Date(at).toISOString(),
+          },
+          {
+            id: `demo-${platform}-msg-1`,
+            identityWeak: false,
+            providerMessageId: `demo-${platform}-msg-1`,
+            direction: "incoming",
+            author: "Khách demo",
+            text: SAMPLE_TEXT.dm,
+            sentAt: new Date(at - 60_000).toISOString(),
+          },
+        ],
+        nextCursor: null,
+      };
+    },
     async publishPost({ scheduledAt }) {
       // Giờ hẹn đã được `actions.publishPost` kiểm (hợp lệ, ở tương lai).
       seq += 1;

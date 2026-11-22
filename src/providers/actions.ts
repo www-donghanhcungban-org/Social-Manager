@@ -1,8 +1,16 @@
 import {
+  REMOTE_POST_STATUSES,
   UnsupportedError,
   ValidationError,
   type Capability,
+  type PostStatusQuery,
+  type RemotePostStatus,
+  type ConversationQuery,
+  type ConversationSummary,
   type InboxItem,
+  type MessageQuery,
+  type Page,
+  type ProviderMessage,
   type InboxKind,
   type InboxQuery,
   type Platform,
@@ -41,6 +49,56 @@ export async function listInbox(
   if (!provider.listInbox)
     throw new UnsupportedError(query.platform, capability, "not_implemented");
   return provider.listInbox(query);
+}
+
+/** Provider có đọc DM theo hội thoại + tin nhắn không (khai `dm` và cài đủ hai hàm). */
+export function supportsConversations(
+  provider: SocialProvider,
+  platform: Platform,
+): boolean {
+  return (
+    Object.hasOwn(provider.support, platform) &&
+    provider.support[platform]!.includes("dm") &&
+    typeof provider.listConversations === "function" &&
+    typeof provider.listMessages === "function"
+  );
+}
+
+export async function listConversations(
+  provider: SocialProvider,
+  query: ConversationQuery,
+): Promise<Page<ConversationSummary>> {
+  requireSupport(provider, query.platform, "dm");
+  if (!provider.listConversations || !provider.listMessages)
+    throw new UnsupportedError(query.platform, "dm", "not_implemented");
+  return provider.listConversations(query);
+}
+
+export async function listMessages(
+  provider: SocialProvider,
+  query: MessageQuery,
+): Promise<Page<ProviderMessage>> {
+  requireSupport(provider, query.platform, "dm");
+  if (!provider.listConversations || !provider.listMessages)
+    throw new UnsupportedError(query.platform, "dm", "not_implemented");
+  if (query.conversationId === "")
+    throw new ValidationError("Thiếu id hội thoại");
+  return provider.listMessages(query);
+}
+
+/** Đọc lại trạng thái bài đã gửi; provider không cài thì `not_implemented` (bài giữ `submitted` tới hạn). */
+export async function getPostStatus(
+  provider: SocialProvider,
+  query: PostStatusQuery,
+): Promise<RemotePostStatus> {
+  requireSupport(provider, query.platform, "publish");
+  if (!provider.getPostStatus)
+    throw new UnsupportedError(query.platform, "publish", "not_implemented");
+  if (query.postId === "") throw new ValidationError("Thiếu id bài đăng");
+  const { status } = await provider.getPostStatus(query);
+  if (!REMOTE_POST_STATUSES.includes(status))
+    throw new ValidationError("Trạng thái bài đăng không hợp lệ");
+  return status;
 }
 
 export async function publishPost(

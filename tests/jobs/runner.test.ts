@@ -38,6 +38,12 @@ function setup() {
     recoverStuck: vi.fn<(i: { olderThanMs: number }) => Promise<number>>(
       async () => 3,
     ),
+    confirmSubmitted: vi.fn<
+      (i: {
+        limit: number;
+        deadlineMs: number;
+      }) => Promise<Record<string, number>>
+    >(async () => ({ published: 1, pending: 2 })),
   };
   const inbox = {
     syncAsSystem: vi.fn<
@@ -49,6 +55,8 @@ function setup() {
   const retention = {
     purgeExpired: vi.fn(async () => ({
       inboxItems: 2,
+      messages: 0,
+      conversations: 0,
       sessions: 1,
       verifications: 0,
       loginThrottle: 0,
@@ -83,6 +91,7 @@ describe("createJobRunner", () => {
     expect(q.schedules).toEqual({
       [QUEUES.runDue]: "* * * * *",
       [QUEUES.recoverStuck]: "*/5 * * * *",
+      [QUEUES.confirmSubmitted]: "*/2 * * * *",
       [QUEUES.syncAll]: "*/5 * * * *",
       [QUEUES.purgeExpired]: "17 3 * * *",
     });
@@ -93,6 +102,8 @@ describe("createJobRunner", () => {
     retention.purgeExpired
       .mockResolvedValueOnce({
         inboxItems: 5000,
+        messages: 0,
+        conversations: 0,
         sessions: 1,
         verifications: 0,
         loginThrottle: 0,
@@ -100,6 +111,8 @@ describe("createJobRunner", () => {
       })
       .mockResolvedValueOnce({
         inboxItems: 7,
+        messages: 0,
+        conversations: 0,
         sessions: 0,
         verifications: 2,
         loginThrottle: 1,
@@ -123,6 +136,8 @@ describe("createJobRunner", () => {
     const { q, runner, retention } = setup();
     retention.purgeExpired.mockResolvedValue({
       inboxItems: 1,
+      messages: 0,
+      conversations: 0,
       sessions: 0,
       verifications: 0,
       loginThrottle: 0,
@@ -142,6 +157,21 @@ describe("createJobRunner", () => {
       level: "info",
       published: 2,
       failed: 1,
+    });
+  });
+
+  it("job confirmSubmitted xác nhận theo lô với hạn 24 giờ và ghi log kết quả", async () => {
+    const { q, runner, posts, lines } = setup();
+    await runner.start();
+    await q.run(QUEUES.confirmSubmitted);
+    expect(posts.confirmSubmitted).toHaveBeenCalledWith({
+      limit: 50,
+      deadlineMs: 24 * 3_600_000,
+    });
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({
+      job: QUEUES.confirmSubmitted,
+      published: 1,
+      pending: 2,
     });
   });
 

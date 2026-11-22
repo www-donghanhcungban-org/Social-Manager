@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -25,11 +26,29 @@ const inList = (values: readonly string[]) =>
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-export const workspaces = pgTable("workspaces", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  createdAt: createdAt(),
-});
+/** Trần số ngày lưu tin cấu hình được (~100 năm); muốn giữ mãi thì bật `retain_inbox_forever`. */
+export const MAX_RETENTION_DAYS = 36_500;
+
+export const workspaces = pgTable(
+  "workspaces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** Số ngày lưu tin hộp thư/tin nhắn của workspace (D-010); null = mặc định 365 ngày. */
+    inboxRetentionDays: integer("inbox_retention_days"),
+    /** Owner chọn giữ tin vô thời hạn (cần căn cứ pháp lý riêng, PROJECT.md §5). */
+    retainInboxForever: boolean("retain_inbox_forever")
+      .notNull()
+      .default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "workspaces_retention_days_check",
+      sql`${t.inboxRetentionDays} is null or ${t.inboxRetentionDays} between 1 and ${sql.raw(String(MAX_RETENTION_DAYS))}`,
+    ),
+  ],
+);
 
 export const members = pgTable(
   "members",
@@ -153,11 +172,95 @@ export const inboxItems = pgTable(
   ],
 );
 
+/**
+ * Hội thoại tin nhắn riêng (ADR-0002, H1). Một hội thoại có nhiều tin; mốc đồng bộ nằm ở đây để đồng bộ tăng dần và
+ * tiếp tục lấy lịch sử cũ qua nhiều lượt (backfill) mà không bỏ sót tin mới của hội thoại cũ.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    /** Id hội thoại bên nhà cung cấp. */
+    externalId: text("external_id").notNull(),
+    participantId: text("participant_id").notNull(),
+    participantName: text("participant_name").notNull(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+    /** Mọi tin gửi tới thời điểm này đã được lấy về (đồng bộ tăng dần dừng ở đây). */
+    syncedThrough: timestamp("synced_through", { withTimezone: true }),
+    /** Còn lịch sử cũ chưa lấy: cursor của nhà cung cấp để lượt sau đọc tiếp. */
+    backfillCursor: text("backfill_cursor"),
+    /** Lấy lịch sử cũ tới mốc này thì dừng (null = tới đầu hội thoại). */
+    backfillUntil: timestamp("backfill_until", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("conversations_account_external").on(
+      t.socialAccountId,
+      t.externalId,
+    ),
+    index("conversations_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+export const MESSAGE_DIRECTIONS = ["incoming", "outgoing"] as const;
+
+/**
+ * Tin nhắn, lưu nguyên văn (không cắt). Khoá khử trùng (tài khoản, external_id) với external_id là id của nền tảng
+ * (`platform_id`) khi có để đồng bộ và webhook cùng khớp một tin; `identity_weak` = chỉ có id của nhà cung cấp.
+ */
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    externalId: text("external_id").notNull(),
+    identityWeak: boolean("identity_weak").notNull().default(false),
+    providerMessageId: text("provider_message_id"),
+    direction: text("direction", { enum: MESSAGE_DIRECTIONS }).notNull(),
+    author: text("author").notNull(),
+    text: text("text").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    /** Lúc hệ thống ghi nhận tin (khác `sent_at`: lúc tin được gửi). */
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("messages_account_external").on(t.socialAccountId, t.externalId),
+    check(
+      "messages_direction_check",
+      sql`${t.direction} in (${inList(MESSAGE_DIRECTIONS)})`,
+    ),
+    index("messages_conversation_sent_idx").on(t.conversationId, t.sentAt),
+    index("messages_sent_idx").on(t.sentAt),
+    index("messages_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+/**
+ * `submitted`: nhà cung cấp đã nhận, chờ xác nhận · `partial`: lên được một phần đích · `send_unknown`: không biết
+ * đã lên mạng chưa (mất kết nối giữa chừng, quá hạn xác nhận) — không tự đăng lại để tránh đăng hai lần (ADR-0002, H2).
+ */
 export const POST_STATUSES = [
   "scheduled",
   "publishing",
+  "submitted",
   "published",
+  "partial",
   "failed",
+  "send_unknown",
 ] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
 
@@ -196,6 +299,7 @@ export const posts = pgTable(
     check("posts_attempts_check", sql`${t.attempts} >= 0`),
     check("posts_text_check", sql`length(btrim(${t.text})) > 0`),
     index("posts_due_idx").on(t.status, t.scheduledAt),
+    index("posts_social_account_idx").on(t.socialAccountId),
   ],
 );
 

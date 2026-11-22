@@ -1,4 +1,4 @@
-# Social Manager — image production, nhiều tầng, chạy bằng người dùng không phải root (BASE-SEC-006).
+# X-Workspace — image production, nhiều tầng, chạy bằng người dùng không phải root (BASE-SEC-006).
 # DEBT: ảnh nền ghim theo thẻ phiên bản, chưa ghim digest | trần: build không tái lập tuyệt đối |
 # xem lại khi: có mạng tới registry để lấy digest (BASE-DEP-008) — thay `node:24-bookworm-slim` bằng `@sha256:…`.
 

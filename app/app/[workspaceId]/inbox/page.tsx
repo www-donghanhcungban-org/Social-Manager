@@ -8,7 +8,7 @@ import { getContainer, requireWorkspace } from "@/src/server/runtime";
 import { setStatusAction } from "./actions";
 import { SyncButton } from "./sync-button";
 
-export const metadata = { title: "Hộp thư — Social Manager" };
+export const metadata = { title: "Hộp thư — X-Workspace" };
 
 const KIND_LABEL: Record<InboxKind, string> = {
   dm: "Tin nhắn",

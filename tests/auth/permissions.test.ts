@@ -25,9 +25,13 @@ describe("can", () => {
     );
   });
 
-  it("chỉ owner đổi vai trò và xoá workspace; owner làm được mọi việc", () => {
+  it("chỉ owner đổi vai trò, xoá workspace và đổi cấu hình (thời hạn lưu); owner làm được mọi việc", () => {
     expect(allowed("owner")).toEqual([...ACTIONS].sort());
-    for (const a of ["members.changeRole", "workspace.delete"] as Action[]) {
+    for (const a of [
+      "members.changeRole",
+      "workspace.delete",
+      "workspace.settings",
+    ] as Action[]) {
       expect(can("admin", a)).toBe(false);
       expect(can("member", a)).toBe(false);
     }

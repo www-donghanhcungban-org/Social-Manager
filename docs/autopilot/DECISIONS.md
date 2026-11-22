@@ -57,3 +57,31 @@
 - Chọn: Thêm @axe-core/playwright (MPL-2.0, peer playwright-core, bản 2026-11-19)
 - Lý do (tiêu chí chất lượng cuối): Tiêu chí 1 đúng và an toàn: máy kiểm a11y đáng tin hơn grep; chỉ devDependency, không vào bản chạy; giấy phép MPL-2.0 tương thích dùng nội bộ
 - Đường lùi: Gỡ devDependency và e2e/a11y.spec.ts
+
+### D-009 · 2026-11-22T07:17:24+00:00 · Tiếp quản công cụ quy trình X-Templates thành của dự án: dời đường dẫn hay giữ tại chỗ?
+
+- Phương án: (1) Giữ .xtemplates/, bỏ quản lý bản cài, gỡ di sản, may đo tài liệu · (2) Dời sang tools/xt/ và docs/process/, sửa nhận diện gốc trong xt.py và guard
+- Chọn: Giữ .xtemplates/, bỏ quản lý bản cài, gỡ di sản, may đo tài liệu
+- Lý do (tiêu chí chất lượng cuối): Tiêu chí 1: guard nhận diện dự án đích và bảo vệ hàng rào theo đường dẫn .xtemplates/; dời mà sót một chỗ là mất bảo vệ. Mục tiêu thực chất (thôi là bản cài bên ngoài quản lý, không còn tệp chết) đạt được với rủi ro thấp; ADR-0003
+- Đường lùi: git revert commit tiếp quản hoặc cài lại khung bằng install.py
+
+### D-010 · 2026-11-22T07:17:25+00:00 · Thời hạn lưu tin nhắn của khách khi chuyển sang X-Working (bản gốc muốn giữ lâu dài)
+
+- Phương án: (1) Cấu hình theo workspace, mặc định 365 ngày, cho phép giữ vô thời hạn khi chủ workspace bật · (2) Giữ vô thời hạn mặc định cho mọi dữ liệu · (3) Giữ cố định 365 ngày như hiện tại
+- Chọn: Cấu hình theo workspace, mặc định 365 ngày, cho phép giữ vô thời hạn khi chủ workspace bật
+- Lý do (tiêu chí chất lượng cuối): Tiêu chí 1: tin của khách là dữ liệu cá nhân bên thứ ba, Luật 91/2025 Điều 3 chỉ cho lưu trong thời gian cần cho mục đích; mặc định chặt, giữ lâu là lựa chọn có chủ đích của chủ workspace (đáp ứng mục 7 bản gốc)
+- Đường lùi: Đặt lại cột retention về NULL (dùng mặc định) hoặc revert migration 0006
+
+### D-011 · 2026-11-22T07:18:32+00:00 · Duyệt PLAN-xw-1: 7 task (tiếp quản công cụ, hợp đồng hội thoại/tin nhắn, schema, đồng bộ, webhook, trạng thái bài đăng, thời hạn lưu) + 2 task chờ người
+
+- Phương án: (1) Duyệt như viết, làm tuần tự theo sau: · (2) Bắt đầu bằng AI/tìm kiếm để có giá trị sớm
+- Chọn: Duyệt như viết, làm tuần tự theo sau:
+- Lý do (tiêu chí chất lượng cuối): Tiêu chí 1: AI dựng trên dữ liệu sai định danh và trạng thái không trung thực sẽ sai theo; thứ tự dữ liệu → tri thức/AI → hành động giữ đúng mục 15.8 bản gốc
+- Đường lùi: Sửa PLAN-xw-1.md rồi chạy lại loop init
+
+### D-012 · 2026-11-22T07:33:10+00:00 · Tên sản phẩm/repo sau khi chủ dự án đổi repo Social-Manager thành X-Workspace
+
+- Phương án: (1) X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú · (2) Giữ tên sản phẩm X-Working, chỉ đổi repo/package
+- Chọn: X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú
+- Lý do (tiêu chí chất lượng cuối): Chủ dự án chọn qua câu hỏi trong phiên; một tên thống nhất tránh lệch giữa repo, giao diện và tài liệu; bản ghi lịch sử không viết lại (ADR append-only)
+- Đường lùi: Một commit đổi tên riêng: git revert commit đó; GitHub vẫn chuyển hướng URL cũ
