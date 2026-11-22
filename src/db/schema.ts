@@ -62,6 +62,8 @@ export const providerConnections = pgTable(
     label: text("label").notNull(),
     /** Đầu ra của `SecretBox.encrypt`; không bao giờ lưu khoá ở dạng rõ. */
     credentialsEnc: text("credentials_enc").notNull(),
+    /** Secret ký webhook của nhà cung cấp (mã hoá như khoá API); null = chưa bật nhận webhook. */
+    webhookSecretEnc: text("webhook_secret_enc"),
     createdAt: createdAt(),
   },
   (t) => [

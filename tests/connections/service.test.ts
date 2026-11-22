@@ -65,6 +65,7 @@ describe("create", () => {
       workspaceId: ws,
       provider: "demo",
       label: "chính",
+      webhookEnabled: false,
       createdAt: expect.any(Date),
     });
     expect(JSON.stringify(c)).not.toContain("sk-super-secret");
@@ -126,7 +127,14 @@ describe("list", () => {
     const list = await svc.list({ actorId: "member", workspaceId: ws });
     expect(list).toHaveLength(1);
     expect(Object.keys(list[0]!).sort()).toEqual(
-      ["createdAt", "id", "label", "provider", "workspaceId"].sort(),
+      [
+        "createdAt",
+        "id",
+        "label",
+        "provider",
+        "webhookEnabled",
+        "workspaceId",
+      ].sort(),
     );
     await expect(
       svc.list({ actorId: "outsider", workspaceId: ws }),

@@ -14,6 +14,8 @@ export interface ConnectionView {
   workspaceId: string;
   provider: string;
   label: string;
+  /** Đã đặt secret webhook hay chưa (không bao giờ trả giá trị). */
+  webhookEnabled: boolean;
   createdAt: Date;
 }
 
@@ -25,8 +27,12 @@ const view = (r: typeof providerConnections.$inferSelect): ConnectionView => ({
   workspaceId: r.workspaceId,
   provider: r.provider,
   label: r.label,
+  webhookEnabled: r.webhookSecretEnc !== null,
   createdAt: r.createdAt,
 });
+
+const MIN_WEBHOOK_SECRET = 16;
+const MAX_WEBHOOK_SECRET = 256;
 
 /** Drizzle bọc lỗi của driver trong `cause`: kiểm cả hai tầng. */
 function isUniqueViolation(e: unknown): boolean {
@@ -133,6 +139,51 @@ export function createConnectionService({
         )
         .returning({ id: providerConnections.id });
       if (deleted.length === 0) throw new NotFoundError();
+    },
+
+    /**
+     * Đặt (hoặc xoá bằng `null`) secret ký webhook của nhà cung cấp cho kết nối. Chỉ người quản lý kết nối;
+     * secret được mã hoá như khoá API và không bao giờ đọc lại được qua UI.
+     */
+    async setWebhookSecret(input: {
+      actorId: string;
+      workspaceId: string;
+      connectionId: string;
+      secret: string | null;
+    }): Promise<ConnectionView> {
+      await requireAction(
+        input.actorId,
+        input.workspaceId,
+        "connections.manage",
+      );
+      if (!UUID.test(input.connectionId)) throw new NotFoundError();
+      if (input.secret !== null) {
+        const s = input.secret;
+        if (
+          s.length < MIN_WEBHOOK_SECRET ||
+          s.length > MAX_WEBHOOK_SECRET ||
+          s !== s.trim() ||
+          /\s/.test(s)
+        )
+          throw new ValidationError(
+            `Secret webhook phải dài ${MIN_WEBHOOK_SECRET}-${MAX_WEBHOOK_SECRET} ký tự, không có khoảng trắng`,
+          );
+      }
+      const [row] = await db
+        .update(providerConnections)
+        .set({
+          webhookSecretEnc:
+            input.secret === null ? null : box.encrypt(input.secret),
+        })
+        .where(
+          and(
+            eq(providerConnections.id, input.connectionId),
+            eq(providerConnections.workspaceId, input.workspaceId),
+          ),
+        )
+        .returning();
+      if (!row) throw new NotFoundError();
+      return view(row);
     },
 
     /** Dùng nội bộ ở server để gọi provider; không bao giờ đưa ra API/UI. Ràng buộc đúng workspace. */

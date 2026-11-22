@@ -29,7 +29,14 @@ function columnsOf(table: string): string[] {
     sql,
   );
   if (!m) return [];
-  return [...m[1]!.matchAll(/^\s*"([a-z_]+)"\s/gm)].map((x) => x[1]!);
+  const created = [...m[1]!.matchAll(/^\s*"([a-z_]+)"\s/gm)].map((x) => x[1]!);
+  // cột thêm sau bằng migration `ALTER TABLE … ADD COLUMN`
+  const added = [
+    ...sql.matchAll(
+      new RegExp(`ALTER TABLE "${table}" ADD COLUMN "([a-z_]+)"`, "g"),
+    ),
+  ].map((x) => x[1]!);
+  return [...created, ...added];
 }
 
 describe("phân loại dữ liệu cá nhân/nhạy cảm (BASE-SEC-013)", () => {
@@ -54,7 +61,7 @@ describe("phân loại dữ liệu cá nhân/nhạy cảm (BASE-SEC-013)", () =>
       (m) => m[1]!,
     );
     const sensitive =
-      /^(email|password|token|ip_address|user_agent|author|text|credentials_enc|access_token|refresh_token|id_token|display_name)$/;
+      /^(email|password|token|ip_address|user_agent|author|text|access_token|refresh_token|id_token|display_name|[a-z_]+_enc)$/;
     // Đã giải thích riêng trong PROJECT.md (cột OAuth không dùng) hoặc không phải dữ liệu cá nhân:
     const documentedElsewhere = new Set([
       "account.access_token",

@@ -36,6 +36,13 @@
       "when": 1795321139487,
       "tag": "0004_login_throttle",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795323105279,
+      "tag": "0005_webhook_secret",
+      "breakpoints": true
     }
   ]
 }

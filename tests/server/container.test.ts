@@ -22,6 +22,7 @@ describe("createContainer", () => {
       "inbox",
       "posts",
       "retention",
+      "webhooks",
       "workspaces",
     ]);
     await c.close();
