@@ -54,7 +54,7 @@ kho khoá mã hoá, schema Postgres có migration, đăng nhập + vai trò theo
 
 ### Lát 2 — Provider
 
-- [ ] `T-002` Hợp đồng hành động provider (`listInbox`, `publishPost`) + demo cài đặt; test hợp đồng chạy trên MỌI provider đã đăng ký. Given provider không hỗ trợ khả năng → ném lỗi `unsupported` có mã, không trả rỗng giả; ca biên: danh sách rỗng, nội dung rỗng (sau: T-001; files: src/providers/, tests/providers/) — Gate: `npx vitest run tests/providers`
+- [x] `T-002` Hợp đồng hành động provider (`listInbox`, `publishPost`) + demo cài đặt; test hợp đồng chạy trên MỌI provider đã đăng ký. Given provider không hỗ trợ khả năng → ném lỗi `unsupported` có mã, không trả rỗng giả; ca biên: danh sách rỗng, nội dung rỗng (sau: T-001; files: src/providers/, tests/providers/) — Gate: `npx vitest run tests/providers`
 - [ ] `T-003` Client SocialAPI: Zod validate phản hồi, envelope lỗi `{error:{code,message}}`, tôn trọng `Retry-After` khi 429, fetch tiêm vào (không gọi mạng thật trong test). Ca biên: body không phải JSON, 429 không có header, key rỗng (sau: T-002; files: src/providers/socialapi/, tests/providers/socialapi/; topo: review) — Gate: `npx vitest run tests/providers/socialapi`
 
 ### Lát 3 — Bảo mật & dữ liệu
