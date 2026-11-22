@@ -16,12 +16,12 @@ if __name__ == "__main__":
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
 
-import xt
-
 Doc = dict[str, Any]
 
 
 def elapsed(start: Any, end: Any) -> float | None:
+    import xt
+
     a, b = xt._deploy_utc(start), xt._deploy_utc(end)
     return (b - a).total_seconds() if a is not None and b is not None and b >= a else None
 
@@ -69,6 +69,8 @@ def stage_times(history: list[Doc], deployments: list[Doc]) -> list[Doc]:
 
 def pr_lanes(path: Path | None) -> Doc | None:
     """Đọc export REST pull requests, phân làn theo nhãn trên bản export. Không gọi GitHub."""
+    import xt
+
     if path is None:
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -96,6 +98,8 @@ def pr_lanes(path: Path | None) -> Doc | None:
 
 
 def optimization(base: Path, head: str | None) -> Doc:
+    import xt
+
     cfg: Doc = {}
     blob = None
     problem = None
@@ -125,6 +129,8 @@ def optimization(base: Path, head: str | None) -> Doc:
 
 
 def _completed_step(base: Path, env_states: Doc) -> tuple[str, str, str]:
+    import xt
+
     targets = [name for name in xt._deploy_env_names(base) if name in ("prod", "production")]
     if not targets:
         return (
