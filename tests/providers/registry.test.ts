@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createRegistry } from "@/src/providers/registry";
 import { createDemoProvider } from "@/src/providers/demo";
-import { socialApiProvider } from "@/src/providers/socialapi";
+import { socialApiPlatformSupport } from "@/src/providers/socialapi/matrix";
 import type { SocialProvider } from "@/src/providers/types";
 
 const fake = (
@@ -57,25 +57,25 @@ describe("registry", () => {
   });
 });
 
-describe("socialApiProvider", () => {
+describe("socialApiPlatformSupport", () => {
   // Nguồn: https://docs.social-api.ai/platforms/overview (xem ngày 2026-11-22)
   it("Facebook hỗ trợ đăng bài, DM và bình luận nhưng không có đánh giá", () => {
-    expect(socialApiProvider.support.facebook).toEqual(
+    expect(socialApiPlatformSupport.facebook).toEqual(
       expect.arrayContaining(["publish", "dm", "comments", "analytics"]),
     );
-    expect(socialApiProvider.support.facebook).not.toContain("reviews");
+    expect(socialApiPlatformSupport.facebook).not.toContain("reviews");
   });
 
   it("Google Business Profile chỉ có đánh giá, đăng bài và thống kê tổng hợp", () => {
-    expect(socialApiProvider.support.google).toEqual(
+    expect(socialApiPlatformSupport.google).toEqual(
       expect.arrayContaining(["publish", "reviews"]),
     );
-    expect(socialApiProvider.support.google).not.toContain("dm");
+    expect(socialApiPlatformSupport.google).not.toContain("dm");
   });
 
   it("Telegram và WhatsApp không đăng bài được", () => {
-    expect(socialApiProvider.support.telegram ?? []).not.toContain("publish");
-    expect(socialApiProvider.support.whatsapp ?? []).not.toContain("publish");
+    expect(socialApiPlatformSupport.telegram ?? []).not.toContain("publish");
+    expect(socialApiPlatformSupport.whatsapp ?? []).not.toContain("publish");
   });
 });
 

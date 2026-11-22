@@ -1,7 +1,6 @@
 import {
   CAPABILITIES,
   PLATFORMS,
-  ValidationError,
   type InboxKind,
   type SocialProvider,
 } from "./types";
@@ -39,15 +38,12 @@ export function createDemoProvider(
       ];
     },
     async publishPost({ scheduledAt }) {
-      let status: "published" | "scheduled" = "published";
-      if (scheduledAt !== undefined) {
-        if (Date.parse(scheduledAt) <= now().getTime()) {
-          throw new ValidationError("Giờ hẹn phải ở tương lai");
-        }
-        status = "scheduled";
-      }
+      // Giờ hẹn đã được `actions.publishPost` kiểm (hợp lệ, ở tương lai).
       seq += 1;
-      return { id: `demo-post-${seq}`, status };
+      return {
+        id: `demo-post-${seq}`,
+        status: scheduledAt === undefined ? "published" : "scheduled",
+      };
     },
   };
 }

@@ -43,6 +43,8 @@ export async function listInbox(
 export async function publishPost(
   provider: SocialProvider,
   input: PublishInput,
+  /** Đồng hồ tiêm được để test không phụ thuộc giờ thật. */
+  { now = () => new Date() }: { now?: () => Date } = {},
 ): Promise<PublishResult> {
   requireSupport(provider, input.platform, "publish");
   if (!provider.publishPost) {
@@ -50,11 +52,13 @@ export async function publishPost(
   }
   if (input.text.trim() === "")
     throw new ValidationError("Nội dung bài đăng không được rỗng");
-  if (
-    input.scheduledAt !== undefined &&
-    Number.isNaN(Date.parse(input.scheduledAt))
-  ) {
-    throw new ValidationError("Giờ hẹn phải là ngày giờ ISO 8601 hợp lệ");
+  if (input.scheduledAt !== undefined) {
+    const at = Date.parse(input.scheduledAt);
+    if (Number.isNaN(at)) {
+      throw new ValidationError("Giờ hẹn phải là ngày giờ ISO 8601 hợp lệ");
+    }
+    if (at <= now().getTime())
+      throw new ValidationError("Giờ hẹn phải ở tương lai");
   }
   return provider.publishPost(input);
 }
