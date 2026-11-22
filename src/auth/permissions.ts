@@ -17,6 +17,9 @@ export const ACTIONS = [
   /** Dự án và liên kết (M06): mọi thành viên xem; admin/owner tạo, đổi, gắn. */
   "projects.read",
   "projects.write",
+  /** Xoá dữ liệu theo yêu cầu (không đảo ngược): chỉ owner. Xuất dữ liệu: admin/owner. */
+  "data.erase",
+  "data.export",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -31,6 +34,7 @@ const ADMIN: readonly Action[] = [
   ...MEMBER,
   "evidence.write",
   "projects.write",
+  "data.export",
   "connections.manage",
   "members.invite",
   "members.remove",

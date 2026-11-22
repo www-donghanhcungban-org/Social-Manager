@@ -14,6 +14,7 @@ import { createInboxService } from "../inbox/service";
 import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
+import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
 import { createRegistry } from "../providers/registry";
@@ -73,6 +74,7 @@ export function createContainer(cfg: Env) {
     }),
     coverage,
     retention: createRetentionService({ db, evidence }),
+    erasure: createErasureService({ db, evidence }),
     evidence,
     knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),

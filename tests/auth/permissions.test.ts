@@ -28,6 +28,7 @@ describe("can", () => {
         "evidence.write",
         "projects.read",
         "projects.write",
+        "data.export",
         "connections.manage",
         "members.invite",
         "members.remove",
@@ -41,6 +42,7 @@ describe("can", () => {
       "members.changeRole",
       "workspace.delete",
       "workspace.settings",
+      "data.erase",
     ] as Action[]) {
       expect(can("admin", a)).toBe(false);
       expect(can("member", a)).toBe(false);
