@@ -27,6 +27,61 @@ describe("createSocialApiProvider: support", () => {
   });
 });
 
+describe("SocialAPI: phản hồi bất thường (review 🟠)", () => {
+  it.each(["failed", "error", "rejected", "draft", ""])(
+    "trạng thái lạ %j không bị coi là published",
+    async (status) => {
+      const p = createSocialApiProvider({
+        apiKey: "k",
+        fetch: vi.fn(async () => json(post({ status }))),
+      });
+      await expect(
+        publishPost(p, { platform: "facebook", accountId: "a", text: "x" }),
+      ).rejects.toMatchObject({ code: "client.invalid_response" });
+    },
+  );
+
+  it("`publishing` và `published` là đã nhận để đăng", async () => {
+    for (const status of ["publishing", "published"]) {
+      const p = createSocialApiProvider({
+        apiKey: "k",
+        fetch: vi.fn(async () => json(post({ status }))),
+      });
+      const r = await publishPost(p, {
+        platform: "facebook",
+        accountId: "a",
+        text: "x",
+      });
+      expect(r.status).toBe("published");
+    }
+  });
+
+  it.each(["", "not-a-date", "2026-13-40T00:00:00Z"])(
+    "ngày hội thoại sai %j bị chặn bằng lỗi có mã, không phải RangeError",
+    async (bad) => {
+      const p = createSocialApiProvider({
+        apiKey: "k",
+        fetch: vi.fn(async () =>
+          json({
+            data: [
+              {
+                id: "c1",
+                platform: "facebook",
+                participant_id: "u",
+                created_at: "2026-11-01T00:00:00Z",
+                last_message_at: bad,
+              },
+            ],
+          }),
+        ),
+      });
+      await expect(
+        listInbox(p, { platform: "facebook", accountId: "a", kind: "dm" }),
+      ).rejects.toMatchObject({ code: "client.invalid_response" });
+    },
+  );
+});
+
 describe("publishPost qua SocialAPI", () => {
   it("đăng ngay: POST /posts với publish_now và targets, trả published", async () => {
     const fetchMock = vi.fn(async () => json(post({ status: "publishing" })));

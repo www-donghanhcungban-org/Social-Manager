@@ -24,7 +24,10 @@ function requireSupport(
   platform: Platform,
   capability: Capability,
 ) {
-  if (!provider.support[platform]?.includes(capability)) {
+  if (
+    !Object.hasOwn(provider.support, platform) ||
+    !provider.support[platform]?.includes(capability)
+  ) {
     throw new UnsupportedError(platform, capability);
   }
 }
@@ -52,13 +55,44 @@ export async function publishPost(
   }
   if (input.text.trim() === "")
     throw new ValidationError("Nội dung bài đăng không được rỗng");
-  if (input.scheduledAt !== undefined) {
-    const at = Date.parse(input.scheduledAt);
-    if (Number.isNaN(at)) {
-      throw new ValidationError("Giờ hẹn phải là ngày giờ ISO 8601 hợp lệ");
-    }
-    if (at <= now().getTime())
-      throw new ValidationError("Giờ hẹn phải ở tương lai");
+  if (input.scheduledAt === undefined) return provider.publishPost(input);
+  const at = parseIsoWithOffset(input.scheduledAt);
+  if (at === undefined) {
+    throw new ValidationError(
+      "Giờ hẹn phải là ISO 8601 đầy đủ kèm múi giờ (vd 2026-12-01T10:00:00Z)",
+    );
   }
-  return provider.publishPost(input);
+  if (at <= now().getTime())
+    throw new ValidationError("Giờ hẹn phải ở tương lai");
+  // Chuẩn hoá về UTC để mọi provider nhận cùng một dạng, không phụ thuộc offset người nhập.
+  return provider.publishPost({
+    ...input,
+    scheduledAt: new Date(at).toISOString(),
+  });
+}
+
+const ISO_WITH_OFFSET =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** Chỉ nhận ISO 8601 có múi giờ và ngày có thật; trả mili giây epoch, hoặc undefined. */
+export function parseIsoWithOffset(value: string): number | undefined {
+  const m = ISO_WITH_OFFSET.exec(value);
+  if (!m) return undefined;
+  const [y, mo, d, h, mi, s = 0] = m.slice(1, 7).map(Number);
+  const off = m[7];
+  if (h > 23 || mi > 59 || s > 59) return undefined;
+  if (
+    off !== "Z" &&
+    (Number(off.slice(1, 3)) > 23 || Number(off.slice(4)) > 59)
+  )
+    return undefined;
+  const probe = new Date(Date.UTC(y, mo - 1, d));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== mo - 1 ||
+    probe.getUTCDate() !== d
+  )
+    return undefined;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? undefined : t;
 }

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidMasterKey } from "../security/secret-box";
+
 /**
  * Cấu hình đọc từ biến môi trường, kiểm lúc khởi động. Thêm biến: thêm vào `schema`, vào
  * `.env.example` và (nếu là bí mật) vào `SECRET_KEYS` — test so khớp ba nơi này.
@@ -24,8 +26,8 @@ const schema = z.object({
   BETTER_AUTH_URL: text().pipe(z.url()),
   /** Khoá chủ của kho khoá nhà cung cấp: base64 của đúng 32 byte. */
   APP_SECRET_KEY: text().refine(
-    (v) => Buffer.from(v, "base64").length === KEY_BYTES,
-    `phải là base64 của ${KEY_BYTES} byte`,
+    isValidMasterKey,
+    `phải là base64 chuẩn của ${KEY_BYTES} byte`,
   ),
   NODE_ENV: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),

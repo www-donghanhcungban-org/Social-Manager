@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { ForbiddenError } from "@/src/auth/errors";
 import {
   addMember,
   changeRole,
@@ -185,7 +186,7 @@ describe("changeRole", () => {
       targetUserId: "admin1",
       newRole: "owner",
     });
-    await Promise.allSettled([
+    const results = await Promise.allSettled([
       changeRole(t.db, {
         actorId: "owner1",
         workspaceId: ws,
@@ -203,7 +204,82 @@ describe("changeRole", () => {
       .select()
       .from(members)
       .where(and(eq(members.workspaceId, ws), eq(members.role, "owner")));
-    expect(owners.length).toBeGreaterThanOrEqual(1);
+    expect(owners).toHaveLength(1);
+    // đúng một lệnh thành công, lệnh kia bị từ chối (không phải cả hai cùng thành công)
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
+  });
+
+  // PGlite chạy transaction tuần tự nên không tái hiện được race thật; hàng rào ở đây là: MỌI thao tác
+  // đổi thành viên phải khoá dòng workspace TRƯỚC khi đọc/ghi `members` (review 🟠 5). Bỏ `.for(...)`
+  // thì test này đỏ.
+  describe("khoá dòng workspace trước khi đổi thành viên", () => {
+    const lockIdx = (qs: string[]) =>
+      qs.findIndex((q) => /from "workspaces"[\s\S]*for no key update/i.test(q));
+    const firstMemberIdx = (qs: string[]) =>
+      qs.findIndex((q) => /"members"/.test(q));
+
+    it.each([
+      [
+        "addMember",
+        (d: typeof t.db) =>
+          addMember(d, {
+            actorId: "owner1",
+            workspaceId: ws,
+            userId: "u9",
+            role: "member",
+          }),
+      ],
+      [
+        "changeRole",
+        (d: typeof t.db) =>
+          changeRole(d, {
+            actorId: "owner1",
+            workspaceId: ws,
+            targetUserId: "member1",
+            newRole: "admin",
+          }),
+      ],
+      [
+        "removeMember",
+        (d: typeof t.db) =>
+          removeMember(d, {
+            actorId: "owner1",
+            workspaceId: ws,
+            targetUserId: "member1",
+          }),
+      ],
+    ])("%s", async (_name, run) => {
+      const queries: string[] = [];
+      const t2 = await createTestDb(queries);
+      await t2.db
+        .insert(workspaces)
+        .values({ id: ws, name: "Shop" })
+        .onConflictDoNothing();
+      await t2.db.insert(members).values([
+        { workspaceId: ws, userId: "owner1", role: "owner" },
+        { workspaceId: ws, userId: "member1", role: "member" },
+      ]);
+      queries.length = 0;
+      await run(t2.db);
+      await t2.client.close();
+      expect(lockIdx(queries)).toBeGreaterThanOrEqual(0);
+      expect(lockIdx(queries)).toBeLessThan(firstMemberIdx(queries));
+    });
+  });
+});
+
+describe("removeMember: không lộ ai là thành viên (review 🟡 8)", () => {
+  it("member thường xoá người không tồn tại và người có thật đều nhận Forbidden như nhau", async () => {
+    for (const targetUserId of ["nguoi-la", "admin1"]) {
+      await expect(
+        removeMember(t.db, {
+          actorId: "member1",
+          workspaceId: ws,
+          targetUserId,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    }
   });
 });
 

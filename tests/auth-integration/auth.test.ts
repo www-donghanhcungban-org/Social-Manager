@@ -49,12 +49,31 @@ describe("đăng ký", () => {
     expect(rows.rows[0]?.password).not.toContain(PASSWORD);
   });
 
-  it("từ chối đăng ký trùng email (kể cả khác hoa/thường), không tạo thêm người dùng", async () => {
+  it("đăng ký trùng email (kể cả khác hoa/thường) không tạo thêm người dùng, không đổi mật khẩu", async () => {
     await signUp("lan@example.com");
-    const dup = { body: { code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" } };
-    await expect(signUp("lan@example.com")).rejects.toMatchObject(dup);
-    await expect(signUp("LAN@Example.com")).rejects.toMatchObject(dup);
+    await signUp("lan@example.com", "mat-khau-khac-456789").catch(() => {});
+    await signUp("LAN@Example.com", "mat-khau-khac-456789").catch(() => {});
     expect(await t.db.select().from(user)).toHaveLength(1);
+    // mật khẩu cũ vẫn dùng được, mật khẩu của lần đăng ký trùng thì không
+    await expect(login("lan@example.com", PASSWORD)).resolves.toBeInstanceOf(
+      Headers,
+    );
+    await expect(
+      login("lan@example.com", "mat-khau-khac-456789"),
+    ).rejects.toMatchObject({ body: { code: "INVALID_EMAIL_OR_PASSWORD" } });
+  });
+
+  it("không lộ email đã đăng ký: email mới và email đã có cho phản hồi giống nhau, đều không cấp phiên", async () => {
+    await signUp("lan@example.com");
+    const existing = await signUp("lan@example.com").catch((e: unknown) => e);
+    const fresh = await signUp("moi@example.com");
+    expect(existing).not.toBeInstanceOf(Error);
+    expect(fresh.token).toBeNull();
+    expect((existing as { token: unknown }).token).toBeNull();
+    expect(Object.keys(existing as object).sort()).toEqual(
+      Object.keys(fresh).sort(),
+    );
+    expect(await t.db.select().from(session)).toHaveLength(0);
   });
 
   it("từ chối mật khẩu ngắn hơn 12 ký tự", async () => {

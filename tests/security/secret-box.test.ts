@@ -2,7 +2,11 @@ import { randomBytes } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { createSecretBox, secretBoxFromEnv } from "@/src/security/secret-box";
+import {
+  createSecretBox,
+  isValidMasterKey,
+  secretBoxFromEnv,
+} from "@/src/security/secret-box";
 
 const key = () => randomBytes(32).toString("base64");
 
@@ -74,6 +78,28 @@ describe("createSecretBox", () => {
     } catch (e) {
       expect((e as Error).message).not.toContain(secretLooking);
     }
+  });
+});
+
+describe("khoá chủ phải đúng base64 chuẩn (review 🟡 7)", () => {
+  const notKeys = [
+    "this-is-my-very-own-password-for-the-app-42", // mật khẩu thường
+    "a".repeat(43), // thiếu đệm
+    `${key().slice(0, 43)}`, // bỏ dấu `=`
+    ` ${key()}`, // khoảng trắng đầu
+    `${key()}\n`, // xuống dòng cuối
+    key().replace(/[+/]/g, "-") + "x", // sai ký tự và độ dài
+  ];
+  it.each(notKeys)("từ chối %j", (bad) => {
+    expect(() => createSecretBox(bad)).toThrow(/base64/);
+  });
+  it("nhận khoá chuẩn do randomBytes(32) sinh ra", () => {
+    for (let i = 0; i < 50; i++)
+      expect(() => createSecretBox(key())).not.toThrow();
+  });
+  it("isValidMasterKey trùng hành vi với createSecretBox", () => {
+    expect(isValidMasterKey(key())).toBe(true);
+    for (const bad of notKeys) expect(isValidMasterKey(bad)).toBe(false);
   });
 });
 

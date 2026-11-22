@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { listInbox, publishPost } from "@/src/providers/actions";
 import { createDemoProvider } from "@/src/providers/demo";
@@ -153,10 +153,35 @@ describe.each(providersUnderContract)(
         "2026-13-45T00:00:00Z",
         "2026-11-22T09:00:00.000Z",
         "2026-11-22T10:00:00.000Z",
+        "December 31, 2099",
+        "2027-02-30T10:00:00Z",
+        "2026-12-01T10:00",
+        "2026-12-01",
+        "2026-12-01T24:00:00Z",
       ]) {
         await expect(
           publishPost(p, { ...base(p), scheduledAt }, clock),
         ).rejects.toBeInstanceOf(ValidationError);
+      }
+    });
+
+    it("chuẩn hoá giờ hẹn có offset về UTC trước khi đưa cho provider", async () => {
+      const p = make();
+      const spy = vi.spyOn(p, "publishPost");
+      await publishPost(
+        p,
+        { ...base(p), scheduledAt: "2026-12-01T10:00:00+07:00" },
+        clock,
+      );
+      expect(spy.mock.calls[0][0].scheduledAt).toBe("2026-12-01T03:00:00.000Z");
+    });
+
+    it("tên nền tảng lạ (__proto__, toString) là UnsupportedError, không phải TypeError", async () => {
+      const p = make();
+      for (const platform of ["__proto__", "toString", "constructor"]) {
+        await expect(
+          publishPost(p, { ...base(p), platform: platform as never }, clock),
+        ).rejects.toBeInstanceOf(UnsupportedError);
       }
     });
 

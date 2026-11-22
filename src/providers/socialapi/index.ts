@@ -7,7 +7,12 @@ import {
   type Platform,
   type SocialProvider,
 } from "../types";
-import { createSocialApiClient, type SocialApiClientOptions } from "./client";
+import { parseIsoWithOffset } from "../actions";
+import {
+  createSocialApiClient,
+  SocialApiError,
+  type SocialApiClientOptions,
+} from "./client";
 import { socialApiPlatformSupport } from "./matrix";
 
 export { socialApiPlatformSupport } from "./matrix";
@@ -21,6 +26,8 @@ const PostResponse = z.object({
   data: z.object({ id: z.string().min(1), status: z.string() }),
 });
 
+const isoDate = (s: string) => parseIsoWithOffset(s) !== undefined;
+
 const ConversationList = z.object({
   data: z
     .array(
@@ -30,12 +37,18 @@ const ConversationList = z.object({
         participant_id: z.string(),
         participant_name: z.string().nullish(),
         last_message: z.string().nullish(),
-        last_message_at: z.string().nullish(),
-        created_at: z.string(),
+        last_message_at: z.string().refine(isoDate).nullish(),
+        created_at: z.string().refine(isoDate),
       }),
     )
     .nullable(),
 });
+
+const STATUS_MAP = new Map<string, "scheduled" | "published">([
+  ["scheduled", "scheduled"],
+  ["publishing", "published"],
+  ["published", "published"],
+]);
 
 /** Chỉ phần ĐÃ cài đặt; phần còn lại của ma trận nền tảng thêm theo từng đợt. */
 const IMPLEMENTED: readonly Capability[] = ["publish", "dm"];
@@ -80,10 +93,16 @@ export function createSocialApiProvider(
         PostResponse,
       );
       // API trả `publishing` ngay sau publish_now: với app, "đã nhận để đăng" tính là published.
-      return {
-        id: res.data.id,
-        status: res.data.status === "scheduled" ? "scheduled" : "published",
-      };
+      // Trạng thái lạ KHÔNG mặc định là thành công: coi là phản hồi không hợp lệ.
+      const status = STATUS_MAP.get(res.data.status);
+      if (status === undefined) {
+        throw new SocialApiError(
+          `Trạng thái bài đăng không nhận ra: ${JSON.stringify(res.data.status)}`,
+          200,
+          "client.invalid_response",
+        );
+      }
+      return { id: res.data.id, status };
     },
 
     async listInbox({ platform, accountId, kind }) {

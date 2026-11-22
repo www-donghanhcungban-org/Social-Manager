@@ -19,11 +19,25 @@ export interface SecretBox {
 const DECRYPT_ERROR =
   "Không giải mã được dữ liệu (sai khoá, bị sửa hoặc sai định dạng)";
 
+/**
+ * Bộ giải base64 của Node dễ dãi (bỏ qua ký tự lạ, thiếu đệm), nên mật khẩu thường cũng "giải" ra 32
+ * byte. Chỉ nhận dạng chuẩn: giải rồi mã lại phải ra đúng chuỗi ban đầu.
+ */
+function decodeMasterKey(value: string): Buffer | undefined {
+  const key = Buffer.from(value, "base64");
+  return key.length === KEY_BYTES && key.toString("base64") === value
+    ? key
+    : undefined;
+}
+
+export const isValidMasterKey = (value: string) =>
+  decodeMasterKey(value) !== undefined;
+
 export function createSecretBox(masterKeyBase64: string): SecretBox {
-  const key = Buffer.from(masterKeyBase64, "base64");
+  const key = decodeMasterKey(masterKeyBase64);
   // Thông báo cố ý không chứa giá trị khoá.
-  if (key.length !== KEY_BYTES) {
-    throw new Error(`Khoá chủ phải là base64 của đúng ${KEY_BYTES} byte`);
+  if (key === undefined) {
+    throw new Error(`Khoá chủ phải là base64 chuẩn của đúng ${KEY_BYTES} byte`);
   }
 
   return {

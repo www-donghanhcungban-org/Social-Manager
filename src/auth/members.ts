@@ -36,7 +36,8 @@ function withWorkspaceLock<T>(
       .select({ id: workspaces.id })
       .from(workspaces)
       .where(eq(workspaces.id, workspaceId))
-      .for("update");
+      // NO KEY UPDATE đủ để tuần tự hoá và không xung đột với khoá khoá ngoại (FOR KEY SHARE).
+      .for("no key update");
     return fn(tx as unknown as Db);
   });
 }
@@ -114,16 +115,15 @@ export function removeMember(
     const actor = await getRole(tx, input.workspaceId, input.actorId);
     // Người ngoài bị từ chối trước khi lộ ai là thành viên.
     if (actor === null) throw new ForbiddenError();
+    const isSelf = input.actorId === input.targetUserId;
+    // Kiểm quyền TRƯỚC khi tra mục tiêu: người không đủ quyền không phân biệt được ai là thành viên.
+    if (!isSelf && !can(actor, "members.remove")) throw new ForbiddenError();
     const target = await getRole(tx, input.workspaceId, input.targetUserId);
     if (target === null)
       throw new NotFoundError("Người này không phải thành viên");
-
-    const isSelf = input.actorId === input.targetUserId;
-    // Ai cũng được tự rời. Xoá người khác cần quyền; admin chỉ xoá được member.
-    if (!isSelf) {
-      if (!can(actor, "members.remove")) throw new ForbiddenError();
-      if (actor === "admin" && target !== "member") throw new ForbiddenError();
-    }
+    // Ai cũng được tự rời. Xoá người khác: admin chỉ xoá được member.
+    if (!isSelf && actor === "admin" && target !== "member")
+      throw new ForbiddenError();
     if (target === "owner" && (await ownerCount(tx, input.workspaceId)) <= 1) {
       throw new ConflictError(
         "last_owner",

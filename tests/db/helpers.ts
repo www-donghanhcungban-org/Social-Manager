@@ -12,9 +12,14 @@ export const MIGRATIONS = fileURLToPath(
 );
 
 /** DB Postgres trong tiến trình, đã chạy migration thật (cùng thư mục `drizzle/` mà production dùng). */
-export async function createTestDb() {
+export async function createTestDb(queries?: string[]) {
   const client = new PGlite();
-  const db = drizzle(client, { schema });
+  const db = drizzle(client, {
+    schema,
+    logger: queries
+      ? { logQuery: (q: string) => void queries.push(q) }
+      : undefined,
+  });
   await migrate(db, { migrationsFolder: MIGRATIONS });
   return { client, db };
 }

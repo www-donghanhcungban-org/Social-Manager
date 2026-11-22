@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -8,7 +9,7 @@ import {
   workspaces,
 } from "@/src/db/schema";
 
-import { createTestDb, readDownSql, tableNames } from "./helpers";
+import { createTestDb, MIGRATIONS, readDownSql, tableNames } from "./helpers";
 
 // Mã lỗi SQLSTATE của Postgres: kiểm đúng NGUYÊN NHÂN bị từ chối, không chỉ "có lỗi".
 const NOT_NULL_VIOLATION = "23502";
@@ -59,27 +60,42 @@ describe("migration", () => {
     );
   });
 
-  it("có đường lùi: chạy down xoá hết bảng, rồi chạy lại up được", async () => {
+  const BUSINESS = [
+    "members",
+    "provider_connections",
+    "social_accounts",
+    "workspaces",
+  ];
+  const AUTH = ["account", "session", "user", "verification"];
+  const journalRows = async () =>
+    Number(
+      (
+        await t.client.query<{ n: string }>(
+          "select count(*) n from drizzle.__drizzle_migrations",
+        )
+      ).rows[0]!.n,
+    );
+
+  it("lùi 0001_auth rồi chạy migrator thật: bảng đăng nhập được tạo lại", async () => {
+    await t.client.exec(readDownSql("0001_auth"));
+    const left = await tableNames(t.client);
+    for (const n of AUTH) expect(left).not.toContain(n);
+    expect(await journalRows()).toBe(1); // down phải xoá dòng sổ, không thì migrator bỏ qua
+    await migrate(t.db, { migrationsFolder: MIGRATIONS });
+    expect(await tableNames(t.client)).toEqual(expect.arrayContaining(AUTH));
+    expect(await journalRows()).toBe(2);
+  });
+
+  it("lùi cả hai (0001 rồi 0000) rồi chạy migrator thật: dựng lại đủ", async () => {
+    await t.client.exec(readDownSql("0001_auth"));
     await t.client.exec(readDownSql("0000_init"));
     const left = await tableNames(t.client);
-    for (const n of [
-      "members",
-      "provider_connections",
-      "social_accounts",
-      "workspaces",
-    ]) {
-      expect(left).not.toContain(n);
-    }
-    // up lần hai bằng SQL gốc (migrator đã ghi sổ nên chạy lại file SQL trực tiếp)
-    const { readFileSync } = await import("node:fs");
-    const { MIGRATIONS } = await import("./helpers");
-    await t.client.exec(
-      readFileSync(`${MIGRATIONS}/0000_init.sql`, "utf8").replaceAll(
-        "--> statement-breakpoint",
-        "",
-      ),
+    for (const n of [...BUSINESS, ...AUTH]) expect(left).not.toContain(n);
+    expect(await journalRows()).toBe(0);
+    await migrate(t.db, { migrationsFolder: MIGRATIONS });
+    expect(await tableNames(t.client)).toEqual(
+      expect.arrayContaining([...BUSINESS, ...AUTH]),
     );
-    expect(await tableNames(t.client)).toContain("workspaces");
   });
 });
 

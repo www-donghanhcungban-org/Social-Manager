@@ -75,6 +75,8 @@ describe("loadEnv", () => {
       { DATABASE_URL: "mysql://u:p@h/db" },
       { BETTER_AUTH_SECRET: "ngan" },
       { APP_SECRET_KEY: randomBytes(16).toString("base64") },
+      { APP_SECRET_KEY: "a".repeat(43) }, // giải được 32 byte nhưng không phải base64 chuẩn
+      { APP_SECRET_KEY: "this-is-my-very-own-password-for-the-app-42" },
       { NODE_ENV: "staging-la" },
     ]) {
       expect(() => loadEnv({ ...valid(), ...bad })).toThrow(ConfigError);

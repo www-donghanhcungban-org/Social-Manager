@@ -29,7 +29,13 @@ export function createAuth({ db, secret, baseURL }: AuthOptions) {
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
     baseURL,
-    emailAndPassword: { enabled: true, minPasswordLength: MIN_PASSWORD_CHARS },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: MIN_PASSWORD_CHARS,
+      // Không tự đăng nhập sau đăng ký: nhờ vậy đăng ký email mới và email đã có cho cùng một phản hồi,
+      // kẻ tấn công không dò được email nào đã đăng ký (review 🟠 6, D-005).
+      autoSignIn: false,
+    },
     session: { expiresIn: SESSION_DAYS * 24 * 60 * 60 },
   });
 }
