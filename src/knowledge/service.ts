@@ -1,10 +1,12 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   exists,
   lt,
+  max,
   notExists,
   or,
   sql,
@@ -15,12 +17,14 @@ import { ConflictError, NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
 import {
   conversations,
+  decisions,
   evidenceItems,
   messages,
   nameKeyOf,
   projectAliases,
   projectLinks,
   projects,
+  type DecisionStatus,
   type EvidenceSource,
   type ProjectLinkTarget,
 } from "../db/schema";
@@ -47,11 +51,47 @@ export interface ProjectLinkView {
   createdAt: Date;
 }
 
+const decisionView = (r: typeof decisions.$inferSelect): DecisionView => ({
+  id: r.id,
+  text: r.text,
+  status: r.status,
+  decidedAt: r.decidedAt,
+  sourceItemId: r.sourceEvidenceItemId,
+  sourceLabel: r.sourceLabel,
+  sourceMissing: r.sourceEvidenceItemId === null,
+  supersededById: r.supersededById,
+});
+
 function cleanName(raw: string, what: string): { text: string; key: string } {
   const text = raw.normalize("NFC").trim().replace(/\s+/g, " ");
   if (text === "" || text.length > MAX_NAME)
     throw new ValidationError(`${what} phải dài 1-${MAX_NAME} ký tự`);
   return { text, key: nameKeyOf(text) };
+}
+
+export interface DecisionView {
+  id: string;
+  text: string;
+  status: DecisionStatus;
+  decidedAt: Date;
+  /** Bằng chứng nguồn còn tồn tại; null nếu đã bị xoá. */
+  sourceItemId: string | null;
+  sourceLabel: string;
+  /** Nguồn đã bị xoá sau khi ghi sổ: quyết định còn nhưng không còn dẫn chứng đọc được. */
+  sourceMissing: boolean;
+  supersededById: string | null;
+}
+
+export interface ProjectProfile {
+  id: string;
+  name: string;
+  aliases: string[];
+  linked: { conversations: number; evidence: number };
+  /** Số bằng chứng thuộc dự án (trực tiếp hoặc qua hội thoại). */
+  evidenceCount: number;
+  lastActivityAt: Date | null;
+  /** Chỉ các quyết định đang hiệu lực, mới nhất trước, kèm nguồn. */
+  activeDecisions: DecisionView[];
 }
 
 export interface UnclassifiedItem {
@@ -101,6 +141,41 @@ export function createKnowledgeService({
   /** Có thì `suggest` đọc được nội dung bằng chứng. */
   evidence?: Pick<EvidenceService, "getContent">;
 }) {
+  /** Bằng chứng thuộc dự án: gắn trực tiếp, hoặc là bằng chứng của tin trong hội thoại đã gắn (dùng chung timeline/hồ sơ). */
+  function inProjectScope(workspaceId: string, projectId: string) {
+    return and(
+      eq(evidenceItems.workspaceId, workspaceId),
+      or(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(projectLinks)
+            .where(
+              and(
+                eq(projectLinks.projectId, projectId),
+                eq(projectLinks.evidenceItemId, evidenceItems.id),
+              ),
+            ),
+        ),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(messages)
+            .innerJoin(
+              projectLinks,
+              eq(projectLinks.conversationId, messages.conversationId),
+            )
+            .where(
+              and(
+                eq(messages.id, evidenceItems.messageId),
+                eq(projectLinks.projectId, projectId),
+              ),
+            ),
+        ),
+      ),
+    )!;
+  }
+
   async function requireProject(workspaceId: string, projectId: string) {
     if (!UUID.test(projectId)) throw new NotFoundError();
     const [row] = await db
@@ -416,37 +491,7 @@ export function createKnowledgeService({
         Math.max(Math.trunc(input.limit ?? 50) || 1, 1),
         100,
       );
-      const conds = [
-        eq(evidenceItems.workspaceId, input.workspaceId),
-        or(
-          exists(
-            db
-              .select({ one: sql`1` })
-              .from(projectLinks)
-              .where(
-                and(
-                  eq(projectLinks.projectId, input.projectId),
-                  eq(projectLinks.evidenceItemId, evidenceItems.id),
-                ),
-              ),
-          ),
-          exists(
-            db
-              .select({ one: sql`1` })
-              .from(messages)
-              .innerJoin(
-                projectLinks,
-                eq(projectLinks.conversationId, messages.conversationId),
-              )
-              .where(
-                and(
-                  eq(messages.id, evidenceItems.messageId),
-                  eq(projectLinks.projectId, input.projectId),
-                ),
-              ),
-          ),
-        )!,
-      ];
+      const conds = [inProjectScope(input.workspaceId, input.projectId)];
       if (input.cursor !== undefined) {
         const c = decodeCursor(input.cursor);
         conds.push(
@@ -472,6 +517,179 @@ export function createKnowledgeService({
         items: page,
         nextCursor:
           rows.length > limit ? encodeCursor(page[page.length - 1]!) : null,
+      };
+    },
+
+    /**
+     * Ghi một quyết định của dự án, BẮT BUỘC dẫn một bằng chứng của cùng workspace làm nguồn. `supersedesId` thay một quyết
+     * định đang hiệu lực của cùng dự án (cái cũ thành `superseded`). Một giao dịch.
+     */
+    async recordDecision(input: {
+      actorId: string;
+      workspaceId: string;
+      projectId: string;
+      text: string;
+      sourceEvidenceItemId: string;
+      decidedAt?: Date;
+      supersedesId?: string;
+    }): Promise<DecisionView> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.write",
+      );
+      const text = input.text.normalize("NFC").trim();
+      if (text === "" || text.length > 2000)
+        throw new ValidationError("Nội dung quyết định phải dài 1-2000 ký tự");
+      if (input.decidedAt && Number.isNaN(input.decidedAt.getTime()))
+        throw new ValidationError("Thời điểm quyết định không hợp lệ");
+      await requireProject(input.workspaceId, input.projectId);
+      if (!UUID.test(input.sourceEvidenceItemId)) throw new NotFoundError();
+      const [source] = await db
+        .select({
+          id: evidenceItems.id,
+          externalId: evidenceItems.externalId,
+          observedAt: evidenceItems.observedAt,
+        })
+        .from(evidenceItems)
+        .where(
+          and(
+            eq(evidenceItems.id, input.sourceEvidenceItemId),
+            eq(evidenceItems.workspaceId, input.workspaceId),
+          ),
+        );
+      if (!source) throw new NotFoundError();
+      return db.transaction(async (tx) => {
+        if (input.supersedesId !== undefined) {
+          if (!UUID.test(input.supersedesId)) throw new NotFoundError();
+          const [old] = await tx
+            .select({ id: decisions.id, status: decisions.status })
+            .from(decisions)
+            .where(
+              and(
+                eq(decisions.id, input.supersedesId),
+                eq(decisions.projectId, input.projectId),
+                eq(decisions.workspaceId, input.workspaceId),
+              ),
+            );
+          if (!old) throw new NotFoundError();
+          if (old.status !== "active")
+            throw new ConflictError(
+              "decision_not_active",
+              "Quyết định này đã bị thay thế",
+            );
+        }
+        const [row] = await tx
+          .insert(decisions)
+          .values({
+            workspaceId: input.workspaceId,
+            projectId: input.projectId,
+            text,
+            decidedAt: input.decidedAt ?? source.observedAt,
+            sourceEvidenceItemId: source.id,
+            sourceLabel: source.externalId,
+            createdBy: input.actorId,
+          })
+          .returning();
+        if (input.supersedesId !== undefined) {
+          // Điều kiện status = active: hai người thay cùng lúc thì chỉ một người thắng, người kia nhận xung đột.
+          const upd = await tx
+            .update(decisions)
+            .set({ status: "superseded", supersededById: row!.id })
+            .where(
+              and(
+                eq(decisions.id, input.supersedesId),
+                eq(decisions.status, "active"),
+              ),
+            )
+            .returning({ id: decisions.id });
+          if (upd.length === 0)
+            throw new ConflictError(
+              "decision_not_active",
+              "Quyết định này đã bị thay thế",
+            );
+        }
+        return decisionView(row!);
+      });
+    },
+
+    async listDecisions(input: {
+      actorId: string;
+      workspaceId: string;
+      projectId: string;
+      /** Gồm cả quyết định đã bị thay thế (mặc định chỉ đang hiệu lực). */
+      includeSuperseded?: boolean;
+    }): Promise<DecisionView[]> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.read",
+      );
+      await requireProject(input.workspaceId, input.projectId);
+      const rows = await db
+        .select()
+        .from(decisions)
+        .where(
+          and(
+            eq(decisions.projectId, input.projectId),
+            eq(decisions.workspaceId, input.workspaceId),
+            input.includeSuperseded
+              ? undefined
+              : eq(decisions.status, "active"),
+          ),
+        )
+        .orderBy(desc(decisions.decidedAt), desc(decisions.id));
+      return rows.map(decisionView);
+    },
+
+    /** Hồ sơ dự án dựng bằng mã từ dữ liệu có nguồn (không dùng AI): bí danh, số nguồn, hoạt động gần nhất, quyết định hiệu lực. */
+    async profile(input: {
+      actorId: string;
+      workspaceId: string;
+      projectId: string;
+    }): Promise<ProjectProfile> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.read",
+      );
+      const p = await requireProject(input.workspaceId, input.projectId);
+      const aliases = await db
+        .select({ alias: projectAliases.alias })
+        .from(projectAliases)
+        .where(eq(projectAliases.projectId, p.id))
+        .orderBy(asc(projectAliases.aliasKey));
+      const linkRows = await db
+        .select({ type: projectLinks.targetType, n: count() })
+        .from(projectLinks)
+        .where(eq(projectLinks.projectId, p.id))
+        .groupBy(projectLinks.targetType);
+      const [stats] = await db
+        .select({ n: count(), last: max(evidenceItems.observedAt) })
+        .from(evidenceItems)
+        .where(inProjectScope(input.workspaceId, p.id));
+      const active = await db
+        .select()
+        .from(decisions)
+        .where(
+          and(eq(decisions.projectId, p.id), eq(decisions.status, "active")),
+        )
+        .orderBy(desc(decisions.decidedAt), desc(decisions.id));
+      const linked = (t: string) => linkRows.find((r) => r.type === t)?.n ?? 0;
+      return {
+        id: p.id,
+        name: p.name,
+        aliases: aliases.map((a) => a.alias),
+        linked: {
+          conversations: linked("conversation"),
+          evidence: linked("evidence"),
+        },
+        evidenceCount: stats!.n,
+        lastActivityAt: stats!.last,
+        activeDecisions: active.map(decisionView),
       };
     },
 

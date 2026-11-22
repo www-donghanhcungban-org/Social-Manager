@@ -529,6 +529,56 @@ export const searchDocuments = pgTable(
   ],
 );
 
+export const DECISION_STATUSES = ["active", "superseded"] as const;
+export type DecisionStatus = (typeof DECISION_STATUSES)[number];
+
+/**
+ * Sổ quyết định của dự án: mỗi quyết định dẫn MỘT bằng chứng làm nguồn. Quyết định mới có thể thay quyết định cũ (cái cũ
+ * thành `superseded`, không xoá). Xoá bằng chứng nguồn không xoá quyết định: khoá ngoại `SET NULL` và `source_label`
+ * giữ lại tên nguồn để biết đã mất nguồn nào.
+ */
+export const decisions = pgTable(
+  "decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    status: text("status", { enum: DECISION_STATUSES })
+      .notNull()
+      .default("active"),
+    /** Lúc quyết định được đưa ra (không phải lúc ghi sổ). */
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull(),
+    sourceEvidenceItemId: uuid("source_evidence_item_id").references(
+      () => evidenceItems.id,
+      { onDelete: "set null" },
+    ),
+    /** `id ngoài` của nguồn lúc ghi sổ, để còn dấu vết khi bằng chứng bị xoá. */
+    sourceLabel: text("source_label").notNull(),
+    supersededById: uuid("superseded_by_id"),
+    /** Người ghi sổ (`user.id` của Better Auth). */
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "decisions_status_check",
+      sql`${t.status} in (${inList(DECISION_STATUSES)})`,
+    ),
+    check(
+      "decisions_text_check",
+      sql`length(btrim(${t.text})) between 1 and 2000`,
+    ),
+    index("decisions_project_idx").on(t.projectId, t.decidedAt),
+    index("decisions_workspace_idx").on(t.workspaceId),
+    index("decisions_source_idx").on(t.sourceEvidenceItemId),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",
