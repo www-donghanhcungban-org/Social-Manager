@@ -1,0 +1,41 @@
+# Đối chiếu runtime với endoflife.date (BASE-DEP-003): hằng tuần và khi đổi `.nvmrc`. Đỏ khi bản Node ghim trong `.nvmrc`
+# hết hỗ trợ bảo mật trong vòng 90 ngày tới (hoặc không còn trong danh sách). Lý do thêm file: dự án chưa có bước nào
+# theo dõi hạn hỗ trợ của runtime; quyền chỉ đọc, không dùng bí mật.
+name: Runtime EOL
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [".nvmrc", ".github/workflows/runtime-eol.yml"]
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  node-eol:
+    name: node-eol
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node trong .nvmrc còn hỗ trợ bảo mật ít nhất 90 ngày nữa
+        run: |
+          set -euo pipefail
+          cycle="$(tr -d '[:space:]' < .nvmrc | cut -d. -f1)"
+          curl -fsSL --retry 3 --proto '=https' -o "$RUNNER_TEMP/node-eol.json" https://endoflife.date/api/nodejs.json
+          eol="$(jq -r --arg c "$cycle" '.[] | select(.cycle == $c) | .eol' "$RUNNER_TEMP/node-eol.json")"
+          if [ -z "$eol" ] || [ "$eol" = "false" ] || [ "$eol" = "null" ]; then
+            echo "Node $cycle: không có ngày EOL hợp lệ trong endoflife.date ('$eol')" >&2
+            exit 1
+          fi
+          limit="$(date -u -d '+90 days' +%F)"
+          echo "Node $cycle: EOL $eol; hạn tối thiểu $limit"
+          if [[ ! "$eol" > "$limit" ]]; then
+            echo "Node $cycle hết hỗ trợ bảo mật trước $limit — nâng .nvmrc và engines." >&2
+            exit 1
+          fi
