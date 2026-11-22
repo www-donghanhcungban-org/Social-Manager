@@ -1,28 +1,29 @@
 # PROGRESS.md — Social Manager
 
-> Giai đoạn hiện tại: G2 Kế hoạch · Cập nhật: 2026-11-22 02:10 UTC · Nhánh: claude/modest-dirac-r68f0l
+> Giai đoạn hiện tại: G6 Build đợt 0 (đã xong 7/7 task, chờ review độc lập) · Cập nhật: 2026-11-22 02:30 UTC · Nhánh: claude/modest-dirac-r68f0l
 
 ## Đang làm
 
-- Gộp khung X-Templates làm bộ chính — trạng thái: chờ người xoá 2 file `*.xtemplates-new` trong thư mục hook rồi chạy `xt.py doctor` — chỗ dừng: `doctor` còn 1 lỗi
+- Review độc lập `reviewer-alt` cho T-003/T-004/T-006/T-007 (`topo: review`) — trạng thái: chờ kết quả — chỗ dừng: sửa 🔴/🟠 nếu có rồi `loop next-step`
 
 ## Tiếp theo
 
-1. ADR stack (phiên bản xác minh 2026-11-22: next 16.4.6, react 19.3.1, drizzle-orm 0.45.4, pg 8.23.1, pg-boss 12.39.0, better-auth 1.7.27, zod 4.6.7) và `PLAN.md` đợt 0
-2. Đợt 0 còn lại: schema Postgres + migration, đăng nhập/workspace, kho khoá mã hoá, hành động của provider (đăng bài, đọc hộp thư) kèm test hợp đồng chạy trên mọi provider
-3. `BLUEPRINT.md` đã ghép (510 MUST, chưa đạt mục nào): tick dần kèm lệnh kiểm
-4. Đã xong: lớp provider cắm được (`src/providers/`: registry, SocialAPI, demo) — 9 test xanh
+1. Đợt 1 (`PLAN-dot1.md`): kết nối tài khoản, đăng bài + lịch, hộp thư DM/bình luận, hàng đợi job (pg-boss), webhook (Gate: `npm test`)
+2. Chưa có UI nào: đợt 0 chỉ có lõi (provider, mã hoá, schema, đăng nhập, quyền). Đợt 1 mở đầu bằng khung giao diện + theme
+3. `BLUEPRINT.md`: 510 MUST, chưa tick mục nào (mục đã chứng minh bằng test cần tick kèm lệnh kiểm)
+4. Cổng sắp tới: G7 — còn thiếu: UI, hàng đợi, deploy (docker compose), tick blueprint
 
 ## Quyết định
 
-- 2026-11-22 X-Templates là bộ khung chính; bộ projects-template gỡ dần — lý do: người dùng chọn
-- 2026-11-22 Web tự host, nguồn dữ liệu mạng xã hội cắm được nhiều nhà cung cấp (SocialAPI là adapter đầu), hỗ trợ nhiều người dùng — lý do: người dùng chọn
-- Nợ kỹ thuật chấp nhận: hook, agent và script cũ của projects-template còn trong repo (guard chặn gỡ qua Bash) — hạn trả: đợt 0
+- 2026-11-22 X-Templates là bộ khung chính (D-001 duyệt PLAN đợt 0; ADR-0001 chốt stack) — lý do: người dùng chọn
+- 2026-11-22 D-002 tách T-006 thành quy tắc vai trò (T-006) và nối Better Auth (T-007)
+- Nợ kỹ thuật chấp nhận: hook, agent và script cũ của projects-template còn trong repo (guard chặn gỡ qua Bash) — hạn trả: khi người dùng cho phép gỡ
+- Nợ kỹ thuật chấp nhận: SocialAPI adapter chỉ đăng bài + DM; `members.user_id` chưa có khoá ngoại tới `user.id` (cả hai có dấu `DEBT:` tại chỗ)
 
 ## Bàn giao phiên
 
-- Commit cuối trên nhánh chính: `013939e44a0abbb02740128216dcc879f125d0c3` · CI: chưa chạy
-- Lệnh kiểm nhanh: `python3 .xtemplates/scripts/xt.py doctor --offline` → exit 1 (1 lỗi: 2 file `*.xtemplates-new` trong thư mục hook)
-- Đang chặn: guard chặn xoá file trong thư mục hook, `.cursor`, agent cũ qua Bash
+- Commit cuối trên nhánh chính: `d9ebc747571851188983b14945133d86251cd482` · CI: chưa chạy (chưa mở PR; `merge_autonomy: L1`, người merge)
+- Lệnh kiểm nhanh: `.xtemplates/scripts/dev-task.sh gate` → xanh ở commit cuối của từng task
+- Đang chặn: không
 - Việc dở chưa commit: không
-- Câu hỏi cần người: không
+- Câu hỏi cần người: có mở PR cho nhánh này không (người dùng chưa yêu cầu rõ nên chưa mở)
