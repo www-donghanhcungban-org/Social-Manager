@@ -1,10 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
 const PASSWORD = "mat-khau-du-dai-123";
-const unique = () => `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+const unique = () => `e2e-${randomUUID()}`;
 
 const VIEWPORTS = [
   { name: "mobile-320", width: 320, height: 800 },

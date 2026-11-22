@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test, type Page } from "@playwright/test";
 
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
 const PASSWORD = "mat-khau-du-dai-123";
-const unique = () => `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+const unique = () => `e2e-${randomUUID()}`;
 
 async function signUpAndCreateWorkspace(page: Page, name: string) {
   await page.goto("/login");

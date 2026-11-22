@@ -9,12 +9,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-border p-4">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border p-4">
         <Link href="/app" className="font-semibold">
           Social Manager
         </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">{user.email}</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="min-w-0 break-all text-sm text-muted-foreground">
+            {user.email}
+          </span>
           <SignOutButton />
         </div>
       </header>

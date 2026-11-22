@@ -1,11 +1,11 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
 const PASSWORD = "mat-khau-du-dai-123";
-const unique = () => `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+const unique = () => `e2e-${randomUUID()}`;
 const SECRET = "ui".repeat(32);
 
 test("bật webhook ở màn hình Kết nối → tin gửi tới địa chỉ đó hiện trong Hộp thư; secret không hiện lại", async ({
