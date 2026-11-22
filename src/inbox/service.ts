@@ -9,7 +9,12 @@ import {
   inboxItems,
   type InboxStatus,
 } from "../db/schema";
-import { listInbox, parseIsoWithOffset } from "../providers/actions";
+import { createConversationSync } from "../conversations/sync";
+import {
+  listInbox,
+  parseIsoWithOffset,
+  supportsConversations,
+} from "../providers/actions";
 import { SocialApiError } from "../providers/socialapi/client";
 import {
   UnsupportedError,
@@ -97,6 +102,11 @@ export function createInboxService({
   box,
   resolveProvider,
 }: InboxServiceDeps) {
+  const conversationSync = createConversationSync({
+    db,
+    errorCode: errorCodeOf,
+  });
+
   /** Kéo tin mới từ provider vào DB. Lặp lại an toàn: khoá duy nhất loại bản trùng, không ghi đè. */
   async function syncAccount(input: {
     workspaceId: string;
@@ -113,8 +123,13 @@ export function createInboxService({
         box.decrypt(account.credentialsEnc),
       );
       const result = {
+        /** Mục hộp thư mới (DM theo hội thoại: mục tạo mới hoặc cập nhật vì có tin đến mới). */
         inserted: 0,
+        /** Tin nhắn mới lưu vào `messages` (đường hội thoại). */
+        messages: 0,
         rejected: 0,
+        /** Còn lịch sử chưa lấy hết; lượt đồng bộ sau đọc tiếp. */
+        more: false,
         skipped: [] as InboxKind[],
         failed: [] as { kind: InboxKind; code: string }[],
       };
@@ -127,6 +142,25 @@ export function createInboxService({
         provider.support[platform]?.includes(KIND_CAPABILITY[k]),
       );
       for (const kind of kinds) {
+        if (kind === "dm" && supportsConversations(provider, platform)) {
+          try {
+            const r = await conversationSync.syncAccount(
+              input.workspaceId,
+              { id: account.id, externalId: account.externalId, platform },
+              provider,
+            );
+            result.inserted += r.inboxUpdated;
+            result.messages += r.messages;
+            result.rejected += r.rejected;
+            result.more ||= r.more;
+            for (const f of r.failed)
+              result.failed.push({ kind: "dm", code: f.code });
+          } catch (e) {
+            if (e instanceof UnsupportedError) result.skipped.push(kind);
+            else result.failed.push({ kind, code: errorCodeOf(e) });
+          }
+          continue;
+        }
         let items;
         try {
           items = await listInbox(provider, {
