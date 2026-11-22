@@ -68,8 +68,19 @@ export function createAuth({
         "/sign-up/email": { window: 60, max: rateLimitPerMinute },
       },
     },
-    ...(clientIpHeader && {
-      advanced: { ipAddress: { ipAddressHeaders: [clientIpHeader] } },
-    }),
+    advanced: {
+      ...(clientIpHeader && {
+        ipAddress: { ipAddressHeaders: [clientIpHeader] },
+      }),
+      // Trên https dùng tiền tố `__Host-` (BE-AUTH-004): trình duyệt chỉ nhận khi Secure, Path=/ và không
+      // có Domain, nên subdomain khác không ghi đè được cookie phiên. Better Auth tự gắn `__Secure-`
+      // phía trước khi bật secure, tạo tên `__Secure-__Host-…` vô nghĩa; vì vậy tắt cờ đó và tự đặt
+      // `secure: true` cùng tiền tố. Trên http cục bộ giữ tên mặc định (`__Host-` đòi Secure nên không dùng được).
+      ...(baseURL.startsWith("https://") && {
+        useSecureCookies: false,
+        cookiePrefix: "__Host-sm",
+        defaultCookieAttributes: { secure: true, path: "/" },
+      }),
+    },
   });
 }

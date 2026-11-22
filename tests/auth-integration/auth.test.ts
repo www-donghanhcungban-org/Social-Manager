@@ -207,6 +207,70 @@ describe("đăng nhập và phiên", () => {
   });
 });
 
+describe("phiên an toàn (BE-AUTH-004)", () => {
+  const httpsAuth = () =>
+    createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "https://app.example.com",
+    });
+
+  async function httpsLogin(a: ReturnType<typeof httpsAuth>) {
+    const { headers } = await a.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    const setCookies = headers.getSetCookie();
+    return {
+      setCookies,
+      cookie: new Headers({
+        cookie: setCookies.map((c) => c.split(";")[0]).join("; "),
+      }),
+    };
+  }
+
+  it("trên https: cookie phiên có tiền tố __Host-, Secure, HttpOnly, SameSite, Path=/, không Domain", async () => {
+    const a = httpsAuth();
+    await a.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { setCookies } = await httpsLogin(a);
+    const sessionCookie = setCookies.find((c) => /session_token=/.test(c))!;
+    expect(sessionCookie).toMatch(/^__Host-sm\.session_token=/);
+    expect(sessionCookie).toMatch(/;\s*Secure/i);
+    expect(sessionCookie).toMatch(/;\s*HttpOnly/i);
+    expect(sessionCookie).toMatch(/;\s*SameSite=Lax/i);
+    expect(sessionCookie).toMatch(/;\s*Path=\//i);
+    expect(sessionCookie).not.toMatch(/;\s*Domain=/i);
+    for (const c of setCookies) expect(c).not.toMatch(/^__Secure-/);
+  });
+
+  it("cookie __Host- đọc lại được phiên; logout rồi dùng lại cookie cũ → không còn phiên", async () => {
+    const a = httpsAuth();
+    await a.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { cookie } = await httpsLogin(a);
+    expect((await a.api.getSession({ headers: cookie }))?.user.email).toBe(
+      "lan@example.com",
+    );
+    await a.api.signOut({ headers: cookie });
+    expect(await a.api.getSession({ headers: cookie })).toBeNull();
+    expect(await t.db.select().from(session)).toHaveLength(0);
+  });
+
+  it("mã phiên ≥ 128 bit và mỗi lần đăng nhập một mã mới (không dùng lại)", async () => {
+    await signUp();
+    await login();
+    await login();
+    const tokens = (await t.db.select().from(session)).map((s) => s.token);
+    expect(tokens).toHaveLength(2);
+    expect(new Set(tokens).size).toBe(2);
+    // 128 bit = 16 byte; chuỗi ký tự chữ-số base62 cần ≥ 22 ký tự cho 128 bit (log2(62) ≈ 5.95)
+    for (const tk of tokens) expect(tk.length).toBeGreaterThanOrEqual(22);
+  });
+});
+
 describe("cấu hình", () => {
   it("thiếu secret hoặc secret quá ngắn thì dừng, không chạy với giá trị mặc định", () => {
     for (const secret of ["", "ngan"]) {
