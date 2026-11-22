@@ -19,7 +19,7 @@ export class NotFoundError extends Error {
 export class ConflictError extends Error {
   readonly code = "conflict";
   constructor(
-    readonly reason: "last_owner" | "already_member",
+    readonly reason: "last_owner" | "already_member" | "duplicate_label",
     message: string,
   ) {
     super(message);
