@@ -64,6 +64,13 @@
       "when": 1795334286481,
       "tag": "0008_workspace_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795336668250,
+      "tag": "0009_fk_indexes",
+      "breakpoints": true
     }
   ]
 }

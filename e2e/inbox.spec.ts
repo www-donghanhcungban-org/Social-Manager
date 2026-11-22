@@ -66,6 +66,10 @@ test("hộp thư trống → đồng bộ → lọc → đánh dấu đã xử l
 
   // đồng bộ lại: không tạo bản trùng, không ghi đè trạng thái đã xử lý
   await page.getByRole("link", { name: "Mọi trạng thái" }).click();
+  // Chờ điều hướng xong (bộ lọc đã bỏ) rồi mới đồng bộ: nếu bấm ngay, danh sách còn ở bộ lọc "Đã xử lý" (1 mục)
+  // khi đếm — lỗi đua đã làm CI đỏ chập chờn.
+  await expect(page).not.toHaveURL(/status=/);
+  await expect(list.getByRole("listitem")).toHaveCount(total);
   await page.getByRole("button", { name: "Đồng bộ Trang Một" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Đã nhập" }),

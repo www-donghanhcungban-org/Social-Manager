@@ -204,6 +204,7 @@ export const conversations = pgTable(
       t.socialAccountId,
       t.externalId,
     ),
+    index("conversations_workspace_idx").on(t.workspaceId),
   ],
 );
 
@@ -244,6 +245,7 @@ export const messages = pgTable(
     ),
     index("messages_conversation_sent_idx").on(t.conversationId, t.sentAt),
     index("messages_sent_idx").on(t.sentAt),
+    index("messages_workspace_idx").on(t.workspaceId),
   ],
 );
 
@@ -297,6 +299,7 @@ export const posts = pgTable(
     check("posts_attempts_check", sql`${t.attempts} >= 0`),
     check("posts_text_check", sql`length(btrim(${t.text})) > 0`),
     index("posts_due_idx").on(t.status, t.scheduledAt),
+    index("posts_social_account_idx").on(t.socialAccountId),
   ],
 );
 
