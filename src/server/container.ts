@@ -7,6 +7,7 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
 import { createEvidenceService } from "../evidence/service";
 import { createInboxService } from "../inbox/service";
@@ -33,6 +34,7 @@ export function createContainer(cfg: Env) {
   const box = createSecretBox(cfg.APP_SECRET_KEY);
   const blobStore = createFsBlobStore(cfg.BLOB_DIR);
   const evidence = createEvidenceService({ db, store: blobStore });
+  const coverage = createCoverageService({ db });
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -67,7 +69,9 @@ export function createContainer(cfg: Env) {
       box,
       resolveProvider: buildProvider,
       evidence,
+      coverage,
     }),
+    coverage,
     retention: createRetentionService({ db, evidence }),
     evidence,
     knowledge: createKnowledgeService({ db, evidence }),

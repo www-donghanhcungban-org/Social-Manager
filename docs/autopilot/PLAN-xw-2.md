@@ -60,8 +60,8 @@ runtime Python riêng và quota tài nguyên (working.md §2, research §2).
 
 ### Lát 3 — Dòng thời gian, độ bao phủ, xuất và xoá (M07, M12)
 
-- [ ] `T-205` Dòng thời gian của dự án: bằng chứng và tin nhắn đã liên kết sắp theo thời gian, phân trang keyset, lọc theo quyền workspace. Ca biên: trùng thời điểm không sót/lặp qua trang, dự án rỗng, người ngoài bị Forbidden (sau: T-203; files: src/knowledge/, tests/knowledge/) — Gate: `npx vitest run tests/knowledge`
-- [ ] `T-206` Độ bao phủ nguồn: `source_checkpoints` (con trỏ, lần chạy cuối, lỗi cuối dạng mã an toàn) cho từng tài khoản/nguồn; màn hình/dịch vụ báo nguồn nào đã đồng bộ tới đâu và hội thoại nào còn lịch sử chưa lấy. Ca biên: chưa chạy lần nào, lỗi liên tiếp, nhiều nguồn (sau: T-201; files: src/conversations/, src/evidence/, src/db/schema.ts, drizzle/, tests/) — Gate: `npx vitest run tests/conversations tests/evidence tests/db`
+- [x] `T-205` Dòng thời gian của dự án: bằng chứng và tin nhắn đã liên kết sắp theo thời gian, phân trang keyset, lọc theo quyền workspace. Ca biên: trùng thời điểm không sót/lặp qua trang, dự án rỗng, người ngoài bị Forbidden (sau: T-203; files: src/knowledge/, tests/knowledge/) — Gate: `npx vitest run tests/knowledge`
+- [x] `T-206` Độ bao phủ nguồn: `source_checkpoints` (con trỏ, lần chạy cuối, lỗi cuối dạng mã an toàn) cho từng tài khoản/nguồn; màn hình/dịch vụ báo nguồn nào đã đồng bộ tới đâu và hội thoại nào còn lịch sử chưa lấy. Ca biên: chưa chạy lần nào, lỗi liên tiếp, nhiều nguồn (sau: T-201; files: src/conversations/, src/evidence/, src/db/schema.ts, drizzle/, tests/) — Gate: `npx vitest run tests/conversations tests/evidence tests/db`
 - [ ] `T-207` Xoá và xuất xuyên lớp: xoá theo hội thoại/nguồn/dự án đi qua bằng chứng, liên kết, tin nhắn, mục hộp thư, blob không còn tham chiếu; xuất JSON của một dự án (không kèm bí mật). Ca biên: blob còn được workspace khác dùng không xoá, lũy đẳng, trần số dòng theo grant `data_delete`, xuất không chứa khoá/chữ ký (sau: T-205, T-206; files: src/retention/, src/evidence/, src/knowledge/, tests/; exec: deep) — Gate: `npx vitest run tests/retention tests/evidence tests/knowledge`
 
 ### Lát 4 — Connector GitHub (M07)

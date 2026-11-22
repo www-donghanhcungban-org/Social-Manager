@@ -253,6 +253,41 @@ export const messages = pgTable(
  * `submitted`: nhà cung cấp đã nhận, chờ xác nhận · `partial`: lên được một phần đích · `send_unknown`: không biết
  * đã lên mạng chưa (mất kết nối giữa chừng, quá hạn xác nhận) — không tự đăng lại để tránh đăng hai lần (ADR-0002, H2).
  */
+/**
+ * Mốc đồng bộ của một tài khoản: lần chạy cuối, lần thành công cuối, số lần lỗi liên tiếp và mã lỗi an toàn gần nhất.
+ * Cho biết nguồn đã được lấy tới đâu để không nhầm "chưa thấy tin" với "chưa đồng bộ được".
+ */
+export const sourceCheckpoints = pgTable(
+  "source_checkpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    /** Mã ngắn, không chứa nội dung phía nhà cung cấp. */
+    lastErrorCode: text("last_error_code"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("source_checkpoints_account").on(t.socialAccountId),
+    check(
+      "source_checkpoints_failures_check",
+      sql`${t.consecutiveFailures} >= 0`,
+    ),
+    check(
+      "source_checkpoints_code_check",
+      sql`${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
+    ),
+    index("source_checkpoints_workspace_idx").on(t.workspaceId),
+  ],
+);
+
 export const EVIDENCE_SOURCES = ["message", "document", "github"] as const;
 export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
 export const EVIDENCE_CONTENT_TYPES = [

@@ -9,6 +9,7 @@ import {
   inboxItems,
   type InboxStatus,
 } from "../db/schema";
+import type { CoverageService } from "../conversations/coverage";
 import {
   createConversationSync,
   type EvidenceBackfill,
@@ -100,6 +101,8 @@ export interface InboxServiceDeps {
   ) => SocialProvider | undefined;
   /** Có thì tin nhắn đồng bộ về được nhập vào kho bằng chứng (ADR-0004). */
   evidence?: EvidenceBackfill;
+  /** Có thì mỗi lượt đồng bộ ghi mốc bao phủ của tài khoản. */
+  coverage?: Pick<CoverageService, "record">;
 }
 
 export function createInboxService({
@@ -107,12 +110,28 @@ export function createInboxService({
   box,
   resolveProvider,
   evidence,
+  coverage,
 }: InboxServiceDeps) {
   const conversationSync = createConversationSync({
     db,
     errorCode: errorCodeOf,
     evidence,
   });
+
+  /** Ghi mốc đồng bộ của lượt vừa chạy (độ bao phủ). Lỗi ghi mốc lan ra: job thử lại, lượt đồng bộ lũy đẳng. */
+  async function recordRun(
+    workspaceId: string,
+    accountId: string,
+    result: { failed: { code: string }[] },
+  ) {
+    if (!coverage) return;
+    await coverage.record({
+      workspaceId,
+      socialAccountId: accountId,
+      ok: result.failed.length === 0,
+      errorCode: result.failed[0]?.code,
+    });
+  }
 
   /** Kéo tin mới từ provider vào DB. Lặp lại an toàn: khoá duy nhất loại bản trùng, không ghi đè. */
   async function syncAccount(input: {
@@ -142,6 +161,7 @@ export function createInboxService({
       };
       if (!provider) {
         result.failed.push({ kind: "dm", code: "provider_unavailable" });
+        await recordRun(input.workspaceId, account.id, result);
         return result;
       }
       const platform = account.platform as Platform;
@@ -211,6 +231,7 @@ export function createInboxService({
           .returning({ id: inboxItems.id });
         result.inserted += inserted.length;
       }
+      await recordRun(input.workspaceId, account.id, result);
       return result;
     }
   }
