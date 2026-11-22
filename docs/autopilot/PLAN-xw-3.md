@@ -64,7 +64,7 @@ có tìm kiếm mờ `pg_trgm` (cần extension ở môi trường thật; chưa
 
 ### Lát 4 — Đánh giá có phiên bản
 
-- [ ] `T-305` Bộ 50 câu hỏi có phiên bản (`docs/eval/qa-v1.json`) trên kho giả cố định, đo recall@5 của truy xuất (có dấu và không dấu) trong Gate với ngưỡng ghi trong tệp; thay đổi bộ câu hỏi hoặc ngưỡng cần ghi lý do. Ca biên: câu không có đáp án đúng (phải trả rỗng), cùng từ ở hai dự án (sau: T-301; files: docs/eval/, tests/eval/) — Gate: `npx vitest run tests/eval`
+- [x] `T-305` Bộ 50 câu hỏi có phiên bản (`docs/eval/qa-v1.json`) trên kho giả cố định, đo recall@5 của truy xuất (có dấu và không dấu) trong Gate với ngưỡng ghi trong tệp; thay đổi bộ câu hỏi hoặc ngưỡng cần ghi lý do. Ca biên: câu không có đáp án đúng (phải trả rỗng), cùng từ ở hai dự án (sau: T-301; files: docs/eval/, tests/eval/) — Gate: `npx vitest run tests/eval`
 
 ### Việc cần người
 
