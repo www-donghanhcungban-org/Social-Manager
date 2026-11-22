@@ -8,9 +8,10 @@
 
 ## Tiếp theo
 
-1. Compose `BLUEPRINT.md` (web-app, quy mô M) và `PLAN.md` đợt 0 theo `docs/work/2026-11-22-social-manager-plan/working.md` (Gate: `python3 .xtemplates/scripts/xt.py blueprint-status BLUEPRINT.md`)
-2. Đợt 0: ADR stack, schema, đăng nhập, adapter nguồn dữ liệu (cắm nhiều nhà cung cấp)
-3. Cổng sắp tới: G3 — còn thiếu: BLUEPRINT, PLAN, ADR stack
+1. ADR stack (phiên bản xác minh 2026-11-22: next 16.4.6, react 19.3.1, drizzle-orm 0.45.4, pg 8.23.1, pg-boss 12.39.0, better-auth 1.7.27, zod 4.6.7) và `PLAN.md` đợt 0
+2. Đợt 0 còn lại: schema Postgres + migration, đăng nhập/workspace, kho khoá mã hoá, hành động của provider (đăng bài, đọc hộp thư) kèm test hợp đồng chạy trên mọi provider
+3. `BLUEPRINT.md` đã ghép (510 MUST, chưa đạt mục nào): tick dần kèm lệnh kiểm
+4. Đã xong: lớp provider cắm được (`src/providers/`: registry, SocialAPI, demo) — 9 test xanh
 
 ## Quyết định
 
