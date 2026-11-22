@@ -46,7 +46,11 @@ describe("không dùng GET để đổi trạng thái (SEC-WEB-007)", () => {
         read(f),
       ),
     );
-    expect(withGet).toEqual(["app/api/auth/[...all]/route.ts"]);
+    // health: chỉ `select 1`, không ghi, không dữ liệu người dùng
+    expect(withGet).toEqual([
+      "app/api/auth/[...all]/route.ts",
+      "app/api/health/route.ts",
+    ]);
   });
 
   it("mọi thao tác ghi trong app/ là Server Action ('use server', chỉ POST)", () => {

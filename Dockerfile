@@ -34,6 +34,6 @@ COPY --chown=node:node scripts/migrate.mjs ./scripts/migrate.mjs
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Trong container phải nghe 0.0.0.0 để Docker chuyển cổng được; compose chỉ publish ra 127.0.0.1.
 CMD ["sh", "-c", "node scripts/migrate.mjs && exec node_modules/.bin/next start -H 0.0.0.0 -p 3000"]
