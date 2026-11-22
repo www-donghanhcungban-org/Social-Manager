@@ -4,7 +4,7 @@ Web app tự host để một nhóm quản lý mạng xã hội ở một nơi: 
 
 Nguồn dữ liệu **cắm được nhiều nhà cung cấp** (`src/providers/`): SocialAPI, demo, và nhà cung cấp tự viết thêm. Mỗi nhà cung cấp khai báo nền tảng × tính năng nó hỗ trợ; tính năng chưa có trả lỗi rõ ràng, không giả vờ chạy.
 
-> Trạng thái: đang xây (đợt 0 xong: lõi provider, mã hoá khoá, schema, đăng nhập, phân quyền, kiểm cấu hình). Chưa có giao diện. Xem `PROGRESS.md`.
+> Trạng thái: đang xây. Đã có: đăng nhập, workspace và phân quyền, kết nối nhà cung cấp, hộp thư, đăng bài và lịch, hàng đợi nền. Chưa có: webhook, tự động trả lời AI, thống kê. Xem `PROGRESS.md`.
 
 ## Yêu cầu môi trường
 
@@ -37,9 +37,31 @@ Cấu hình bằng biến môi trường, kiểm lúc khởi động (thiếu/sa
 | `BETTER_AUTH_SECRET`             | Bí mật phiên đăng nhập, ≥ 32 ký tự                |
 | `BETTER_AUTH_URL`                | URL công khai của app                             |
 | `APP_SECRET_KEY`                 | Khoá mã hoá khoá nhà cung cấp, base64 của 32 byte |
-| `NODE_ENV`, `SOCIALAPI_BASE_URL` | Tuỳ chọn, có giá trị mặc định                     |
+| `NODE_ENV`, `SOCIALAPI_BASE_URL` | Tuỳ chọn, có giá trị mặc định; URL phải là https  |
+| `RUN_WORKERS`                    | `true` (mặc định) bật worker nền trong tiến trình |
+| `CLIENT_IP_HEADER`               | Header do reverse proxy đặt chứa IP client        |
+| `AUTH_RATE_LIMIT_PER_MIN`        | Hạn mức đăng nhập mỗi IP mỗi phút (mặc định 10)   |
 
 Không commit file env; mẫu `.env.example` đang chờ chủ dự án tạo (xem `PROGRESS.md`).
+
+## Triển khai tự host (Docker Compose)
+
+Tạo bốn bí mật rồi chạy; thiếu biến nào thì Compose dừng ngay và nêu tên biến:
+
+```bash
+export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+export APP_SECRET_KEY="$(openssl rand -base64 32)"
+export BETTER_AUTH_URL="https://social.example.com"
+```
+
+```bash
+docker compose up -d --build
+```
+
+- Container chạy bằng người dùng `node` (không root), tự chạy migration (`scripts/migrate.mjs`) trước khi nghe cổng.
+- App publish ở `127.0.0.1:3000` và CSDL không publish ra host. Đặt reverse proxy có TLS (Caddy, nginx) phía trước rồi đặt `CLIENT_IP_HEADER` theo header mà proxy đó ghi đè.
+- Ngoài container, `npm start` bind `127.0.0.1`; chỉ `CMD` của container bind `0.0.0.0` để Docker chuyển cổng được.
 
 ## Đóng góp và liên hệ
 

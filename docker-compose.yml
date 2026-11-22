@@ -1,0 +1,38 @@
+# Triển khai tự host: app + Postgres. Mọi cổng chỉ publish ra 127.0.0.1 (BASE-SEC-010); đặt reverse proxy
+# có TLS (Caddy/nginx) phía trước nếu mở ra Internet. Biến bắt buộc thiếu thì `docker compose` dừng ngay.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: social
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?đặt POSTGRES_PASSWORD}
+      POSTGRES_DB: social
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    # Không publish cổng CSDL ra host: chỉ app trong mạng compose nối được.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U social -d social"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: postgres://social:${POSTGRES_PASSWORD:?đặt POSTGRES_PASSWORD}@db:5432/social
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?đặt BETTER_AUTH_SECRET (≥ 32 ký tự)}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?đặt BETTER_AUTH_URL (URL công khai của app)}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?đặt APP_SECRET_KEY (32 byte base64)}
+      NODE_ENV: production
+      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+      SOCIALAPI_BASE_URL: ${SOCIALAPI_BASE_URL:-}
+
+volumes:
+  dbdata:

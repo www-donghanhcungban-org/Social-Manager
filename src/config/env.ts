@@ -53,7 +53,8 @@ const schema = z.object({
   ),
   SOCIALAPI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
-    z.url().default("https://api.social-api.ai/v1"),
+    // Chỉ https: khoá API không bao giờ được gửi qua kênh không mã hoá (BASE-SEC-004).
+    z.url({ protocol: /^https$/ }).default("https://api.social-api.ai/v1"),
   ),
 });
 

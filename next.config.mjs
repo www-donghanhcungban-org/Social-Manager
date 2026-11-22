@@ -1,7 +1,6 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+// .mjs (không phải .ts) để image production không cần cài TypeScript chỉ để đọc cấu hình.
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // Không bật cacheComponents/PPR: vỏ tĩnh không mang được nonce CSP theo request (D-006).
   turbopack: {
     rules: {
