@@ -56,7 +56,7 @@ runtime Python riêng và quota tài nguyên (working.md §2, research §2).
 ### Lát 2 — Dự án và liên kết (M06)
 
 - [x] `T-203` Dự án, bí danh, liên kết nguồn–dự án (migration 0011 + down): owner/admin tạo dự án, thêm bí danh (so khớp NFC + không phân biệt hoa thường), gắn hội thoại/bằng chứng vào dự án. Ca biên: trùng bí danh trong workspace bị từ chối, member chỉ đọc, gỡ liên kết không xoá bằng chứng (sau: T-201; files: src/knowledge/, src/db/schema.ts, drizzle/, src/auth/permissions.ts, tests/knowledge/, tests/auth/; exec: deep) — Gate: `npx vitest run tests/knowledge tests/auth tests/db`
-- [ ] `T-204` Hộp chờ phân loại: bằng chứng chưa gắn dự án vào hộp chờ; gợi ý gắn theo bí danh xuất hiện trong nội dung (chỉ đề xuất, người xác nhận). Ca biên: nhiều dự án cùng khớp là mơ hồ, không tự gắn; nội dung không có bí danh nằm lại hộp chờ (sau: T-203; files: src/knowledge/, tests/knowledge/) — Gate: `npx vitest run tests/knowledge`
+- [x] `T-204` Hộp chờ phân loại: bằng chứng chưa gắn dự án vào hộp chờ; gợi ý gắn theo bí danh xuất hiện trong nội dung (chỉ đề xuất, người xác nhận). Ca biên: nhiều dự án cùng khớp là mơ hồ, không tự gắn; nội dung không có bí danh nằm lại hộp chờ (sau: T-203; files: src/knowledge/, tests/knowledge/) — Gate: `npx vitest run tests/knowledge`
 
 ### Lát 3 — Dòng thời gian, độ bao phủ, xuất và xoá (M07, M12)
 

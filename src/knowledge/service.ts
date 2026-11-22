@@ -1,4 +1,14 @@
-import { and, asc, desc, eq, lt, notExists, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  lt,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { requireAction, UUID } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
@@ -381,6 +391,88 @@ export function createKnowledgeService({
       }
       const distinct = new Set(matches.map((m) => m.projectId));
       return { matches, ambiguous: distinct.size > 1 };
+    },
+
+    /**
+     * Dòng thời gian của dự án: bằng chứng gắn trực tiếp, và bằng chứng của tin nhắn thuộc hội thoại đã gắn. Mỗi mục một
+     * lần dù gắn cả hai cách; mới nhất trước theo thời điểm ở nguồn; phân trang keyset. Không trả nội dung (đọc qua
+     * dịch vụ bằng chứng để luôn kiểm hash).
+     */
+    async timeline(input: {
+      actorId: string;
+      workspaceId: string;
+      projectId: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<{ items: UnclassifiedItem[]; nextCursor: string | null }> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.read",
+      );
+      await requireProject(input.workspaceId, input.projectId);
+      const limit = Math.min(
+        Math.max(Math.trunc(input.limit ?? 50) || 1, 1),
+        100,
+      );
+      const conds = [
+        eq(evidenceItems.workspaceId, input.workspaceId),
+        or(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(projectLinks)
+              .where(
+                and(
+                  eq(projectLinks.projectId, input.projectId),
+                  eq(projectLinks.evidenceItemId, evidenceItems.id),
+                ),
+              ),
+          ),
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(messages)
+              .innerJoin(
+                projectLinks,
+                eq(projectLinks.conversationId, messages.conversationId),
+              )
+              .where(
+                and(
+                  eq(messages.id, evidenceItems.messageId),
+                  eq(projectLinks.projectId, input.projectId),
+                ),
+              ),
+          ),
+        )!,
+      ];
+      if (input.cursor !== undefined) {
+        const c = decodeCursor(input.cursor);
+        conds.push(
+          or(
+            lt(evidenceItems.observedAt, c.t),
+            and(eq(evidenceItems.observedAt, c.t), lt(evidenceItems.id, c.id)),
+          )!,
+        );
+      }
+      const rows = await db
+        .select({
+          id: evidenceItems.id,
+          source: evidenceItems.source,
+          externalId: evidenceItems.externalId,
+          observedAt: evidenceItems.observedAt,
+        })
+        .from(evidenceItems)
+        .where(and(...conds))
+        .orderBy(desc(evidenceItems.observedAt), desc(evidenceItems.id))
+        .limit(limit + 1);
+      const page = rows.slice(0, limit);
+      return {
+        items: page,
+        nextCursor:
+          rows.length > limit ? encodeCursor(page[page.length - 1]!) : null,
+      };
     },
 
     /** Gắn một hội thoại hoặc một bằng chứng vào dự án (cùng workspace). Gắn lại là lũy đẳng. */
