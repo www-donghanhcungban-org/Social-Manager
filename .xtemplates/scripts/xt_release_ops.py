@@ -9,7 +9,7 @@ import json
 import math
 import re
 from pathlib import Path
-from typing import Any, Callable, Iterator, Protocol, cast
+from typing import Any, Callable, Iterator, Mapping, Protocol, cast
 from urllib.parse import urlsplit
 
 import xt_ops_setup as ops_setup
@@ -114,10 +114,14 @@ def approved_for_tag(core: Core, base: Path, main: Path, target: str) -> bool:
     return True
 
 
-def release_report(base: Path, path: str | None, candidate: Doc) -> bool:
-    if not path:
+def release_report(
+    base: Path,
+    path: str | None,
+    candidate: Doc,
+    bind_release_document: Callable[[Path, Doc], Mapping[str, Any]] | None = None,
+) -> bool:
+    if not path or bind_release_document is None:
         return False
-    from xt_flow import bind_release_document
 
     try:
         doc = evidence_file(path)
