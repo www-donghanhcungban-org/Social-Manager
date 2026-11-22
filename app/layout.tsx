@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -19,7 +20,10 @@ export const metadata: Metadata = {
     "Quản lý mạng xã hội ở một nơi: hộp thư hợp nhất, đăng bài, thống kê.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Đọc header buộc mọi route render động mỗi request, nhờ đó Next gắn nonce của CSP (proxy.ts) vào script.
+  // Vỏ tĩnh dựng sẵn không có nonce nên bị `strict-dynamic` chặn (đã gặp khi bật Cache Components, D-006).
+  await headers();
   return (
     <html
       lang="vi"

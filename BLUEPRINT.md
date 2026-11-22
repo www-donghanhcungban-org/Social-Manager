@@ -21,10 +21,10 @@ features: [auth, pii]
 > File này chỉ chứa MUST ở quy mô M; SHOULD/MAY ở [`BLUEPRINT-BACKLOG.md`](BLUEPRINT-BACKLOG.md) — không chặn verdict, `blueprint-status` đọc cả hai, ghép lại thì mục chuyển file theo ID (ADR-0012).
 > Feature: auth, pii — mục thiết yếu của các fact này là MUST ở quy mô M dù ghi `MUST@L`; ghép lại phải truyền lại đúng `--feature` (ADR-0030).
 
-| Mức | Số mục |
-|---|---|
-| MUST | 510 |
-| SHOULD | 1552 |
+| Mức    | Số mục |
+| ------ | ------ |
+| MUST   | 510    |
+| SHOULD | 1552   |
 
 ### Cấu hình, biến môi trường và bí mật
 
@@ -208,7 +208,7 @@ Nguồn khung: [`05-architecture/decision-records.md`](.xtemplates/framework/05-
 - [ ] `ARC-ADR-001` **MUST** Repo có thư mục `docs/adr/` với mẫu và ≥ 1 ADR chọn stack (G2) trước khi dựng nền (G5). → Kiểm: `ls docs/adr/0001-*.md`; ADR có heading "Phương án đã cân nhắc"/"Considered Options" với ≥ 2 mục. · Nguồn: [`../00-method/lifecycle.md`](.xtemplates/framework/00-method/lifecycle.md) G2 · MADR 4.0.0
 - [ ] `ARC-ADR-002` **MUST** ADR đánh số tăng dần 4 chữ số, không trùng, không tái sử dụng số; tên file `NNNN-<slug-kebab>.md`. → Kiểm: script liệt kê số và báo trùng/khoảng trống bất thường; regex tên file trong CI. · Nguồn: khung cũ `.claude/commands/adr.md` (`git show 1b80fe4:.claude/commands/adr.md`)
 - [ ] `ARC-ADR-003` **MUST** Mỗi ADR có đủ: Status · Date · Context and Problem Statement · Considered Options (≥ 2) · Decision Outcome · Consequences. → Kiểm: script lint heading (grep) chạy trong CI; 0 file thiếu. · Nguồn: MADR 4.0.0 (required: Context, Considered Options, Decision Outcome)
-- [ ] `ARC-ADR-004` **MUST** ADR đã *accepted* không bị sửa nội dung; thay đổi chỉ được ở dòng Status/liên kết "superseded by". → Kiểm: CI so diff file `docs/adr/*.md` đã accepted ở nhánh gốc — chỉ cho phép thay đổi dòng Status/links; hook `ask` khi sửa file ADR có `status: accepted`. · Nguồn: khung cũ ADR template ("KHÔNG sửa ADR cũ") · evidence-and-sources luật 12
+- [ ] `ARC-ADR-004` **MUST** ADR đã _accepted_ không bị sửa nội dung; thay đổi chỉ được ở dòng Status/liên kết "superseded by". → Kiểm: CI so diff file `docs/adr/*.md` đã accepted ở nhánh gốc — chỉ cho phép thay đổi dòng Status/links; hook `ask` khi sửa file ADR có `status: accepted`. · Nguồn: khung cũ ADR template ("KHÔNG sửa ADR cũ") · evidence-and-sources luật 12
 
 ### Tích hợp: đồng bộ/bất đồng bộ, idempotency, outbox, saga, webhook
 
@@ -1061,9 +1061,9 @@ Nguồn khung: [`13-ai-engineering/data-and-fine-tuning.md`](.xtemplates/framewo
 
 Nguồn khung: [`13-ai-engineering/evaluation.md`](.xtemplates/framework/13-ai-engineering/evaluation.md)
 
-- [ ] `AI-EVAL-001` **MUST** Mỗi tính năng LLM có bộ regression eval (pass rate mục tiêu ~100%) chạy trong CI trên PR đổi prompt/model/pipeline; giảm quá ngưỡng → đỏ. → Kiểm: job CI tồn tại; so với baseline lưu trong repo. · Nguồn: Anthropic *Demystifying evals*
+- [ ] `AI-EVAL-001` **MUST** Mỗi tính năng LLM có bộ regression eval (pass rate mục tiêu ~100%) chạy trong CI trên PR đổi prompt/model/pipeline; giảm quá ngưỡng → đỏ. → Kiểm: job CI tồn tại; so với baseline lưu trong repo. · Nguồn: Anthropic _Demystifying evals_
 - [ ] `AI-EVAL-002` **MUST** CI trên PR không gọi model thật: dùng record/replay fixture có phiên bản; gọi thật chỉ ở job đêm có ngân sách. → Kiểm: job PR không có API key của nhà cung cấp; fixture trong repo/kho có hash. · Nguồn: stored 07
-- [ ] `AI-EVAL-004` **MUST** Grader ưu tiên tất định; model judge chỉ khi có rubric và hiệu chuẩn với ≥ 50 mẫu người chấm, báo cáo agreement. → Kiểm: file rubric; báo cáo agreement (vd Cohen's κ) trong repo. · Nguồn: Anthropic *Demystifying evals*
+- [ ] `AI-EVAL-004` **MUST** Grader ưu tiên tất định; model judge chỉ khi có rubric và hiệu chuẩn với ≥ 50 mẫu người chấm, báo cáo agreement. → Kiểm: file rubric; báo cáo agreement (vd Cohen's κ) trong repo. · Nguồn: Anthropic _Demystifying evals_
 - [ ] `AI-EVAL-008` **MUST** Dataset eval có phiên bản, nguồn, giấy phép, và không chứa PII thật chưa che; tách khỏi dữ liệu huấn luyện/few-shot. → Kiểm: metadata dataset; scan PII. · Nguồn: [`data-and-fine-tuning.md`](.xtemplates/framework/13-ai-engineering/data-and-fine-tuning.md)
 
 ### Guardrail runtime, chính sách nội dung, fallback, an toàn người dùng
@@ -1121,7 +1121,7 @@ Nguồn khung: [`02-profiles/web-app.md`](.xtemplates/framework/02-profiles/web-
 - [ ] `PRF-WEB-004` **MUST** Mọi endpoint ghi (API route, server action, form POST, webhook) kiểm xác thực + phân quyền **ở server** và chống CSRF; server action được coi là endpoint POST công khai. → Kiểm: test tích hợp gọi mỗi endpoint ghi không token → 401/403; test IDOR đổi `id` của user khác → 403. · Nguồn: ASVS 5.0 V4/V8; cơ chế ở [`../08-backend/authn-authz.md`](.xtemplates/framework/08-backend/authn-authz.md)
 - [ ] `PRF-WEB-005` **MUST** Core Web Vitals ở p75 trên mobile đạt LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1 cho ≥ 5 URL chính; Lighthouse CI chặn merge khi Performance < 0.9. → Kiểm: `lhci autorun` với `assertions` trong `lighthouserc.json`; job là required check. · Nguồn: web.dev/vitals; ngân sách chi tiết ở [`../07-frontend/performance-web-vitals.md`](.xtemplates/framework/07-frontend/performance-web-vitals.md)
 - [ ] `PRF-WEB-006` **MUST** E2E luồng chính chạy trên **cả** viewport desktop và mobile, mỗi trang kèm quét axe: 0 vi phạm mức `critical`/`serious`. → Kiểm: `playwright.config` có 2 project; `@axe-core/playwright` assert `violations.filter(v => ['critical','serious'].includes(v.impact)).length === 0`. · Nguồn: WCAG 2.2 AA; cách test ở [`../14-testing-quality/e2e-and-accessibility.md`](.xtemplates/framework/14-testing-quality/e2e-and-accessibility.md)
-- [ ] `PRF-WEB-007` **MUST** Security headers bật trên mọi response HTML: CSP (không `unsafe-inline` cho `script-src`, dùng nonce/hash), HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`. → Kiểm: test E2E đọc header; `curl -sI <url>` trong CI so với danh sách bắt buộc. · Nguồn: OWASP ASVS 5.0 V3; chi tiết ở [`../07-frontend/client-security.md`](.xtemplates/framework/07-frontend/client-security.md)
+- [x] `PRF-WEB-007` **MUST** Security headers bật trên mọi response HTML: CSP (không `unsafe-inline` cho `script-src`, dùng nonce/hash), HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`. → Kiểm: test E2E đọc header; `curl -sI <url>` trong CI so với danh sách bắt buộc. · Nguồn: OWASP ASVS 5.0 V3; chi tiết ở [`../07-frontend/client-security.md`](.xtemplates/framework/07-frontend/client-security.md) — Kiểm: `npx vitest run tests/security`
 - [ ] `PRF-WEB-008` **MUST** Error tracking phía client và server có **release + source map** tải lên riêng tư; source map không công khai trên production. → Kiểm: bước CI upload sourcemap; `curl -sI https://<host>/_next/static/.../*.map` trả 404/403; lỗi thử nghiệm hiện stack trace đọc được.
 - [ ] `PRF-WEB-009` **MUST** Mỗi PR có **preview deployment** và staging có cùng tập biến môi trường/dịch vụ với production (khác giá trị, không khác hình dạng). → Kiểm: PR có URL preview tự động; script so khoá env giữa `staging` và `production` không lệch. · Nguồn: [`../10-workflow/environments-and-config.md`](.xtemplates/framework/10-workflow/environments-and-config.md)
 - [ ] `PRF-WEB-010` **MUST** Phiên bản runtime và package manager ghim trong repo (`.nvmrc`/`.node-version`, `engines`, `packageManager`) và CI dùng đúng phiên bản đó. → Kiểm: file tồn tại; workflow dùng `node-version-file`; `corepack`/`pnpm/action-setup` đọc `packageManager`.

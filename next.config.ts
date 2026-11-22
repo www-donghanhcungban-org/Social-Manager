@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Không bật cacheComponents/PPR: vỏ tĩnh không mang được nonce CSP theo request (D-006).
   turbopack: {
     rules: {
       "*.css": {
