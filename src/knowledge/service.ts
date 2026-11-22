@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lt, notExists, or, sql } from "drizzle-orm";
 
 import { requireAction, UUID } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
@@ -6,12 +6,15 @@ import type { Db } from "../auth/members";
 import {
   conversations,
   evidenceItems,
+  messages,
   nameKeyOf,
   projectAliases,
   projectLinks,
   projects,
+  type EvidenceSource,
   type ProjectLinkTarget,
 } from "../db/schema";
+import type { EvidenceService } from "../evidence/service";
 import { ValidationError } from "../providers/types";
 
 const MAX_NAME = 100;
@@ -41,7 +44,53 @@ function cleanName(raw: string, what: string): { text: string; key: string } {
   return { text, key: nameKeyOf(text) };
 }
 
-export function createKnowledgeService({ db }: { db: Db }) {
+export interface UnclassifiedItem {
+  id: string;
+  source: EvidenceSource;
+  externalId: string;
+  observedAt: Date;
+}
+
+export interface Suggestion {
+  /** Dự án mà nội dung nhắc tới (qua tên hoặc bí danh). */
+  matches: { projectId: string; term: string }[];
+  /** Khớp từ hai dự án trở lên: không đủ căn cứ để gắn, người phải chọn. */
+  ambiguous: boolean;
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function encodeCursor(row: { observedAt: Date; id: string }) {
+  return Buffer.from(
+    JSON.stringify({ t: row.observedAt.toISOString(), id: row.id }),
+  ).toString("base64url");
+}
+
+function decodeCursor(cursor: string): { t: Date; id: string } {
+  try {
+    const raw = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    const d = new Date(raw?.t);
+    if (
+      typeof raw?.t !== "string" ||
+      Number.isNaN(d.getTime()) ||
+      typeof raw.id !== "string" ||
+      !UUID.test(raw.id)
+    )
+      throw new Error("cursor");
+    return { t: d, id: raw.id };
+  } catch {
+    throw new ValidationError("Cursor không hợp lệ");
+  }
+}
+
+export function createKnowledgeService({
+  db,
+  evidence,
+}: {
+  db: Db;
+  /** Có thì `suggest` đọc được nội dung bằng chứng. */
+  evidence?: Pick<EvidenceService, "getContent">;
+}) {
   async function requireProject(workspaceId: string, projectId: string) {
     if (!UUID.test(projectId)) throw new NotFoundError();
     const [row] = await db
@@ -220,6 +269,118 @@ export function createKnowledgeService({ db }: { db: Db }) {
         )
         .returning({ id: projectAliases.id });
       if (rows.length === 0) throw new NotFoundError();
+    },
+
+    /**
+     * Hộp chờ phân loại: bằng chứng chưa gắn dự án nào — cả trực tiếp lẫn, với tin nhắn, qua hội thoại của nó. Mới nhất
+     * trước; phân trang keyset (observedAt, id) nên không sót/lặp khi trùng thời điểm.
+     */
+    async inbox(input: {
+      actorId: string;
+      workspaceId: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<{ items: UnclassifiedItem[]; nextCursor: string | null }> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.read",
+      );
+      const limit = Math.min(
+        Math.max(Math.trunc(input.limit ?? 50) || 1, 1),
+        100,
+      );
+      const conds = [
+        eq(evidenceItems.workspaceId, input.workspaceId),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(projectLinks)
+            .where(eq(projectLinks.evidenceItemId, evidenceItems.id)),
+        ),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(messages)
+            .innerJoin(
+              projectLinks,
+              eq(projectLinks.conversationId, messages.conversationId),
+            )
+            .where(eq(messages.id, evidenceItems.messageId)),
+        ),
+      ];
+      if (input.cursor !== undefined) {
+        const c = decodeCursor(input.cursor);
+        conds.push(
+          or(
+            lt(evidenceItems.observedAt, c.t),
+            and(eq(evidenceItems.observedAt, c.t), lt(evidenceItems.id, c.id)),
+          )!,
+        );
+      }
+      const rows = await db
+        .select({
+          id: evidenceItems.id,
+          source: evidenceItems.source,
+          externalId: evidenceItems.externalId,
+          observedAt: evidenceItems.observedAt,
+        })
+        .from(evidenceItems)
+        .where(and(...conds))
+        .orderBy(desc(evidenceItems.observedAt), desc(evidenceItems.id))
+        .limit(limit + 1);
+      const page = rows.slice(0, limit);
+      return {
+        items: page,
+        nextCursor:
+          rows.length > limit ? encodeCursor(page[page.length - 1]!) : null,
+      };
+    },
+
+    /**
+     * Gợi ý dự án cho một bằng chứng theo tên/bí danh xuất hiện nguyên từ trong nội dung (không phân biệt hoa thường).
+     * Chỉ đề xuất — không tự gắn. Nội dung là dữ liệu: chỉ dùng để so khớp, không thực thi gì.
+     */
+    async suggest(input: {
+      actorId: string;
+      workspaceId: string;
+      evidenceItemId: string;
+    }): Promise<Suggestion> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "projects.read",
+      );
+      if (!evidence) throw new Error("Thiếu dịch vụ bằng chứng");
+      const { content } = await evidence.getContent({
+        actorId: input.actorId,
+        workspaceId: input.workspaceId,
+        itemId: input.evidenceItemId,
+      });
+      const text = new TextDecoder().decode(content).normalize("NFC");
+      const names = await db
+        .select({ projectId: projects.id, term: projects.name })
+        .from(projects)
+        .where(eq(projects.workspaceId, input.workspaceId));
+      const aliases = await db
+        .select({
+          projectId: projectAliases.projectId,
+          term: projectAliases.alias,
+        })
+        .from(projectAliases)
+        .where(eq(projectAliases.workspaceId, input.workspaceId));
+      const matches: Suggestion["matches"] = [];
+      for (const { projectId, term } of [...names, ...aliases]) {
+        const re = new RegExp(
+          `(?<![\\p{L}\\p{N}])${escapeRe(term)}(?![\\p{L}\\p{N}])`,
+          "iu",
+        );
+        if (re.test(text)) matches.push({ projectId, term });
+      }
+      const distinct = new Set(matches.map((m) => m.projectId));
+      return { matches, ambiguous: distinct.size > 1 };
     },
 
     /** Gắn một hội thoại hoặc một bằng chứng vào dự án (cùng workspace). Gắn lại là lũy đẳng. */

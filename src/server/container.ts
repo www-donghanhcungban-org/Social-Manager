@@ -70,7 +70,7 @@ export function createContainer(cfg: Env) {
     }),
     retention: createRetentionService({ db, evidence }),
     evidence,
-    knowledge: createKnowledgeService({ db }),
+    knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),
   };
 
