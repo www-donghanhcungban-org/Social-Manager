@@ -7,6 +7,8 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createAiGateway } from "../ai/gateway";
+import { createOpenAiCompatModel } from "../ai/openai-compat";
 import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
 import { createEvidenceService } from "../evidence/service";
@@ -37,6 +39,14 @@ export function createContainer(cfg: Env) {
   const blobStore = createFsBlobStore(cfg.BLOB_DIR);
   const evidence = createEvidenceService({ db, store: blobStore });
   const coverage = createCoverageService({ db });
+  // AI tắt khi AI_BASE_URL trống (schema env đã bắt buộc có AI_MODEL khi đặt AI_BASE_URL).
+  const model = cfg.AI_BASE_URL
+    ? createOpenAiCompatModel({
+        baseUrl: cfg.AI_BASE_URL,
+        model: cfg.AI_MODEL!,
+        apiKey: cfg.AI_API_KEY,
+      })
+    : null;
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -77,6 +87,7 @@ export function createContainer(cfg: Env) {
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,
+    ai: createAiGateway({ db, model }),
     search: createSearchService({ db, evidence }),
     knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),

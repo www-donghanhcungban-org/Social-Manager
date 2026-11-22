@@ -45,6 +45,32 @@ describe("loadEnv", () => {
     expect((err as ConfigError).keys).toEqual([name]);
   });
 
+  it("AI tắt mặc định; đặt AI_BASE_URL thì bắt buộc AI_MODEL; khoá API là bí mật và bị che", () => {
+    const off = loadEnv(valid());
+    expect(off.AI_BASE_URL).toBeUndefined();
+    expect(off.AI_MODEL).toBeUndefined();
+    expect(() =>
+      loadEnv({ ...valid(), AI_BASE_URL: "http://localhost:11434/v1" }),
+    ).toThrow(/AI_MODEL/);
+    const on = loadEnv({
+      ...valid(),
+      AI_BASE_URL: "http://localhost:11434/v1",
+      AI_MODEL: "qwen3",
+      AI_API_KEY: "sk-secret-ai-key",
+    });
+    expect(on.AI_MODEL).toBe("qwen3");
+    expect(SECRET_KEYS).toContain("AI_API_KEY");
+    expect(JSON.stringify(redactEnv(on))).not.toContain("sk-secret-ai-key");
+    // giá trị rỗng coi như tắt; URL sai/không phải http(s) bị từ chối
+    expect(
+      loadEnv({ ...valid(), AI_BASE_URL: "  " }).AI_BASE_URL,
+    ).toBeUndefined();
+    for (const bad of ["ftp://x/v1", "không phải url"])
+      expect(() =>
+        loadEnv({ ...valid(), AI_BASE_URL: bad, AI_MODEL: "m" }),
+      ).toThrow(ConfigError);
+  });
+
   it("giá trị rỗng hoặc chỉ khoảng trắng coi như thiếu", () => {
     for (const v of ["", "   "]) {
       expect(() => loadEnv({ ...valid(), BETTER_AUTH_URL: v })).toThrow(
