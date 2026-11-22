@@ -54,6 +54,81 @@ type ConvRow = typeof conversations.$inferSelect;
 
 const clean = (s: string) => s.normalize("NFC");
 
+/** Tạo/cập nhật hội thoại; không lùi mốc tin gần nhất, không đụng mốc đồng bộ. Dùng chung cho đồng bộ và webhook. */
+export async function upsertConversationRow(
+  db: Db,
+  input: {
+    workspaceId: string;
+    socialAccountId: string;
+    conversation: ConversationSummary;
+    lastMessageAt: Date | null;
+  },
+): Promise<ConvRow> {
+  const c = input.conversation;
+  const [row] = await db
+    .insert(conversations)
+    .values({
+      workspaceId: input.workspaceId,
+      socialAccountId: input.socialAccountId,
+      externalId: c.id,
+      participantId: clean(c.participantId),
+      participantName: clean(c.participantName).trim().slice(0, MAX_AUTHOR),
+      lastMessageAt: input.lastMessageAt,
+    })
+    .onConflictDoUpdate({
+      target: [conversations.socialAccountId, conversations.externalId],
+      set: {
+        participantId: sql`excluded.participant_id`,
+        participantName: sql`excluded.participant_name`,
+        lastMessageAt: sql`greatest(${conversations.lastMessageAt}, excluded.last_message_at)`,
+      },
+    })
+    .returning();
+  return row!;
+}
+
+/**
+ * Tin ĐẾN mới → mục hộp thư của hội thoại (khoá: id hội thoại). Tin cũ hơn tin mục đang hiển thị thì không đụng;
+ * mới hơn thì cập nhật và mở lại mục đã xử lý. Trả số mục tạo/cập nhật.
+ */
+export async function touchDmInbox(
+  db: Db,
+  conv: Pick<
+    ConvRow,
+    "workspaceId" | "socialAccountId" | "externalId" | "participantName"
+  >,
+  latest: { author: string; text: string; sentAt: Date },
+): Promise<number> {
+  const rows = await db
+    .insert(inboxItems)
+    .values({
+      workspaceId: conv.workspaceId,
+      socialAccountId: conv.socialAccountId,
+      kind: "dm",
+      externalId: conv.externalId,
+      author: latest.author || conv.participantName,
+      text: latest.text.slice(0, PREVIEW_MAX),
+      receivedAt: latest.sentAt,
+    })
+    .onConflictDoUpdate({
+      target: [
+        inboxItems.socialAccountId,
+        inboxItems.kind,
+        inboxItems.externalId,
+      ],
+      set: {
+        author: sql`excluded.author`,
+        text: sql`excluded.text`,
+        receivedAt: sql`excluded.received_at`,
+        status: "open",
+        handledBy: null,
+      },
+      setWhere: sql`excluded.received_at > ${inboxItems.receivedAt}`,
+    })
+    .returning({ id: inboxItems.id });
+  return rows.length;
+}
+
 /**
  * Đồng bộ DM theo hội thoại + tin nhắn (ADR-0002, H1). Lũy đẳng: tin khử trùng theo (tài khoản, external_id),
  * mục hộp thư chỉ cập nhật/mở lại khi có tin ĐẾN mới hơn tin nó đang hiển thị.
@@ -67,35 +142,22 @@ export function createConversationSync({
   db: Db;
   errorCode: (e: unknown) => string;
 }) {
-  async function upsertConversation(
+  const upsertConversation = (
     workspaceId: string,
     account: ConversationSyncAccount,
     c: ConversationSummary,
     lastMs: number | undefined,
-  ): Promise<ConvRow> {
-    const lastMessageAt = lastMs === undefined ? null : new Date(lastMs);
-    const [row] = await db
-      .insert(conversations)
-      .values({
-        workspaceId,
-        socialAccountId: account.id,
-        externalId: c.id,
-        participantId: clean(c.participantId),
-        participantName: clean(c.participantName).trim().slice(0, MAX_AUTHOR),
-        lastMessageAt,
-      })
-      .onConflictDoUpdate({
-        target: [conversations.socialAccountId, conversations.externalId],
-        set: {
-          participantId: sql`excluded.participant_id`,
-          participantName: sql`excluded.participant_name`,
-          // Không lùi mốc tin gần nhất khi nhà cung cấp trả dữ liệu cũ.
-          lastMessageAt: sql`greatest(${conversations.lastMessageAt}, excluded.last_message_at)`,
-        },
-      })
-      .returning();
-    return row!;
-  }
+  ) =>
+    upsertConversationRow(db, {
+      workspaceId,
+      socialAccountId: account.id,
+      conversation: c,
+      lastMessageAt: lastMs === undefined ? null : new Date(lastMs),
+    });
+  const touchInbox = (
+    conv: ConvRow,
+    latest: { author: string; text: string; sentAt: Date },
+  ) => touchDmInbox(db, conv, latest);
 
   /** Kiểm và chuẩn hoá một tin; undefined = loại (đếm rejected). */
   function toRow(
@@ -127,41 +189,6 @@ export function createConversationSync({
       text: clean(m.text),
       sentAt: new Date(ms),
     };
-  }
-
-  /** Tin đến mới nhất vừa chèn → mục hộp thư của hội thoại; tin cũ hơn mục đang hiển thị thì không đụng. */
-  async function touchInbox(
-    conv: ConvRow,
-    latest: { author: string; text: string; sentAt: Date },
-  ): Promise<number> {
-    const rows = await db
-      .insert(inboxItems)
-      .values({
-        workspaceId: conv.workspaceId,
-        socialAccountId: conv.socialAccountId,
-        kind: "dm",
-        externalId: conv.externalId,
-        author: latest.author || conv.participantName,
-        text: latest.text.slice(0, PREVIEW_MAX),
-        receivedAt: latest.sentAt,
-      })
-      .onConflictDoUpdate({
-        target: [
-          inboxItems.socialAccountId,
-          inboxItems.kind,
-          inboxItems.externalId,
-        ],
-        set: {
-          author: sql`excluded.author`,
-          text: sql`excluded.text`,
-          receivedAt: sql`excluded.received_at`,
-          status: "open",
-          handledBy: null,
-        },
-        setWhere: sql`excluded.received_at > ${inboxItems.receivedAt}`,
-      })
-      .returning({ id: inboxItems.id });
-    return rows.length;
   }
 
   /**

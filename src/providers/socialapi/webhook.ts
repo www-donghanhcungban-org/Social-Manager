@@ -52,6 +52,20 @@ export type WebhookEvent =
         text: string;
         receivedAt: Date;
       };
+      /**
+       * Chỉ với `dm.received` có `conversation_id` (Zalo không gửi): tin ghi vào hội thoại cùng khoá với đồng bộ
+       * (ADR-0002, H1). Mục hộp thư khi đó khoá theo id hội thoại thay cho `data.id`.
+       */
+      message?: {
+        conversationId: string;
+        /** `platform_id` nếu có, không thì `data.id` (định danh yếu). */
+        messageId: string;
+        identityWeak: boolean;
+        providerMessageId: string;
+        participantId: string;
+        /** Nguyên văn, không cắt. */
+        text: string;
+      };
     };
 
 const KIND_OF_EVENT = new Map<string, InboxKind>([
@@ -118,15 +132,34 @@ export function parseWebhookEvent(json: unknown): WebhookEvent {
       : typeof author.id === "string"
         ? author.id
         : "";
+  const id = str(data.id, "data.id");
+  const item = {
+    externalId: id,
+    author: clean(name, MAX_AUTHOR).trim(),
+    text: clean(content.text, MAX_TEXT),
+    receivedAt: isoDate(data.received_at, "received_at"),
+  };
+  if (kind !== "dm" || data.conversation_id == null)
+    return { type: "inbox", kind, accountExternalId, item };
+
+  const conversationId = str(data.conversation_id, "conversation_id");
+  const platformId =
+    data.platform_id == null ? null : str(data.platform_id, "platform_id");
   return {
     type: "inbox",
     kind,
     accountExternalId,
-    item: {
-      externalId: str(data.id, "data.id"),
-      author: clean(name, MAX_AUTHOR).trim(),
-      text: clean(content.text, MAX_TEXT),
-      receivedAt: isoDate(data.received_at, "received_at"),
+    item: { ...item, externalId: conversationId },
+    message: {
+      conversationId,
+      messageId: platformId ?? id,
+      identityWeak: platformId === null,
+      providerMessageId: id,
+      participantId:
+        typeof author.id === "string" && author.id !== ""
+          ? author.id.slice(0, MAX_ID)
+          : item.author,
+      text: clean(content.text, Number.MAX_SAFE_INTEGER),
     },
   };
 }

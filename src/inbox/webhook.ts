@@ -2,7 +2,13 @@ import { and, eq } from "drizzle-orm";
 
 import { UUID } from "../auth/access";
 import type { Db } from "../auth/members";
-import { inboxItems, providerConnections, socialAccounts } from "../db/schema";
+import { touchDmInbox, upsertConversationRow } from "../conversations/sync";
+import {
+  inboxItems,
+  messages,
+  providerConnections,
+  socialAccounts,
+} from "../db/schema";
 import {
   parseWebhookEvent,
   verifyWebhookSignature,
@@ -95,6 +101,49 @@ export function createWebhookIngest({
         );
       // Tài khoản chưa được thêm vào app: thử lại không giúp gì, nên xác nhận 200 và bỏ qua.
       if (!account) return { status: 200, body: { status: "ignored" } };
+
+      if (event.message) {
+        const m = event.message;
+        // Cùng khoá với đồng bộ (tài khoản, platform_id): webhook trước hay đồng bộ trước đều chỉ một tin.
+        const conv = await upsertConversationRow(db, {
+          workspaceId: conn.workspaceId,
+          socialAccountId: account.id,
+          conversation: {
+            id: m.conversationId,
+            participantId: m.participantId,
+            participantName: event.item.author || m.participantId,
+            lastMessageAt: null,
+          },
+          lastMessageAt: event.item.receivedAt,
+        });
+        const fresh = await db
+          .insert(messages)
+          .values({
+            workspaceId: conn.workspaceId,
+            conversationId: conv.id,
+            socialAccountId: account.id,
+            externalId: m.messageId,
+            identityWeak: m.identityWeak,
+            providerMessageId: m.providerMessageId,
+            direction: "incoming",
+            author: event.item.author,
+            text: m.text,
+            sentAt: event.item.receivedAt,
+          })
+          .onConflictDoNothing({
+            target: [messages.socialAccountId, messages.externalId],
+          })
+          .returning({ id: messages.id });
+        const updated =
+          fresh.length === 0
+            ? 0
+            : await touchDmInbox(db, conv, {
+                author: event.item.author,
+                text: m.text,
+                sentAt: event.item.receivedAt,
+              });
+        return { status: 200, body: { status: "ok", inserted: updated } };
+      }
 
       const inserted = await db
         .insert(inboxItems)

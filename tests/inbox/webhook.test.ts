@@ -4,9 +4,12 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createConnectionService } from "@/src/connections/service";
+import { createConversationSync } from "@/src/conversations/sync";
 import {
+  conversations,
   inboxItems,
   members,
+  messages,
   providerConnections,
   socialAccounts,
   workspaces,
@@ -292,5 +295,142 @@ describe("đặt secret webhook (setWebhookSecret)", () => {
     await expect(attempt("memA", wsA)).rejects.toThrow();
     await expect(attempt("ownerB", wsA)).rejects.toThrow();
     await expect(attempt("ownerB", wsB)).rejects.toThrow(); // connA không thuộc wsB → NotFound
+  });
+});
+
+describe("dm.received theo hội thoại (cùng khoá với đồng bộ)", () => {
+  const withConv = (over: Record<string, unknown> = {}) =>
+    dm({ conversation_id: "conv-1", platform_id: "mid.1", ...over });
+
+  /** Đồng bộ giả trả đúng tin mà webhook đã/ sẽ báo (cùng platform_id). */
+  const syncOnce = () =>
+    createConversationSync({ db: t.db, errorCode: () => "x" }).syncAccount(
+      wsA,
+      { id: accA, externalId: "acc_A", platform: "instagram" },
+      {
+        id: "fake",
+        label: "fake",
+        support: { instagram: ["dm"] },
+        listConversations: async () => ({
+          items: [
+            {
+              id: "conv-1",
+              participantId: "u1",
+              participantName: "Lan",
+              lastMessageAt: "2026-11-22T08:00:00Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+        listMessages: async () => ({
+          items: [
+            {
+              id: "mid.1",
+              identityWeak: false,
+              providerMessageId: "uuid-1",
+              direction: "incoming",
+              author: "Lan",
+              text: "Chào shop",
+              sentAt: "2026-11-22T08:00:00Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+      },
+    );
+  const all = async () => ({
+    msgs: await t.db.select().from(messages),
+    convs: await t.db.select().from(conversations),
+    items: await t.db.select().from(inboxItems),
+  });
+
+  it("ghi tin theo platform_id, hội thoại và mục hộp thư khoá theo conversation_id; nội dung không cắt", async () => {
+    const long = "x".repeat(12_000);
+    expect(
+      (await call(withConv({ content: { text: long } }))).body,
+    ).toMatchObject({ status: "ok", inserted: 1 });
+    const { msgs, convs, items } = await all();
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatchObject({
+      externalId: "mid.1",
+      identityWeak: false,
+      providerMessageId: "sapi_dm_1",
+      direction: "incoming",
+    });
+    expect(msgs[0]!.text).toHaveLength(12_000);
+    expect(convs[0]).toMatchObject({
+      externalId: "conv-1",
+      participantId: "u1",
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ kind: "dm", externalId: "conv-1" });
+    expect(items[0]!.text).toHaveLength(10_000);
+  });
+
+  it("webhook trước rồi đồng bộ: chỉ một tin, một mục", async () => {
+    await call(withConv());
+    const r = await syncOnce();
+    expect(r.messages).toBe(0);
+    const { msgs, items } = await all();
+    expect(msgs).toHaveLength(1);
+    expect(items).toHaveLength(1);
+  });
+
+  it("đồng bộ trước rồi webhook: chỉ một tin, mục đã xử lý không bị mở lại vì tin cũ", async () => {
+    await syncOnce();
+    await t.db
+      .update(inboxItems)
+      .set({ status: "handled", handledBy: "ownerA" });
+    expect((await call(withConv())).body).toMatchObject({ inserted: 0 });
+    const { msgs, items } = await all();
+    expect(msgs).toHaveLength(1);
+    expect(items[0]!.status).toBe("handled");
+  });
+
+  it("giao trùng cùng sự kiện: không nhân đôi", async () => {
+    await call(withConv());
+    expect((await call(withConv())).body).toMatchObject({ inserted: 0 });
+    expect((await all()).msgs).toHaveLength(1);
+  });
+
+  it("tin đến mới hơn qua webhook mở lại mục đã xử lý", async () => {
+    await call(withConv());
+    await t.db
+      .update(inboxItems)
+      .set({ status: "handled", handledBy: "ownerA" });
+    await call(
+      withConv({
+        id: "sapi_dm_2",
+        platform_id: "mid.2",
+        received_at: "2026-11-22T09:00:00Z",
+        content: { text: "Còn không?" },
+      }),
+    );
+    const { items, convs } = await all();
+    expect(items[0]).toMatchObject({ status: "open", text: "Còn không?" });
+    expect(convs[0]!.lastMessageAt!.toISOString()).toBe(
+      "2026-11-22T09:00:00.000Z",
+    );
+  });
+
+  it("thiếu platform_id: dùng data.id, đánh dấu định danh yếu", async () => {
+    await call(withConv({ platform_id: undefined }));
+    expect((await all()).msgs[0]).toMatchObject({
+      externalId: "sapi_dm_1",
+      identityWeak: true,
+    });
+  });
+
+  it("thiếu conversation_id (Zalo): giữ cách cũ, không ghi bảng tin nhắn", async () => {
+    await call(dm());
+    const { msgs, convs, items } = await all();
+    expect(msgs).toEqual([]);
+    expect(convs).toEqual([]);
+    expect(items[0]).toMatchObject({ externalId: "sapi_dm_1" });
+  });
+
+  it("conversation_id sai kiểu là 400", async () => {
+    expect((await call(withConv({ conversation_id: 42 }))).status).toBe(400);
+    expect((await all()).msgs).toEqual([]);
   });
 });
