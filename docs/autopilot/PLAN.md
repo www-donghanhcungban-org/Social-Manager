@@ -71,3 +71,4 @@ kho khoá mã hoá, schema Postgres có migration, đăng nhập + vai trò theo
 | Việc                | Bên ngoài | Ngày cam kết | Kế hoạch B                |
 | ------------------- | --------- | ------------ | ------------------------- |
 | Khoá SocialAPI thật | chủ dự án | không có     | demo provider + fetch giả |
+- [x] `T-010` Tài liệu và tệp cộng đồng (BASE-DOC-001, BASE-REPO-002/003/004/007, BASE-SEC-009): README thật, CHANGELOG Keep a Changelog, LICENSE khớp package.json, SECURITY có kênh báo lỗi, `.gitattributes`, không artefact/env trong git. Ca biên: không còn lời mẫu create-next-app; CRLF ngoài khai báo = lỗi (sau: T-008; files: README.md, CHANGELOG.md, package.json, tests/config/repo-docs.test.ts) — Gate: `npx vitest run tests/config/repo-docs.test.ts`
