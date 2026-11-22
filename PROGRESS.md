@@ -5,9 +5,9 @@
 
 ## Giai đoạn hiện tại
 
-- Giai đoạn:
+- Giai đoạn: GĐ 0–2 (nghiên cứu & kế hoạch) — chờ duyệt kế hoạch
 - Default-branch SHA đã đối chiếu:
-- Ngày cập nhật:
+- Ngày cập nhật: 2026-11-22
 
 ## Goal đang active
 
@@ -21,7 +21,7 @@
 
 ## Đang làm / chờ
 
--
+- Kế hoạch Social Manager bản cải tiến, chờ chốt 3 quyết định: `docs/work/2026-11-22-social-manager-plan/working.md`
 
 ## Tiếp theo
 
