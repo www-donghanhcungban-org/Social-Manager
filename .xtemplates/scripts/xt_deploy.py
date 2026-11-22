@@ -11,15 +11,18 @@ from typing import Any, Callable, Protocol
 from urllib.parse import urlsplit
 
 import xt_ops_setup
-import xt_release_ops
 
 Doc = dict[str, Any]
 
 
-class Core(xt_release_ops.Core, Protocol):
+class Core(Protocol):
     DEPLOY_LEDGER: str
+    RELEASE_SIGN_BLUEPRINT: str
+    RELEASE_SIGN_STATUS: str
     _go_git: Callable[..., str]
     _validate_deploy_ledger: Callable[[Any], Doc]
+    _release_tree: Callable[[Path], tuple[Doc, str, bool]]
+    release_check: Callable[[Path, str, str], Doc]
 
 
 def receipt_url(value: str) -> str | None:
@@ -141,6 +144,8 @@ def remote_authority(core: Core, base: Path, env: str, head: str, envs: Doc, con
 
 
 def approve_candidate(core: Core, base: Path, env: str, subject: Doc, ledger: Doc) -> None:
+    import xt_release_ops
+
     dev = ledger["envs"].get("dev", {}).get("current")
     if not dev or dev["result"] != "deployed" or not xt_release_ops.matches(subject, dev["subject"]):
         raise ValueError("dev.current chưa xác nhận đúng content và digest của ứng viên")
