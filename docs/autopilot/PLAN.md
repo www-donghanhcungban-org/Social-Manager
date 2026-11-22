@@ -60,7 +60,7 @@ kho khoá mã hoá, schema Postgres có migration, đăng nhập + vai trò theo
 ### Lát 3 — Bảo mật & dữ liệu
 
 - [x] `T-004` Kho khoá mã hoá AES-256-GCM (node:crypto), khoá chủ từ biến môi trường, định dạng có phiên bản. Ca biên: bản mã bị sửa 1 byte → lỗi, sai khoá → lỗi, cùng bản rõ hai lần ra hai bản mã khác nhau, khoá sai độ dài (sau: T-001; files: src/security/, tests/security/; topo: review) — Gate: `npx vitest run tests/security`
-- [ ] `T-005` Schema Drizzle + migration có đường lùi: workspaces, members(role), provider_connections(credentials mã hoá), social_accounts; thử trên PGlite. Ca biên: xoá workspace xoá theo tầng, trùng (workspace, provider, account) bị từ chối, role ngoài danh sách bị từ chối (sau: T-004; files: src/db/, drizzle/, tests/db/; exec: deep) — Gate: `npx vitest run tests/db`
+- [x] `T-005` Schema Drizzle + migration có đường lùi: workspaces, members(role), provider_connections(credentials mã hoá), social_accounts; thử trên PGlite. Ca biên: xoá workspace xoá theo tầng, trùng (workspace, provider, account) bị từ chối, role ngoài danh sách bị từ chối (sau: T-004; files: src/db/, drizzle/, tests/db/; exec: deep) — Gate: `npx vitest run tests/db`
 - [ ] `T-006` Đăng nhập Better Auth + vai trò owner/admin/member theo workspace, kiểm quyền ở server. Ca biên: member không đổi được vai trò, owner cuối không tự xoá mình, phiên hết hạn (sau: T-005; files: src/auth/, app/api/auth/, tests/auth/; exec: deep; topo: review) — Gate: `npx vitest run tests/auth`
 
 ## Phụ thuộc ngoài
