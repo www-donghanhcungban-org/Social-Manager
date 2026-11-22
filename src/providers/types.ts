@@ -103,7 +103,28 @@ export interface PublishInput {
 
 export interface PublishResult {
   id: string;
-  status: "published" | "scheduled";
+  /**
+   * `published`: đã lên mạng · `scheduled`: nhà cung cấp giữ để đăng theo giờ hẹn · `submitted`: đã nhận nhưng chưa
+   * biết kết quả cuối (vd SocialAPI `publishing`) — phải xác nhận lại bằng `getPostStatus` (ADR-0002, H2).
+   */
+  status: "published" | "scheduled" | "submitted";
+}
+
+/** Trạng thái cuối/hiện tại của bài phía nhà cung cấp; `pending` = chưa xong. */
+export const REMOTE_POST_STATUSES = [
+  "pending",
+  "published",
+  "partial",
+  "failed",
+  "cancelled",
+] as const;
+export type RemotePostStatus = (typeof REMOTE_POST_STATUSES)[number];
+
+export interface PostStatusQuery {
+  platform: Platform;
+  accountId: string;
+  /** Id bài bên nhà cung cấp (`PublishResult.id`). */
+  postId: string;
 }
 
 /**
@@ -125,6 +146,8 @@ export interface SocialProvider {
   /** Tin nhắn của một hội thoại, mới nhất trước. Cài cùng `listConversations`. */
   listMessages?(query: MessageQuery): Promise<Page<ProviderMessage>>;
   publishPost?(input: PublishInput): Promise<PublishResult>;
+  /** Đọc lại trạng thái bài đã gửi. Provider có thể trả `submitted` thì phải cài hàm này. */
+  getPostStatus?(query: PostStatusQuery): Promise<{ status: RemotePostStatus }>;
 }
 
 /** Provider không làm được việc này trên nền tảng này (hoặc khai hỗ trợ mà chưa cài đặt). */

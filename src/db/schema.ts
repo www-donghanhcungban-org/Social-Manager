@@ -229,11 +229,18 @@ export const messages = pgTable(
   ],
 );
 
+/**
+ * `submitted`: nhà cung cấp đã nhận, chờ xác nhận · `partial`: lên được một phần đích · `send_unknown`: không biết
+ * đã lên mạng chưa (mất kết nối giữa chừng, quá hạn xác nhận) — không tự đăng lại để tránh đăng hai lần (ADR-0002, H2).
+ */
 export const POST_STATUSES = [
   "scheduled",
   "publishing",
+  "submitted",
   "published",
+  "partial",
   "failed",
+  "send_unknown",
 ] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
 

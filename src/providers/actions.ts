@@ -1,7 +1,10 @@
 import {
+  REMOTE_POST_STATUSES,
   UnsupportedError,
   ValidationError,
   type Capability,
+  type PostStatusQuery,
+  type RemotePostStatus,
   type ConversationQuery,
   type ConversationSummary,
   type InboxItem,
@@ -81,6 +84,21 @@ export async function listMessages(
   if (query.conversationId === "")
     throw new ValidationError("Thiếu id hội thoại");
   return provider.listMessages(query);
+}
+
+/** Đọc lại trạng thái bài đã gửi; provider không cài thì `not_implemented` (bài giữ `submitted` tới hạn). */
+export async function getPostStatus(
+  provider: SocialProvider,
+  query: PostStatusQuery,
+): Promise<RemotePostStatus> {
+  requireSupport(provider, query.platform, "publish");
+  if (!provider.getPostStatus)
+    throw new UnsupportedError(query.platform, "publish", "not_implemented");
+  if (query.postId === "") throw new ValidationError("Thiếu id bài đăng");
+  const { status } = await provider.getPostStatus(query);
+  if (!REMOTE_POST_STATUSES.includes(status))
+    throw new ValidationError("Trạng thái bài đăng không hợp lệ");
+  return status;
 }
 
 export async function publishPost(

@@ -34,6 +34,7 @@ let ws: string;
 let account: string;
 let foreignAccount: string;
 let publish: ReturnType<typeof vi.fn>;
+let remote: ReturnType<typeof vi.fn>;
 let credsSeen: string[];
 
 function stubProvider(): SocialProvider {
@@ -42,6 +43,7 @@ function stubProvider(): SocialProvider {
     label: "Stub",
     support: { facebook: ["publish"] },
     publishPost: publish as unknown as SocialProvider["publishPost"],
+    getPostStatus: remote as unknown as SocialProvider["getPostStatus"],
   };
 }
 
@@ -86,6 +88,7 @@ beforeEach(async () => {
     id: `ext-${i.text}`,
     status: "published" as const,
   }));
+  remote = vi.fn(async () => ({ status: "published" as const }));
   const [a] = await t.db.insert(workspaces).values({ name: "A" }).returning();
   const [b] = await t.db.insert(workspaces).values({ name: "B" }).returning();
   ws = a!.id;
@@ -304,12 +307,44 @@ describe("runDue", () => {
     expect(JSON.stringify(failed)).not.toContain("pw@");
   });
 
-  it("nhà cung cấp trả scheduled (hẹn phía họ) vẫn tính đã đăng thành công", async () => {
-    publish.mockResolvedValueOnce({ id: "x", status: "scheduled" });
+  it("nhà cung cấp trả submitted hoặc scheduled: bài ở submitted, chưa có publishedAt", async () => {
+    for (const [i, status] of (["submitted", "scheduled"] as const).entries()) {
+      publish.mockResolvedValueOnce({ id: `x${i}`, status });
+      await make().schedule(
+        input({ idempotencyKey: `k-${status}`, text: status }),
+      );
+    }
+    await make().runDue({ limit: 10 });
+    const rows = await t.db.select().from(posts);
+    for (const row of rows) {
+      expect(row.status).toBe("submitted");
+      expect(row.publishedAt).toBeNull();
+      expect(row.externalId).toMatch(/^x/);
+    }
+  });
+
+  it.each([
+    ["client.timeout", 0],
+    ["client.network", 0],
+    ["http.502", 502],
+    ["client.invalid_response", 200],
+  ])(
+    "lỗi %s (có thể đã gửi) → send_unknown, không phải failed",
+    async (code, status) => {
+      publish.mockRejectedValueOnce(new SocialApiError("x", status, code));
+      await make().schedule(input());
+      await make().runDue({ limit: 10 });
+      const [row] = await t.db.select().from(posts);
+      expect(row).toMatchObject({ status: "send_unknown", errorCode: code });
+    },
+  );
+
+  it("lỗi 4xx (chắc chắn bị từ chối) vẫn là failed", async () => {
+    publish.mockRejectedValueOnce(new SocialApiError("x", 422, "http.422"));
     await make().schedule(input());
     await make().runDue({ limit: 10 });
     const [row] = await t.db.select().from(posts);
-    expect(row!.status).toBe("published");
+    expect(row).toMatchObject({ status: "failed", errorCode: "http.422" });
   });
 
   it("provider không còn đăng ký → failed `provider_unavailable`, không ném", async () => {
@@ -330,7 +365,7 @@ describe("runDue", () => {
 });
 
 describe("recoverStuck", () => {
-  it("bài kẹt `publishing` quá hạn chuyển failed `interrupted` (không tự đăng lại để tránh trùng)", async () => {
+  it("bài kẹt `publishing` quá hạn chuyển send_unknown `interrupted` (có thể đã lên mạng; không tự đăng lại)", async () => {
     await make().schedule(input());
     await t.db
       .update(posts)
@@ -340,8 +375,115 @@ describe("recoverStuck", () => {
     expect(await make(NOW).recoverStuck({ olderThanMs: 600_000 })).toBe(0);
     expect(await make(later).recoverStuck({ olderThanMs: 600_000 })).toBe(1);
     const [row] = await t.db.select().from(posts).where(eq(posts.attempts, 1));
-    expect(row).toMatchObject({ status: "failed", errorCode: "interrupted" });
+    expect(row).toMatchObject({
+      status: "send_unknown",
+      errorCode: "interrupted",
+    });
     expect(publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("confirmSubmitted", () => {
+  const DAY = 86_400_000;
+  async function submitted(text = "Xin chào", claimedAt = NOW) {
+    publish.mockResolvedValueOnce({ id: `ext-${text}`, status: "submitted" });
+    await make().schedule(input({ text, idempotencyKey: text }));
+    await make().runDue({ limit: 10 });
+    await t.db.update(posts).set({ claimedAt }).where(eq(posts.text, text));
+  }
+  const confirm = (now = NOW) =>
+    make(now).confirmSubmitted({ limit: 10, deadlineMs: DAY });
+  const row = async () => (await t.db.select().from(posts))[0]!;
+
+  it("nhà cung cấp xác nhận published → published kèm publishedAt; hỏi đúng id bài", async () => {
+    await submitted();
+    expect(await confirm()).toMatchObject({ published: 1 });
+    expect(await row()).toMatchObject({ status: "published", errorCode: null });
+    expect((await row()).publishedAt).toEqual(NOW);
+    expect(remote.mock.calls[0]![0]).toMatchObject({
+      postId: "ext-Xin chào",
+      accountId: "page1",
+      platform: "facebook",
+    });
+  });
+
+  it("partial → partial; failed → failed; cancelled → failed mã cancelled", async () => {
+    await submitted();
+    remote.mockResolvedValueOnce({ status: "partial" });
+    await confirm();
+    expect((await row()).status).toBe("partial");
+
+    await t.db.delete(posts);
+    await submitted("b");
+    remote.mockResolvedValueOnce({ status: "failed" });
+    await confirm();
+    expect(await row()).toMatchObject({
+      status: "failed",
+      errorCode: "upstream_failed",
+    });
+
+    await t.db.delete(posts);
+    await submitted("c");
+    remote.mockResolvedValueOnce({ status: "cancelled" });
+    await confirm();
+    expect(await row()).toMatchObject({
+      status: "failed",
+      errorCode: "cancelled",
+    });
+  });
+
+  it("còn pending hoặc lỗi mạng khi xác nhận: giữ submitted", async () => {
+    await submitted();
+    remote.mockResolvedValueOnce({ status: "pending" });
+    expect(await confirm()).toMatchObject({ pending: 1 });
+    remote.mockRejectedValueOnce(new SocialApiError("x", 0, "client.network"));
+    expect(await confirm()).toMatchObject({ pending: 1 });
+    expect((await row()).status).toBe("submitted");
+  });
+
+  it("trạng thái lạ từ provider không bị coi là thành công", async () => {
+    await submitted();
+    remote.mockResolvedValueOnce({ status: "teleported" });
+    await confirm();
+    expect((await row()).status).toBe("submitted");
+  });
+
+  it("quá hạn xác nhận mà chưa có kết quả cuối → send_unknown confirm_timeout, không đăng lại", async () => {
+    await submitted();
+    remote.mockResolvedValue({ status: "pending" });
+    const later = new Date(NOW.getTime() + DAY + 1);
+    expect(await confirm(later)).toMatchObject({ send_unknown: 1 });
+    expect(await row()).toMatchObject({
+      status: "send_unknown",
+      errorCode: "confirm_timeout",
+    });
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("quá hạn nhưng lần hỏi cuối có kết quả thì theo kết quả đó", async () => {
+    await submitted();
+    const later = new Date(NOW.getTime() + DAY + 1);
+    await confirm(later);
+    expect((await row()).status).toBe("published");
+  });
+
+  it("provider không đọc lại được trạng thái: giữ submitted tới hạn rồi send_unknown", async () => {
+    await submitted();
+    const noRead = createPostService({
+      db: t.db,
+      box,
+      now: () => new Date(NOW.getTime() + DAY + 1),
+      resolveProvider: () => ({ ...stubProvider(), getPostStatus: undefined }),
+    });
+    await noRead.confirmSubmitted({ limit: 10, deadlineMs: DAY });
+    expect((await row()).status).toBe("send_unknown");
+  });
+
+  it("không đụng bài ở trạng thái khác", async () => {
+    await make().schedule(input());
+    await make().runDue({ limit: 10 }); // published
+    expect(await confirm()).toMatchObject({ published: 0, pending: 0 });
+    expect(remote).not.toHaveBeenCalled();
   });
 });
 

@@ -55,6 +55,7 @@ d("pg-boss trên Postgres thật", () => {
         posts: {
           runDue: async () => ({ published: 0, failed: 0 }),
           recoverStuck: async () => 0,
+          confirmSubmitted: async () => ({}),
         },
         inbox: { syncAsSystem },
         retention: noRetention,
@@ -85,7 +86,7 @@ d("pg-boss trên Postgres thật", () => {
     }
   }, 30_000);
 
-  it("lịch được đăng ký trong DB cho cả bốn việc định kỳ", async () => {
+  it("lịch được đăng ký trong DB cho cả năm việc định kỳ", async () => {
     const boss = await startBoss(url);
     try {
       const runner = createJobRunner({
@@ -93,6 +94,7 @@ d("pg-boss trên Postgres thật", () => {
         posts: {
           runDue: async () => ({ published: 0, failed: 0 }),
           recoverStuck: async () => 0,
+          confirmSubmitted: async () => ({}),
         },
         inbox: { syncAsSystem: async () => ({ inserted: 0 }) },
         retention: noRetention,
@@ -110,6 +112,7 @@ d("pg-boss trên Postgres thật", () => {
         [
           QUEUES.runDue,
           QUEUES.recoverStuck,
+          QUEUES.confirmSubmitted,
           QUEUES.syncAll,
           QUEUES.purgeExpired,
         ].sort(),

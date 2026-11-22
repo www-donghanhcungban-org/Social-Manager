@@ -9,13 +9,17 @@ import {
   socialAccounts,
   type PostStatus,
 } from "../db/schema";
-import { publishPost as publishViaProvider } from "../providers/actions";
-import { parseIsoWithOffset } from "../providers/actions";
+import {
+  getPostStatus as getRemoteStatus,
+  parseIsoWithOffset,
+  publishPost as publishViaProvider,
+} from "../providers/actions";
 import { SocialApiError } from "../providers/socialapi/client";
 import {
   UnsupportedError,
   ValidationError,
   type Platform,
+  type RemotePostStatus,
   type SocialProvider,
 } from "../providers/types";
 import type { SecretBox } from "../security/secret-box";
@@ -53,6 +57,19 @@ function errorCodeOf(e: unknown): string {
   if (e instanceof UnsupportedError) return e.code;
   if (e instanceof ValidationError) return "validation";
   return "internal";
+}
+
+/**
+ * Lỗi mà yêu cầu đăng CÓ THỂ đã tới nhà cung cấp (hết giờ, đứt kết nối, lỗi 5xx, phản hồi 2xx đọc không được):
+ * không được coi là "chưa đăng", vì đăng lại có thể thành hai bài.
+ */
+function outcomeUnknown(e: unknown): boolean {
+  if (!(e instanceof SocialApiError)) return false;
+  if (e.code === "client.timeout" || e.code === "client.network") return true;
+  if (e.status >= 500) return true;
+  return (
+    e.code === "client.invalid_response" && e.status >= 200 && e.status < 300
+  );
 }
 
 export interface PostServiceDeps {
@@ -132,27 +149,109 @@ export function createPostService({
         },
         { now },
       );
+      // Chỉ `published` mới là đã lên mạng; còn lại (submitted, hoặc nhà cung cấp tự giữ lịch) chờ xác nhận.
+      const confirmed = result.status === "published";
       await db
         .update(posts)
         .set({
-          status: "published",
+          status: confirmed ? "published" : "submitted",
           externalId: result.id,
-          publishedAt: now(),
+          publishedAt: confirmed ? now() : null,
           errorCode: null,
         })
         .where(eq(posts.id, post.id));
       return true;
     } catch (e) {
-      return fail(post.id, errorCodeOf(e));
+      const code = errorCodeOf(e);
+      return outcomeUnknown(e)
+        ? mark(post.id, "send_unknown", code)
+        : mark(post.id, "failed", code);
     }
   }
 
-  async function fail(id: string, code: string) {
+  const fail = (id: string, code: string) => mark(id, "failed", code);
+
+  async function mark(
+    id: string,
+    status: "failed" | "send_unknown",
+    code: string,
+  ) {
     await db
       .update(posts)
-      .set({ status: "failed", errorCode: code })
+      .set({ status, errorCode: code })
       .where(eq(posts.id, id));
     return false;
+  }
+
+  /** Thông tin để gọi lại nhà cung cấp cho một bài; null nếu không dựng được provider. */
+  async function targetOf(post: typeof posts.$inferSelect) {
+    const [target] = await db
+      .select({
+        provider: providerConnections.provider,
+        enc: providerConnections.credentialsEnc,
+        platform: socialAccounts.platform,
+        externalId: socialAccounts.externalId,
+      })
+      .from(socialAccounts)
+      .innerJoin(
+        providerConnections,
+        eq(socialAccounts.connectionId, providerConnections.id),
+      )
+      .where(eq(socialAccounts.id, post.socialAccountId));
+    if (!target) return null;
+    try {
+      const provider = resolveProvider(
+        target.provider,
+        box.decrypt(target.enc),
+      );
+      return provider ? { provider, target } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Xác nhận một bài `submitted`; trả kết quả để đếm. */
+  async function confirmOne(
+    post: typeof posts.$inferSelect,
+    deadline: Date,
+  ): Promise<"published" | "partial" | "failed" | "pending" | "send_unknown"> {
+    const overdue = (post.claimedAt ?? post.createdAt) <= deadline;
+    let remote: RemotePostStatus | undefined;
+    const t = post.externalId ? await targetOf(post) : null;
+    if (t) {
+      try {
+        remote = await getRemoteStatus(t.provider, {
+          platform: t.target.platform as Platform,
+          accountId: t.target.externalId,
+          postId: post.externalId!,
+        });
+      } catch {
+        // Lỗi mạng/trạng thái lạ: giữ `submitted`, lượt sau hỏi lại (tới hạn thì thành send_unknown).
+        remote = undefined;
+      }
+    }
+    const set = (values: Partial<typeof posts.$inferInsert>) =>
+      db
+        .update(posts)
+        .set(values)
+        // Chỉ chuyển từ submitted: không ghi đè nếu tiến trình khác đã đổi.
+        .where(and(eq(posts.id, post.id), eq(posts.status, "submitted")));
+    if (remote === "published" || remote === "partial") {
+      await set({ status: remote, publishedAt: now(), errorCode: null });
+      return remote;
+    }
+    if (remote === "failed" || remote === "cancelled") {
+      await set({
+        status: "failed",
+        errorCode: remote === "cancelled" ? "cancelled" : "upstream_failed",
+      });
+      return "failed";
+    }
+    if (overdue) {
+      await set({ status: "send_unknown", errorCode: "confirm_timeout" });
+      return "send_unknown";
+    }
+    return "pending";
   }
 
   return {
@@ -271,12 +370,41 @@ export function createPostService({
       return { published, failed };
     },
 
-    /** Bài kẹt `publishing` (worker chết giữa chừng) → failed, KHÔNG tự đăng lại vì có thể đã lên mạng. */
+    /**
+     * Hỏi lại nhà cung cấp các bài `submitted` (cũ nhất trước). Quá `deadlineMs` kể từ lúc gửi mà vẫn chưa có kết quả
+     * cuối → `send_unknown`; không bao giờ tự đăng lại.
+     */
+    async confirmSubmitted({
+      limit,
+      deadlineMs,
+    }: {
+      limit: number;
+      deadlineMs: number;
+    }) {
+      const deadline = new Date(now().getTime() - deadlineMs);
+      const rows = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.status, "submitted"))
+        .orderBy(asc(posts.claimedAt))
+        .limit(limit);
+      const counts = {
+        published: 0,
+        partial: 0,
+        failed: 0,
+        pending: 0,
+        send_unknown: 0,
+      };
+      for (const post of rows) counts[await confirmOne(post, deadline)]++;
+      return counts;
+    },
+
+    /** Bài kẹt `publishing` (worker chết giữa chừng) → send_unknown, KHÔNG tự đăng lại vì có thể đã lên mạng. */
     async recoverStuck({ olderThanMs }: { olderThanMs: number }) {
       const cutoff = new Date(now().getTime() - olderThanMs);
       const rows = await db
         .update(posts)
-        .set({ status: "failed", errorCode: "interrupted" })
+        .set({ status: "send_unknown", errorCode: "interrupted" })
         .where(
           and(eq(posts.status, "publishing"), lte(posts.claimedAt, cutoff)),
         )

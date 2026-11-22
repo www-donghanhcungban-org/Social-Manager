@@ -10,14 +10,20 @@ export const metadata = { title: "Đăng bài — X-Workspace" };
 
 const STATUS_LABEL: Record<PostStatus, string> = {
   scheduled: "Đã xếp lịch",
-  publishing: "Đang đăng",
+  publishing: "Đang gửi",
+  submitted: "Đã gửi, chờ xác nhận",
   published: "Đã đăng",
+  partial: "Đăng được một phần",
   failed: "Lỗi",
+  send_unknown:
+    "Chưa rõ đã đăng chưa — kiểm tra trên nền tảng trước khi đăng lại",
 };
 
 const ERROR_LABEL: Record<string, string> = {
   interrupted:
     "bị gián đoạn, cần kiểm tra thủ công trên nền tảng trước khi đăng lại",
+  confirm_timeout: "quá hạn mà nhà cung cấp chưa xác nhận kết quả",
+  cancelled: "bài bị huỷ phía nhà cung cấp",
   provider_unavailable: "nguồn dữ liệu không còn khả dụng",
   credentials_unreadable: "không đọc được khoá của kết nối",
   account_missing: "tài khoản đã bị xoá",

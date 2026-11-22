@@ -206,11 +206,14 @@ describe.each(providersUnderContract)(
       expect(seen).toBeGreaterThan(0);
     });
 
-    it("publishPost trả id và trạng thái published khi không hẹn giờ", async () => {
+    it("publishPost không hẹn giờ trả id và published, hoặc submitted kèm cách xác nhận lại", async () => {
       const p = make();
       const r = await publishPost(p, base(p), clock);
       expect(r.id).toBeTruthy();
-      expect(r.status).toBe("published");
+      expect(["published", "submitted"]).toContain(r.status);
+      // Provider báo "đã nhận, chưa biết kết quả" thì phải đọc lại được trạng thái (ADR-0002, H2).
+      if (r.status === "submitted")
+        expect(p.getPostStatus).toBeTypeOf("function");
     });
 
     it("publishPost hẹn giờ trong tương lai trả scheduled", async () => {

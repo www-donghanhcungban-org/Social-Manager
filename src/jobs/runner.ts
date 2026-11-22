@@ -4,6 +4,7 @@ import type { Logger } from "../log/logger";
 export const QUEUES = {
   runDue: "posts.run-due",
   recoverStuck: "posts.recover-stuck",
+  confirmSubmitted: "posts.confirm-submitted",
   syncAll: "inbox.sync-all",
   syncAccount: "inbox.sync-account",
   purgeExpired: "maintenance.purge-expired",
@@ -16,6 +17,9 @@ const MAX_PURGE_BATCHES = 20;
 
 const RUN_DUE_LIMIT = 20;
 const STUCK_AFTER_MS = 15 * 60_000;
+const CONFIRM_LIMIT = 50;
+/** Bài gửi quá chừng này mà nhà cung cấp chưa báo kết quả cuối → send_unknown. */
+export const CONFIRM_DEADLINE_MS = 24 * 3_600_000;
 
 /** Cổng tối thiểu tới hàng đợi: adapter pg-boss thật và bản giả trong test cùng thoả. */
 export interface JobQueue {
@@ -36,6 +40,10 @@ export interface JobRunnerDeps {
       limit: number;
     }): Promise<{ published: number; failed: number }>;
     recoverStuck(i: { olderThanMs: number }): Promise<number>;
+    confirmSubmitted(i: {
+      limit: number;
+      deadlineMs: number;
+    }): Promise<Record<string, number>>;
   };
   inbox: {
     syncAsSystem(i: {
@@ -113,6 +121,15 @@ export function createJobRunner({
         })),
       );
       await queue.work(
+        QUEUES.confirmSubmitted,
+        guarded(QUEUES.confirmSubmitted, () =>
+          posts.confirmSubmitted({
+            limit: CONFIRM_LIMIT,
+            deadlineMs: CONFIRM_DEADLINE_MS,
+          }),
+        ),
+      );
+      await queue.work(
         QUEUES.syncAll,
         guarded(QUEUES.syncAll, async () => {
           const accounts = await listAccounts();
@@ -163,6 +180,7 @@ export function createJobRunner({
       await queue.schedule(QUEUES.purgeExpired, PURGE_CRON);
       await queue.schedule(QUEUES.runDue, "* * * * *");
       await queue.schedule(QUEUES.recoverStuck, "*/5 * * * *");
+      await queue.schedule(QUEUES.confirmSubmitted, "*/2 * * * *");
       await queue.schedule(QUEUES.syncAll, "*/5 * * * *");
     },
   };
