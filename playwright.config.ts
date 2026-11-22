@@ -1,10 +1,15 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 // Môi trường cloud có sẵn Chromium ở PW_CHROMIUM_PATH; CI cài bằng `playwright install` (e2e_setup).
 const executablePath = process.env.PW_CHROMIUM_PATH;
 
 export default defineConfig({
   testDir: "e2e",
+  // UX-RESP-008: luồng chính chạy trên cả desktop và thiết bị di động giả lập (cùng Chromium).
+  projects: [
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile", use: { ...devices["Pixel 7"] } },
+  ],
   webServer: {
     command: "npx next start -p 3100",
     url: "http://localhost:3100",
