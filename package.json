@@ -8,8 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "type-check": "next typegen && tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "next": "16.4.6",

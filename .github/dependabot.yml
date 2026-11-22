@@ -1,49 +1,20 @@
+# dependabot.yml — mẫu cho dự án đích (`install.py --with-github` chép vào `.github/dependabot.yml`, copy-if-absent).
+# Chỉ có hệ sinh thái chắc chắn tồn tại sau khi cài: GitHub Actions (`ci.yml`, `secret-scan.yml` ghim action theo SHA). Thêm một khối
+# `updates` cho mỗi manifest thật của dự án (npm cho npm/pnpm/yarn, pip/uv, gomod, cargo, docker…) — khai hệ sinh thái mà
+# repo không có manifest thì Dependabot báo lỗi ở mỗi lượt chạy. Luật: BASE-DEP-007 (cập nhật có nhịp, gom nhóm, trần PR).
 version: 2
-
-# MỘT PR bot nâng phiên bản cho mọi hệ sinh thái (F-41a, FT-41 2026-10-09): cổng WIP ở pr-policy.yml đếm
-# cả PR bot với trần 3. Trước đây 5+5+3 PR bot lấp trần ngay lần chạy đầu ở dự án đích → mọi PR của người
-# đỏ required check `metadata`. Gộp một nhóm → tối đa 1 PR bot, chừa ≥ 2 chỗ cho người
-# (test: tests/test_runtime_safety.py). PR cập nhật BẢO MẬT không chịu giới hạn này (GitHub tách riêng).
-# Bản major bị bỏ qua: đi qua /deps-upgrade (đọc changelog, sửa điểm chạm) — PR bot major thường đỏ CI
-# và giữ chỗ WIP mãi.
-#
-# commit-message.prefix: không có tiền tố, PR nhóm có tiêu đề `Bump the "dependencies" group …` → required check
-# `metadata` (pr-policy.yml, regex Conventional Commits, áp cả cho PR bot) đỏ vĩnh viễn (#10, #11). Dependabot tự
-# thêm `: ` sau tiền tố kết thúc bằng `)` → `chore(deps): bump the "dependencies" group …`.
-multi-ecosystem-groups:
-  dependencies:
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: "chore(deps)"
-
 updates:
-  # Phụ thuộc của DỰ ÁN THẬT (kích hoạt khi có package.json). Repo khung chưa có
-  # package.json nên mục này im lặng cho tới lúc đó — giữ sẵn để khỏi phải nhớ thêm.
-  - package-ecosystem: npm
-    directory: /
-    patterns: ["*"]
-    multi-ecosystem-group: dependencies
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  # Action trong .github/workflows/ (đã ghim full SHA — cổng CP-2); Dependabot nâng SHA + comment tag.
-  # Cùng một nhóm nên init/analyze/upload-sarif của CodeQL luôn lên version cùng nhau.
+  # Nâng SHA của action đã ghim (uses: owner/repo@<sha> # vX.Y.Z); gom nhóm để không phình WIP.
   - package-ecosystem: github-actions
     directory: /
-    patterns: ["*"]
-    multi-ecosystem-group: dependencies
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  # Công cụ Python của cổng CI (radon, coverage) ghim ở scripts/requirements-ci.txt —
-  # trước đây ghim inline trong ci.yml nên không hệ sinh thái nào theo dõi (audit 2026-09-23, T8).
-  - package-ecosystem: pip
-    directory: /scripts
-    patterns: ["*"]
-    multi-ecosystem-group: dependencies
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    # Không nâng bản phát hành chưa đủ hai tuần (cập nhật bảo mật không bị cooldown). BASE-DEP-016 nêu 3–7 ngày làm ví dụ;
+    # mẫu chọn 14 cho action vì action chạy với token của CI — bản bị rút/tiêm mã thường lộ ra trong tuần đầu.
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
