@@ -13,8 +13,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable, cast
 
-import xt_release_ops as ops
-
 Doc = dict[str, Any]
 MAX = 1024 * 1024
 FIELD_NAME = re.compile(r"FIELD-(\d{4}-\d{2}-\d{2})(?:-\d{6}(?:\d{6})?Z?)?\.json\Z")
@@ -107,6 +105,7 @@ def read_field(raw: bytes) -> Any:
 
 
 def from_ops(core: ModuleType, base: Path, data: Doc) -> Doc:
+    import xt_release_ops as ops
     cfg = core._xt_keys(base)
     env = cfg.get("field_env", "prod")
     digest = data.get("digest")
