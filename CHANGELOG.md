@@ -12,4 +12,4 @@
 - Đăng nhập email + mật khẩu (Better Auth) và phân quyền owner/admin/member.
 - Kiểm cấu hình lúc khởi động, che bí mật khi log.
 
-[Unreleased]: https://github.com/www-donghanhcungban-org/social-manager/commits/main
+[Unreleased]: https://github.com/www-donghanhcungban-org/X-Workspace/commits/main

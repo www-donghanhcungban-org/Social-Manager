@@ -1,4 +1,4 @@
-# Social Manager
+# X-Workspace
 
 Web app tự host để một nhóm quản lý mạng xã hội ở một nơi: hộp thư hợp nhất, đăng bài và lên lịch, tự động trả lời bằng AI, thống kê. Dành cho người/nhóm vận hành nhiều trang và tài khoản muốn giữ dữ liệu và khoá của mình.
 

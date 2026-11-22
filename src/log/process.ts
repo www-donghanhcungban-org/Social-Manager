@@ -4,7 +4,7 @@ import { createLogger, type Logger } from "./logger";
 export function defaultLogger(): Logger {
   const env = processEnv();
   return createLogger({
-    service: "social-manager",
+    service: "x-workspace",
     version: env.npm_package_version ?? "0.0.0",
     env: env.NODE_ENV ?? "development",
   });

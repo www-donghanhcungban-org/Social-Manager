@@ -24,7 +24,7 @@ describe("README (BASE-DOC-001)", () => {
 
   it("mở đầu bằng mô tả sản phẩm, không còn lời mẫu create-next-app", () => {
     expect(readme).not.toMatch(/create-next-app/);
-    expect(readme.split("\n")[0]).toBe("# Social Manager");
+    expect(readme.split("\n")[0]).toBe("# X-Workspace");
   });
 });
 

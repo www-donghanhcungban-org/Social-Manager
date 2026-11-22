@@ -1,6 +1,6 @@
-# docs/autopilot/PLAN-xw-1.md — X-Working · Đợt xw-1 (nền)
+# docs/autopilot/PLAN-xw-1.md — X-Workspace · Đợt xw-1 (nền)
 
-> Duyệt: D-011 (phiên chính tự duyệt) · Kế hoạch: docs/work/2026-11-22-x-working-plan/working.md · ADR-0002, ADR-0003 · Blueprint: BLUEPRINT.md
+> Duyệt: D-011 (phiên chính tự duyệt) · Kế hoạch: docs/work/2026-11-22-x-workspace-plan/working.md · ADR-0002, ADR-0003 · Blueprint: BLUEPRINT.md
 
 ## Mục tiêu của kế hoạch này
 

@@ -6,7 +6,7 @@ import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
 import { PostForm } from "./post-form";
 
-export const metadata = { title: "Đăng bài — Social Manager" };
+export const metadata = { title: "Đăng bài — X-Workspace" };
 
 const STATUS_LABEL: Record<PostStatus, string> = {
   scheduled: "Đã xếp lịch",

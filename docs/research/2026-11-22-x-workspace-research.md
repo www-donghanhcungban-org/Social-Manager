@@ -1,8 +1,8 @@
-# Nghiên cứu bổ sung cho kế hoạch X-Working
+# Nghiên cứu bổ sung cho kế hoạch X-Workspace
 
 - Ngày kiểm: 2026-11-22. Mọi dữ kiện lấy từ nguồn sống (registry npm, tài liệu chính thức) qua subagent `researcher`.
 - Mức bằng chứng: **registry** = đọc JSON registry trực tiếp; **docs** = trang tài liệu chính thức được tóm tắt lại (nguồn thứ cấp: phải đối chiếu lại bằng mã hoặc khoá thật trước khi coi là hợp đồng).
-- Dùng cho: `docs/work/2026-11-22-x-working-plan/working.md`, các ADR từ 0002 trở đi.
+- Dùng cho: `docs/work/2026-11-22-x-workspace-plan/working.md`, các ADR từ 0002 trở đi.
 
 ## 1. SocialAPI (kênh tin nhắn của MVP)
 
@@ -57,7 +57,7 @@ Hệ quả cho thiết kế:
 2. Tìm kiếm bước đầu dùng full-text của Postgres cộng `unaccent` và `pg_trgm`; cả hai chạy được trên PGlite nên kiểm thử được trong cổng.
 3. Lớp AI phải nằm sau một adapter của dự án: bản 7 của AI SDK đổi tên nhiều API so với bản 5 và 6.
 
-## 3. Agent Desktop và trình duyệt (cho X-Working Companion)
+## 3. Agent Desktop và trình duyệt (cho X-Workspace Companion)
 
 Nguồn: `https://agent-browser.dev/desktop` (commands, json-output, snapshots-and-refs, guides/mcp, guides/observe-act-verify, guides/traces, platforms/windows), registry npm. Mức bằng chứng: docs và registry. Chưa cài và chưa chạy trên Windows.
 

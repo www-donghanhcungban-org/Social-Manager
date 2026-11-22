@@ -5,7 +5,7 @@ import { createLogger } from "@/src/log/logger";
 function setup() {
   const lines: string[] = [];
   const log = createLogger({
-    service: "social-manager",
+    service: "x-workspace",
     version: "0.1.0",
     env: "test",
     write: (l) => lines.push(l),
@@ -27,7 +27,7 @@ describe("cấu trúc bản ghi (BASE-ERR-005/006)", () => {
       level: "info",
       severity_number: 9,
       message: "khởi động",
-      service: "social-manager",
+      service: "x-workspace",
       version: "0.1.0",
       env: "test",
       port: 3000,
@@ -55,7 +55,7 @@ describe("cấu trúc bản ghi (BASE-ERR-005/006)", () => {
     });
     expect(last().request_id).toBe("r-1");
     expect(last().trace_id).toBe("t-1");
-    expect(last().service).toBe("social-manager");
+    expect(last().service).toBe("x-workspace");
     expect(last().timestamp).toBe("2026-11-22T03:04:05.678Z");
   });
 });

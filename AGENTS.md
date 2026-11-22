@@ -4,7 +4,7 @@
 
 ## 1. Dự án này
 
-- **Tên / mục tiêu:** X-Working (slug `x-working`) — trợ lý công việc có bộ nhớ dài hạn, phát triển từ Social Manager (web app tự host: hộp thư hợp nhất, đăng bài, nguồn dữ liệu cắm được). Kế hoạch sản phẩm: `docs/work/2026-11-22-x-working-plan/source-plan.md`; kế hoạch triển khai: `docs/work/2026-11-22-x-working-plan/working.md` (ADR-0002). Tên repo/package giữ `Social-Manager`/`social-manager` tới khi chủ dự án yêu cầu đổi.
+- **Tên / mục tiêu:** X-Workspace (slug `x-workspace`) — trợ lý công việc có bộ nhớ dài hạn, phát triển từ Social Manager (web app tự host: hộp thư hợp nhất, đăng bài, nguồn dữ liệu cắm được). Kế hoạch sản phẩm: `docs/work/2026-11-22-x-workspace-plan/source-plan.md` (bản gốc dùng tên cũ X-Working); kế hoạch triển khai: `docs/work/2026-11-22-x-workspace-plan/working.md` (ADR-0002). Repo `www-donghanhcungban-org/X-Workspace` (đổi tên từ `Social-Manager`, D-012), package `x-workspace`.
 - **Hồ sơ khung:** `web-app` · **Gói ngành:** (không) · **Quy mô:** `M`
 - **Blueprint:** `BLUEPRINT.md` (`<XT> compose …`).
 - **Stack thật:** đọc manifest/CI — **không hỏi người điều đã có trong code**. Lệnh chuẩn ở `xt.yaml`.

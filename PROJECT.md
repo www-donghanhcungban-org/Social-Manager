@@ -1,6 +1,6 @@
-# PROJECT.md — Social Manager
+# PROJECT.md — X-Workspace
 
-> Đặc tả dự án: nguồn sự thật về _cái gì cần xây_. Kế hoạch gốc: `docs/work/2026-11-22-social-manager-plan/working.md`; kế hoạch thi hành: `docs/autopilot/PLAN.md`; quyết định kiến trúc: `docs/adr/`; mô hình đe doạ: `docs/THREAT-MODEL.md`.
+> Đặc tả dự án: nguồn sự thật về _cái gì cần xây_. Kế hoạch: `docs/work/2026-11-22-x-workspace-plan/working.md` (nền Social Manager: `docs/work/2026-11-22-social-manager-plan/working.md`); kế hoạch thi hành: `docs/autopilot/PLAN-xw-1.md` (đợt 0: `docs/autopilot/PLAN.md`); quyết định kiến trúc: `docs/adr/`; mô hình đe doạ: `docs/THREAT-MODEL.md`.
 
 ## 0. Loại dự án & Hồ sơ
 

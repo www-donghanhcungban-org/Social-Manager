@@ -39,7 +39,7 @@ describe("công cụ quy trình thuộc dự án", () => {
 
   it("README của công cụ nói rõ thuộc dự án và vì sao giữ đường dẫn", () => {
     const readme = readFileSync(".xtemplates/README.md", "utf-8");
-    expect(readme).toMatch(/thuộc dự án X-Working/);
+    expect(readme).toMatch(/thuộc dự án X-Workspace/);
     expect(readme).toMatch(/ADR-0003/);
     expect(readme).not.toMatch(/không sửa tay/);
   });
@@ -84,9 +84,9 @@ describe("công cụ quy trình thuộc dự án", () => {
       ).toBe(true);
   });
 
-  it("AGENTS.md mô tả X-Working và công cụ thuộc dự án, không còn chỗ để trống", () => {
+  it("AGENTS.md mô tả X-Workspace và công cụ thuộc dự án, không còn chỗ để trống", () => {
     const agents = readFileSync("AGENTS.md", "utf-8");
-    expect(agents).toMatch(/X-Working/);
+    expect(agents).toMatch(/X-Workspace/);
     expect(agents).toMatch(/ADR-0003/);
     expect(agents).not.toMatch(/\[ĐIỀN/);
     expect(readFileSync("CLAUDE.md", "utf-8")).not.toMatch(/\[ĐIỀN/);

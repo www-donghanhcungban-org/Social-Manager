@@ -1,6 +1,6 @@
 # X-Working — Kế hoạch sản phẩm (bản gốc của chủ dự án)
 
-> Nguồn: tài liệu `X-Working-Ke-hoach-san-pham-2026-11-22.docx` do chủ dự án cung cấp ngày 2026-11-22, chuyển sang Markdown bằng pandoc, giữ nguyên nội dung. Đây là căn cứ sản phẩm; phần nghiên cứu bổ sung và kế hoạch triển khai trong repo nằm ở [`working.md`](working.md).
+> Nguồn: tài liệu `X-Working-Ke-hoach-san-pham-2026-11-22.docx` do chủ dự án cung cấp ngày 2026-11-22, chuyển sang Markdown bằng pandoc, giữ nguyên nội dung. **Đổi tên sau bản này (D-012):** sản phẩm và repo nay là **X-Workspace** (slug `x-workspace`, repo `www-donghanhcungban-org/X-Workspace`, đổi từ `Social-Manager`); "X-Working"/"x-working" bên dưới là tên cũ, các liên kết `Social-Manager` được GitHub chuyển hướng. Đây là căn cứ sản phẩm; phần nghiên cứu bổ sung và kế hoạch triển khai trong repo nằm ở [`working.md`](working.md).
 
 Bản cập nhật sau nghiên cứu stored ngày 22 tháng 11 năm 2026
 

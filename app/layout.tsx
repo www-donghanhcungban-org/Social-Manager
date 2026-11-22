@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Social Manager",
+  title: "X-Workspace",
   description:
     "Quản lý mạng xã hội ở một nơi: hộp thư hợp nhất, đăng bài, thống kê.",
 };

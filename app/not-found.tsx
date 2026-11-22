@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Không tìm thấy — Social Manager" };
+export const metadata = { title: "Không tìm thấy — X-Workspace" };
 
 export default function NotFound() {
   return (

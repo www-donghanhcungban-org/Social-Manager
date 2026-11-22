@@ -1,4 +1,4 @@
-# PROGRESS.md — Social Manager
+# PROGRESS.md — X-Workspace
 
 > Giai đoạn hiện tại: G6 Build — đợt 0–2 xong phần lớn (T-001..T-038, trừ T-009), PR #18 đang chờ CI/người merge · Cập nhật: 2026-11-22 · Nhánh: claude/modest-dirac-r68f0l
 

@@ -1,4 +1,4 @@
-# THREAT-MODEL — Social Manager · phiên bản 1 · 2026-11-22
+# THREAT-MODEL — X-Workspace · phiên bản 1 · 2026-11-22
 
 > Chủ: chủ dự án · Duyệt: chưa có người duyệt riêng (phiên chính tự soạn theo ADR-0008 của khung; cần người chịu trách nhiệm bảo mật xem lại trước khi chạy thật) · Phạm vi: web app, CSDL, hàng đợi nền, tích hợp nhà cung cấp mạng xã hội · Ngoài phạm vi: hạ tầng host/reverse proxy của người triển khai, bảo mật phía nhà cung cấp (SocialAPI), AI tự trả lời (chưa xây).
 

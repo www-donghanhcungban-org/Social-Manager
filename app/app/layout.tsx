@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border p-4">
         <Link href="/app" className="font-semibold">
-          Social Manager
+          X-Workspace
         </Link>
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
           <span className="min-w-0 break-all text-sm text-muted-foreground">

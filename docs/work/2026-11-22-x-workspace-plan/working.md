@@ -1,12 +1,12 @@
-# X-Working — kế hoạch hoàn thiện và triển khai trên repo này
+# X-Workspace — kế hoạch hoàn thiện và triển khai trên repo này
 
-- Ngày: 2026-11-22. Căn cứ sản phẩm: [`source-plan.md`](source-plan.md) (bản của chủ dự án). Nghiên cứu bổ sung có nguồn và ngày: [`docs/research/2026-11-22-x-working-research.md`](../../research/2026-11-22-x-working-research.md).
-- Quyết định kiến trúc: ADR-0002 (định hướng X-Working), ADR-0003 (tiếp quản công cụ quy trình). Kế hoạch thi hành: `docs/autopilot/PLAN-xw-1.md`.
+- Ngày: 2026-11-22. Căn cứ sản phẩm: [`source-plan.md`](source-plan.md) (bản của chủ dự án). Nghiên cứu bổ sung có nguồn và ngày: [`docs/research/2026-11-22-x-workspace-research.md`](../../research/2026-11-22-x-workspace-research.md).
+- Quyết định kiến trúc: ADR-0002 (định hướng X-Workspace), ADR-0003 (tiếp quản công cụ quy trình). Kế hoạch thi hành: `docs/autopilot/PLAN-xw-1.md`.
 - Thay thế: [`../2026-11-22-social-manager-plan/working.md`](../2026-11-22-social-manager-plan/working.md) vẫn đúng cho phần Social Manager đã làm; phần lộ trình đợt 3–5 của nó được thay bằng tài liệu này.
 
 ## 1. Kế hoạch gốc giữ nguyên ở đâu
 
-Giữ toàn bộ các quyết định ở mục 16 của bản gốc: tên X-Working, một codebase phát triển từ Social-Manager, Next.js và Postgres làm hub, lưu bản gốc có phiên bản, một orchestrator, ba giai đoạn, MVP một người dùng, một dự án, một kênh, một workflow Windows. Tài liệu này chỉ thêm phần bản gốc còn để ngỏ, sửa những chỗ nghiên cứu cho thấy sai, và chia việc thành lát có cổng máy kiểm.
+Giữ toàn bộ các quyết định ở mục 16 của bản gốc: tên sản phẩm (bản gốc X-Working, chủ dự án đổi thành X-Workspace — D-012), một codebase phát triển từ Social-Manager (repo nay là X-Workspace), Next.js và Postgres làm hub, lưu bản gốc có phiên bản, một orchestrator, ba giai đoạn, MVP một người dùng, một dự án, một kênh, một workflow Windows. Tài liệu này chỉ thêm phần bản gốc còn để ngỏ, sửa những chỗ nghiên cứu cho thấy sai, và chia việc thành lát có cổng máy kiểm.
 
 ## 2. Bổ sung và hiệu chỉnh sau nghiên cứu
 

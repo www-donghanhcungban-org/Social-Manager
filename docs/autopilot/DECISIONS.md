@@ -78,3 +78,10 @@
 - Chọn: Duyệt như viết, làm tuần tự theo sau:
 - Lý do (tiêu chí chất lượng cuối): Tiêu chí 1: AI dựng trên dữ liệu sai định danh và trạng thái không trung thực sẽ sai theo; thứ tự dữ liệu → tri thức/AI → hành động giữ đúng mục 15.8 bản gốc
 - Đường lùi: Sửa PLAN-xw-1.md rồi chạy lại loop init
+
+### D-012 · 2026-11-22T07:33:10+00:00 · Tên sản phẩm/repo sau khi chủ dự án đổi repo Social-Manager thành X-Workspace
+
+- Phương án: (1) X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú · (2) Giữ tên sản phẩm X-Working, chỉ đổi repo/package
+- Chọn: X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú
+- Lý do (tiêu chí chất lượng cuối): Chủ dự án chọn qua câu hỏi trong phiên; một tên thống nhất tránh lệch giữa repo, giao diện và tài liệu; bản ghi lịch sử không viết lại (ADR append-only)
+- Đường lùi: Một commit đổi tên riêng: git revert commit đó; GitHub vẫn chuyển hướng URL cũ

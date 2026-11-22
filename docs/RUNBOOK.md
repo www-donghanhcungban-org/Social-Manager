@@ -1,4 +1,4 @@
-# RUNBOOK — Social Manager · cập nhật 2026-11-22 · chủ: chủ dự án
+# RUNBOOK — X-Workspace · cập nhật 2026-11-22 · chủ: chủ dự án
 
 > Mọi lệnh chạy ở thư mục gốc repo trên máy chủ chạy Docker Compose. Không ghi giá trị bí mật ở đây, chỉ ghi nơi đặt chúng. Chưa diễn tập: backup/restore và rollback (đánh dấu "chưa diễn tập" bên dưới) — diễn tập một lần trước khi chạy thật.
 

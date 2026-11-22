@@ -3,15 +3,17 @@ status: accepted
 implementation-status: in-progress
 date: 2026-11-22
 decision-makers: chủ dự án (tên sản phẩm, phạm vi, ba giai đoạn — kế hoạch sản phẩm 2026-11-22); phiên chính (hiệu chỉnh kỹ thuật theo AGENTS.md §5)
-consulted: nghiên cứu nguồn sống 2026-11-22 (docs/research/2026-11-22-x-working-research.md)
+consulted: nghiên cứu nguồn sống 2026-11-22 (docs/research/2026-11-22-x-workspace-research.md)
 informed: không
 ---
 
-# ADR-0002: Phát triển Social Manager thành X-Working, giữ một codebase
+# ADR-0002: Phát triển Social Manager thành X-Workspace, giữ một codebase
+
+> Tên sản phẩm: bản kế hoạch gốc gọi là X-Working; chủ dự án đổi repo và tên sản phẩm thành X-Workspace ngày 2026-11-22 (D-012).
 
 ## Bối cảnh và vấn đề
 
-Chủ dự án chốt kế hoạch sản phẩm X-Working (`docs/work/2026-11-22-x-working-plan/source-plan.md`): trợ lý công việc
+Chủ dự án chốt kế hoạch sản phẩm X-Workspace (`docs/work/2026-11-22-x-workspace-plan/source-plan.md`): trợ lý công việc
 có bộ nhớ dài hạn, gom tin nhắn, repo, tài liệu và ngữ cảnh ứng dụng vào hồ sơ dự án, trả lời có bằng chứng, soạn và
 thực hiện công việc trong phạm vi được cấp. Social Manager (ADR-0001) trở thành nền và module hội thoại. Nghiên cứu bổ
 sung cho thấy nền hiện tại có ba chỗ sai ngữ nghĩa phải sửa trước khi xây tri thức và AI lên trên.
@@ -27,13 +29,13 @@ sung cho thấy nền hiện tại có ba chỗ sai ngữ nghĩa phải sửa tr
 
 1. **Mở rộng codebase hiện tại theo module** (`evidence`, `conversations`, `knowledge`, `search`, `ai`, `actions`,
    `devices`, connector GitHub) + tiến trình Companion riêng trên Windows.
-2. Dựng dịch vụ mới (agent framework, vector DB, graph DB, workflow engine) bên cạnh Social Manager.
+2. Dựng dịch vụ mới (agent framework, vector DB, graph DB, workflow engine) bên cạnh nền Social Manager.
 3. Dùng dịch vụ bộ nhớ có sẵn (Mem0, Letta, Hindsight) làm lõi.
 
 ## Quyết định
 
 Chọn phương án 1, theo đúng mục 16 của kế hoạch sản phẩm, kèm các hiệu chỉnh kỹ thuật H1–H14 ở
-`docs/work/2026-11-22-x-working-plan/working.md` §2. Các điểm ràng buộc:
+`docs/work/2026-11-22-x-workspace-plan/working.md` §2. Các điểm ràng buộc:
 
 - Hội thoại và tin nhắn là hai thực thể; khoá khử trùng tin là `(tài khoản, platform_id)` của nền tảng (H1).
 - Trạng thái nhận từ nhà cung cấp được lưu đúng nghĩa: `publishing` không phải `published` (H2).

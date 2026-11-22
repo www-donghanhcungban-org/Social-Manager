@@ -11,7 +11,7 @@ import {
 } from "./actions";
 import { AddAccountForm, AddConnectionForm, WebhookSecretForm } from "./forms";
 
-export const metadata = { title: "Kết nối — Social Manager" };
+export const metadata = { title: "Kết nối — X-Workspace" };
 
 export default async function ConnectionsPage({
   params,
