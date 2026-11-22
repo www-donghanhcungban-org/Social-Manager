@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -76,26 +78,30 @@ describe("migration", () => {
       ).rows[0]!.n,
     );
 
-  it("lùi 0001_auth rồi chạy migrator thật: bảng đăng nhập được tạo lại", async () => {
-    await t.client.exec(readDownSql("0001_auth"));
-    const left = await tableNames(t.client);
-    for (const n of AUTH) expect(left).not.toContain(n);
-    expect(await journalRows()).toBe(1); // down phải xoá dòng sổ, không thì migrator bỏ qua
-    await migrate(t.db, { migrationsFolder: MIGRATIONS });
-    expect(await tableNames(t.client)).toEqual(expect.arrayContaining(AUTH));
-    expect(await journalRows()).toBe(2);
-  });
+  const TAGS = (
+    JSON.parse(readFileSync(`${MIGRATIONS}/meta/_journal.json`, "utf8")) as {
+      entries: { tag: string }[];
+    }
+  ).entries.map((e) => e.tag);
+  const ALL = [...BUSINESS, ...AUTH, "posts"];
 
-  it("lùi cả hai (0001 rồi 0000) rồi chạy migrator thật: dựng lại đủ", async () => {
-    await t.client.exec(readDownSql("0001_auth"));
-    await t.client.exec(readDownSql("0000_init"));
-    const left = await tableNames(t.client);
-    for (const n of [...BUSINESS, ...AUTH]) expect(left).not.toContain(n);
-    expect(await journalRows()).toBe(0);
-    await migrate(t.db, { migrationsFolder: MIGRATIONS });
-    expect(await tableNames(t.client)).toEqual(
-      expect.arrayContaining([...BUSINESS, ...AUTH]),
-    );
+  // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,
+  // rồi migrator thật dựng lại đủ — down không xoá dòng sổ thì migrator bỏ qua và thiếu bảng.
+  it.each(TAGS.map((tag, i) => [tag, i] as const))(
+    "lùi tới %s rồi chạy migrator thật: dựng lại đủ bảng",
+    async (_tag, index) => {
+      for (const tag of TAGS.slice(index).reverse()) {
+        await t.client.exec(readDownSql(tag));
+      }
+      expect(await journalRows()).toBe(index);
+      await migrate(t.db, { migrationsFolder: MIGRATIONS });
+      expect(await tableNames(t.client)).toEqual(expect.arrayContaining(ALL));
+      expect(await journalRows()).toBe(TAGS.length);
+    },
+  );
+
+  it("mọi migration có file down", () => {
+    for (const tag of TAGS) expect(() => readDownSql(tag)).not.toThrow();
   });
 });
 

@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -98,5 +100,51 @@ export const socialAccounts = pgTable(
       "social_accounts_platform_check",
       sql`${t.platform} in (${inList(PLATFORMS)})`,
     ),
+  ],
+);
+
+export const POST_STATUSES = [
+  "scheduled",
+  "publishing",
+  "published",
+  "failed",
+] as const;
+export type PostStatus = (typeof POST_STATUSES)[number];
+
+/**
+ * Bài đăng (đăng ngay hoặc hẹn giờ). Mọi thời điểm là `timestamptz` (UTC). `idempotency_key` do client
+ * gửi để gửi lại cùng yêu cầu không tạo bài thứ hai (BASE-DATA-008).
+ */
+export const posts = pgTable(
+  "posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    createdBy: text("created_by").notNull(),
+    text: text("text").notNull(),
+    status: text("status", { enum: POST_STATUSES }).notNull(),
+    /** Giờ hẹn; luôn có (đăng ngay = giờ tạo) để một hàng đợi duy nhất xử lý cả hai loại. */
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    /** Lúc worker nhận bài (chuyển sang publishing); dùng để phát hiện bài kẹt. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    externalId: text("external_id"),
+    /** Mã lỗi ngắn, không chứa nội dung phía nhà cung cấp. */
+    errorCode: text("error_code"),
+    attempts: integer("attempts").notNull().default(0),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("posts_ws_idempotency").on(t.workspaceId, t.idempotencyKey),
+    check("posts_status_check", sql`${t.status} in (${inList(POST_STATUSES)})`),
+    check("posts_attempts_check", sql`${t.attempts} >= 0`),
+    check("posts_text_check", sql`length(btrim(${t.text})) > 0`),
+    index("posts_due_idx").on(t.status, t.scheduledAt),
   ],
 );
