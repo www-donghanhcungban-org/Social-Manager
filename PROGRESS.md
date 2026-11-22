@@ -1,30 +1,33 @@
 # PROGRESS.md — X-Workspace
 
-> Giai đoạn hiện tại: G6 Build — đợt 0–2 xong phần lớn (T-001..T-038, trừ T-009), PR #18 đang chờ CI/người merge · Cập nhật: 2026-11-22 · Nhánh: claude/modest-dirac-r68f0l
+> Giai đoạn hiện tại: G6 Build — đợt xw-1 (nền X-Workspace, PLAN-xw-1) xong T-101..T-107; T-009, T-108 chờ người · Cập nhật: 2026-11-22 · Nhánh: claude/admiring-tesla-8xd417 · Repo: www-donghanhcungban-org/X-Workspace (đổi tên từ Social-Manager, D-012)
 
 ## Đang làm
 
-- PR #18 (nhánh → main): chờ CI `gate` + `e2e` xanh trên runner thật; `gitleaks` đã sửa và xanh. Merge là việc của người (ngoại lệ cứng, `pr next` → DEFER-HUMAN)
+- PR đợt xw-1 (nhánh `claude/admiring-tesla-8xd417` → main): chờ CI; merge là việc của người (`merge_autonomy: L1`, ngoại lệ cứng)
 
 ## Tiếp theo
 
-1. Còn ~462 MUST mở (`xt.py blueprint-status BLUEPRINT.md --json`): BASE-DEP-004 (osv-scanner), BASE-SEC-002 (gitleaks đã xanh trên CI, còn khoản xoay khoá/pre-commit), BASE-GATE-005/006, BASE-CFG-008, PRF-WEB-001/002, nhóm UX còn lại (A11Y-002/003/011, STATE, CONTENT, DS)
-2. Tính năng chưa có: trả lời tin từ hộp thư (cần tra tài liệu SocialAPI về endpoint trả lời, không đoán), tự động trả lời AI, thống kê/CRM, PWA, i18n
-3. CI nên chạy cả hai project Playwright (desktop + mobile) và có dịch vụ Postgres cho e2e (hiện e2e CI chạy không DB nên các spec cần DB bị bỏ qua)
-4. Sau mỗi lát: mở PR nhỏ riêng (không dồn nữa)
+1. Đợt xw-2 theo `docs/work/2026-11-22-x-workspace-plan/working.md` §5: module `evidence` (lưu bản gốc có phiên bản), `knowledge`/`search` (unaccent + pg_trgm), `ai` sau `ModelPort` (AI đám mây tắt mặc định)
+2. Còn ~462 MUST blueprint mở (`xt.py blueprint-status BLUEPRINT.md --json`), đầu tiên BASE-CFG-003
+3. Kiểm với khoá SocialAPI thật: hình dạng `GET /posts/{id}`, `conversation_id`/`platform_id` trong webhook (đang ghi "chưa xác minh")
+4. CI: chạy cả hai project Playwright và có dịch vụ Postgres cho e2e
 
 ## Quyết định
 
-- D-001..D-008 ở `docs/autopilot/DECISIONS.md` (mới: D-006 tắt cacheComponents vì xung đột nonce CSP, D-007 Argon2id bằng hash-wasm, D-008 thêm devDependency @axe-core/playwright)
-- 2026-11-22 X-Templates là bộ khung chính (D-001; ADR-0001 chốt stack) — lý do: người dùng chọn
-- Nợ kỹ thuật chấp nhận: hook, agent và script cũ của projects-template còn trong repo (guard chặn gỡ qua Bash) — hạn trả: khi người dùng cho phép gỡ
-- Nợ kỹ thuật chấp nhận: esbuild moderate qua drizzle-kit (`docs/ops-notes/dependency-exceptions.md`, hạn 2027-02-22); `.gitleaks.toml` miễn hẹp cho chuỗi giả trong test
-- Chưa xác minh: SocialAPI chưa thử với khoá thật, giả định `data.account_id` = `external_id` (THREAT-MODEL §6); Docker image chưa build (môi trường làm việc không có daemon); test e2e chập chờn một lần (`toHaveCount`, chưa rõ spec nào)
+- D-001..D-012 ở `docs/autopilot/DECISIONS.md`; mới: D-009 giữ đường dẫn `.xtemplates/`, D-010 thời hạn lưu theo workspace (mặc định 365 ngày), D-011 duyệt PLAN-xw-1, D-012 đổi tên sản phẩm/repo thành X-Workspace
+- ADR-0002 (định hướng X-Workspace, một codebase), ADR-0003 (công cụ quy trình thuộc dự án)
+- Nợ kỹ thuật chấp nhận: esbuild moderate qua drizzle-kit (hạn 2027-02-22); cảnh báo build Edge runtime ở `instrumentation.ts`/`src/config/env.ts` (có từ trước)
+- Chưa xác minh: SocialAPI với khoá thật; Docker image chưa build (không có daemon)
 
 ## Bàn giao phiên
 
-- Commit cuối trên nhánh chính: `d9ebc747571851188983b14945133d86251cd482` · CI: PR #18 đang chạy (`merge_autonomy: L1`, người merge)
-- Lệnh kiểm nhanh: `.xtemplates/scripts/dev-task.sh gate-fast` → xanh ở commit cuối (425 test); Playwright 54/54 trên Postgres thật bằng script e2e cục bộ
-- Đang chặn: T-009 `.env.example` — quy tắc quyền chặn ghi file, cần người tạo hoặc cấp quyền
+- Commit cuối: xem `git log -1` trên nhánh · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh (514 test)
+- Đang chặn (cần người):
+  - T-009: tạo `.env.example` (quy tắc quyền chặn agent ghi `.env*`)
+  - T-108: gỡ di sản projects-template (guard chặn agent gỡ hook/agent/lệnh). Người chạy ở gốc repo:
+    `git rm .claude/hooks/{block-dangerous-git,pre-commit-gate,session-guide,session-resume,telemetry-record,usage-guard,ui-intelligence,precompact-checkpoint}.sh`
+    `git rm .claude/agents/{complex-implementer,coordinator,lookup,maintainer,mechanical-worker,security-reviewer,spec-executor,standard-worker,tester,version-check}.md`
+    `git rm -r .claude/commands`
+  - Remote cục bộ còn trỏ URL cũ (guard chặn `git remote set-url`); GitHub chuyển hướng nên push vẫn đúng repo
 - Việc dở chưa commit: không
-- Câu hỏi cần người: merge PR #18 khi CI xanh; tạo `.env.example`
