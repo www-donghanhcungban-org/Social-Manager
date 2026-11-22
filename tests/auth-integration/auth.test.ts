@@ -1,0 +1,133 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { createAuth } from "@/src/auth/auth";
+import { session, user } from "@/src/db/schema";
+
+import { createTestDb } from "../db/helpers";
+
+const SECRET = "x".repeat(48);
+const PASSWORD = "mat-khau-du-dai-123";
+
+let t: Awaited<ReturnType<typeof createTestDb>>;
+let auth: ReturnType<typeof createAuth>;
+
+beforeEach(async () => {
+  t = await createTestDb();
+  auth = createAuth({
+    db: t.db,
+    secret: SECRET,
+    baseURL: "http://localhost:3000",
+  });
+});
+afterEach(async () => {
+  await t.client.close();
+});
+
+const signUp = (email = "lan@example.com", password = PASSWORD) =>
+  auth.api.signUpEmail({ body: { name: "Lan", email, password } });
+
+/** Đăng nhập và lấy cookie phiên để dùng cho getSession. */
+async function login(email = "lan@example.com", password = PASSWORD) {
+  const { headers } = await auth.api.signInEmail({
+    body: { email, password },
+    returnHeaders: true,
+  });
+  const cookie = (headers.getSetCookie?.() ?? [])
+    .map((c) => c.split(";")[0])
+    .join("; ");
+  return new Headers({ cookie });
+}
+
+describe("đăng ký", () => {
+  it("tạo người dùng và lưu mật khẩu đã băm, không lưu mật khẩu rõ", async () => {
+    await signUp();
+    const rows = await t.client.query<{ password: string }>(
+      `select password from account where provider_id = 'credential'`,
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0]?.password).toBeTruthy();
+    expect(rows.rows[0]?.password).not.toContain(PASSWORD);
+  });
+
+  it("từ chối đăng ký trùng email (kể cả khác hoa/thường), không tạo thêm người dùng", async () => {
+    await signUp("lan@example.com");
+    const dup = { body: { code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" } };
+    await expect(signUp("lan@example.com")).rejects.toMatchObject(dup);
+    await expect(signUp("LAN@Example.com")).rejects.toMatchObject(dup);
+    expect(await t.db.select().from(user)).toHaveLength(1);
+  });
+
+  it("từ chối mật khẩu ngắn hơn 12 ký tự", async () => {
+    await expect(signUp("a@example.com", "ngan-qua")).rejects.toMatchObject({
+      body: { code: "PASSWORD_TOO_SHORT" },
+    });
+    expect(await t.db.select().from(user)).toHaveLength(0);
+  });
+});
+
+describe("đăng nhập và phiên", () => {
+  it("đăng nhập đúng mật khẩu → có phiên dùng được", async () => {
+    await signUp();
+    const headers = await login();
+    const s = await auth.api.getSession({ headers });
+    expect(s?.user.email).toBe("lan@example.com");
+  });
+
+  it("sai mật khẩu và email không tồn tại cho cùng một phản hồi (không lộ email nào đã đăng ký)", async () => {
+    await signUp();
+    const wrongPassword = await auth.api
+      .signInEmail({
+        body: { email: "lan@example.com", password: "sai-mat-khau-123" },
+      })
+      .catch((e: unknown) => e);
+    const noUser = await auth.api
+      .signInEmail({
+        body: { email: "khong-co@example.com", password: PASSWORD },
+      })
+      .catch((e: unknown) => e);
+    const expected = {
+      status: "UNAUTHORIZED",
+      body: { code: "INVALID_EMAIL_OR_PASSWORD" },
+    };
+    expect(wrongPassword).toMatchObject(expected);
+    expect(noUser).toMatchObject(expected);
+    expect((wrongPassword as { body: unknown }).body).toEqual(
+      (noUser as { body: unknown }).body,
+    );
+  });
+
+  it("không có cookie thì không có phiên", async () => {
+    expect(await auth.api.getSession({ headers: new Headers() })).toBeNull();
+  });
+
+  it("phiên hết hạn không còn dùng được", async () => {
+    await signUp();
+    const headers = await login();
+    expect((await auth.api.getSession({ headers }))?.user.email).toBe(
+      "lan@example.com",
+    );
+    await t.db
+      .update(session)
+      .set({ expiresAt: new Date(Date.now() - 60_000) });
+    expect(await auth.api.getSession({ headers })).toBeNull();
+  });
+
+  it("đăng xuất xoá đúng phiên đang dùng, cookie cũ hết tác dụng", async () => {
+    await signUp(); // tự đăng nhập: tạo phiên thứ nhất
+    const headers = await login(); // phiên thứ hai
+    const before = (await t.db.select().from(session)).length;
+    await auth.api.signOut({ headers });
+    expect(await auth.api.getSession({ headers })).toBeNull();
+    expect(await t.db.select().from(session)).toHaveLength(before - 1);
+  });
+});
+
+describe("cấu hình", () => {
+  it("thiếu secret hoặc secret quá ngắn thì dừng, không chạy với giá trị mặc định", () => {
+    for (const secret of ["", "ngan"]) {
+      expect(() =>
+        createAuth({ db: t.db, secret, baseURL: "http://localhost:3000" }),
+      ).toThrow(/secret/i);
+    }
+  });
+});

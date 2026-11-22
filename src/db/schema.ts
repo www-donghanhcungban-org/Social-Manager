@@ -11,6 +11,8 @@ import {
 
 import { PLATFORMS } from "../providers/types";
 
+export * from "./auth-schema";
+
 export const ROLES = ["owner", "admin", "member"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -33,7 +35,9 @@ export const members = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    /** Id người dùng của Better Auth (bảng người dùng thêm ở migration đăng nhập). */
+    // DEBT: user_id chưa có khoá ngoại tới user.id | trần: xoá tài khoản để lại thành viên mồ côi |
+    // xem lại khi: làm chức năng xoá tài khoản (thêm FK ON DELETE CASCADE kèm dọn dữ liệu cũ)
+    /** Id người dùng của Better Auth (`user.id`). */
     userId: text("user_id").notNull(),
     role: text("role", { enum: ROLES }).notNull(),
     createdAt: createdAt(),
