@@ -81,3 +81,7 @@ htmlcov/
 
 # Công cụ quy trình: trạng thái autopilot cục bộ, settings cá nhân
 .autopilot/
+
+# Playwright
+/test-results
+/playwright-report

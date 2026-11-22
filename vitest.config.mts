@@ -4,5 +4,13 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./", import.meta.url)) } },
-  test: { include: ["tests/**/*.test.ts"] },
+  test: {
+    include: ["tests/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      // Sàn M: dưới ngưỡng thì cổng đỏ. Không hạ ngưỡng để làm cổng xanh.
+      thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
+    },
+  },
 });
