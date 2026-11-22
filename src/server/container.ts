@@ -15,6 +15,7 @@ import { createSocialApiProvider } from "../providers/socialapi";
 import type { SocialProvider } from "../providers/types";
 import { createSecretBox } from "../security/secret-box";
 import { createWorkspaceService } from "../workspaces/service";
+import { createAccountService } from "../accounts/service";
 import { eq } from "drizzle-orm";
 
 /**
@@ -51,6 +52,7 @@ export function createContainer(cfg: Env) {
 
   const services = {
     workspaces: createWorkspaceService({ db }),
+    accounts: createAccountService({ db, registry }),
     connections: createConnectionService({ db, box, registry }),
     posts: createPostService({ db, box, resolveProvider: buildProvider }),
     inbox: createInboxService({ db, box, resolveProvider: buildProvider }),

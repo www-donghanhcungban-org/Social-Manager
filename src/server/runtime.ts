@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+
+import { UUID } from "../auth/access";
 
 import { loadEnv, processEnv } from "../config/env";
 import { getAuth } from "../auth/server";
@@ -27,6 +29,19 @@ export async function currentUser(): Promise<SessionUser | null> {
   if (!session) return null;
   const { id, email, name } = session.user;
   return { id, email, name };
+}
+
+/**
+ * Trang/action trong một workspace: cần đăng nhập VÀ là thành viên. Không phải thành viên, id không
+ * phải UUID hay workspace không tồn tại đều cho cùng một kết quả (notFound) để không lộ workspace có thật.
+ */
+export async function requireWorkspace(workspaceId: string) {
+  const user = await requireUser();
+  if (!UUID.test(workspaceId)) notFound();
+  const mine = await getContainer().services.workspaces.listForUser(user.id);
+  const workspace = mine.find((w) => w.id === workspaceId);
+  if (!workspace) notFound();
+  return { user, workspace };
 }
 
 /** Dùng ở trang/action cần đăng nhập: chưa đăng nhập thì chuyển tới /login. */

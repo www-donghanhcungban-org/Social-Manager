@@ -24,7 +24,8 @@ export class ConflictError extends Error {
       | "already_member"
       | "duplicate_label"
       | "idempotency_conflict"
-      | "workspace_limit",
+      | "workspace_limit"
+      | "duplicate_account",
     message: string,
   ) {
     super(message);
