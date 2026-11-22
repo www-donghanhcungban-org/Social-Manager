@@ -103,6 +103,54 @@ export const socialAccounts = pgTable(
   ],
 );
 
+export const INBOX_KINDS = ["dm", "comment", "review", "mention"] as const;
+export const INBOX_STATUSES = ["open", "handled"] as const;
+export type InboxStatus = (typeof INBOX_STATUSES)[number];
+
+/**
+ * Hộp thư hợp nhất: mỗi dòng là một tin nhắn/bình luận/đánh giá/lượt nhắc đã nhập từ provider.
+ * Khoá duy nhất theo (tài khoản, loại, id bên provider) để đồng bộ lặp lại không tạo bản trùng.
+ */
+export const inboxItems = pgTable(
+  "inbox_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: INBOX_KINDS }).notNull(),
+    /** Id của mục bên provider. */
+    externalId: text("external_id").notNull(),
+    author: text("author").notNull(),
+    text: text("text").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    status: text("status", { enum: INBOX_STATUSES }).notNull().default("open"),
+    handledBy: text("handled_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("inbox_items_account_kind_external").on(
+      t.socialAccountId,
+      t.kind,
+      t.externalId,
+    ),
+    check("inbox_items_kind_check", sql`${t.kind} in (${inList(INBOX_KINDS)})`),
+    check(
+      "inbox_items_status_check",
+      sql`${t.status} in (${inList(INBOX_STATUSES)})`,
+    ),
+    index("inbox_items_list_idx").on(
+      t.workspaceId,
+      t.status,
+      t.receivedAt,
+      t.id,
+    ),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",

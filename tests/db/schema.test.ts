@@ -83,7 +83,7 @@ describe("migration", () => {
       entries: { tag: string }[];
     }
   ).entries.map((e) => e.tag);
-  const ALL = [...BUSINESS, ...AUTH, "posts"];
+  const ALL = [...BUSINESS, ...AUTH, "posts", "inbox_items"];
 
   // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,
   // rồi migrator thật dựng lại đủ — down không xoá dòng sổ thì migrator bỏ qua và thiếu bảng.
