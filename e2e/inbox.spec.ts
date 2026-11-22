@@ -54,6 +54,10 @@ test("hộp thư trống → đồng bộ → lọc → đánh dấu đã xử l
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(list.getByRole("listitem").first()).toContainText("Bình luận");
   await page.getByRole("link", { name: "Mọi loại" }).click();
+  // Chờ điều hướng xong: bấm tiếp khi còn ở bộ lọc `kind=comment` thì thao tác rơi vào mục bình luận và các liên kết
+  // lọc sau đó mang theo `kind=comment` (danh sách mãi 1 mục).
+  await expect(page).not.toHaveURL(/kind=/);
+  await expect(list.getByRole("listitem")).toHaveCount(total);
 
   // đánh dấu đã xử lý rồi lọc theo trạng thái
   await list
@@ -62,6 +66,7 @@ test("hộp thư trống → đồng bộ → lọc → đánh dấu đã xử l
     .getByRole("button", { name: /Đánh dấu đã xử lý/ })
     .click();
   await page.getByRole("link", { name: "Đã xử lý", exact: true }).click();
+  await expect(page).toHaveURL(/status=handled/);
   await expect(list.getByRole("listitem")).toHaveCount(1);
 
   // đồng bộ lại: không tạo bản trùng, không ghi đè trạng thái đã xử lý
