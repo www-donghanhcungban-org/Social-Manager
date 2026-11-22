@@ -26,11 +26,29 @@ const inList = (values: readonly string[]) =>
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-export const workspaces = pgTable("workspaces", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  createdAt: createdAt(),
-});
+/** Trần số ngày lưu tin cấu hình được (~100 năm); muốn giữ mãi thì bật `retain_inbox_forever`. */
+export const MAX_RETENTION_DAYS = 36_500;
+
+export const workspaces = pgTable(
+  "workspaces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** Số ngày lưu tin hộp thư/tin nhắn của workspace (D-010); null = mặc định 365 ngày. */
+    inboxRetentionDays: integer("inbox_retention_days"),
+    /** Owner chọn giữ tin vô thời hạn (cần căn cứ pháp lý riêng, PROJECT.md §5). */
+    retainInboxForever: boolean("retain_inbox_forever")
+      .notNull()
+      .default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "workspaces_retention_days_check",
+      sql`${t.inboxRetentionDays} is null or ${t.inboxRetentionDays} between 1 and ${sql.raw(String(MAX_RETENTION_DAYS))}`,
+    ),
+  ],
+);
 
 export const members = pgTable(
   "members",

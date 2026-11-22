@@ -57,6 +57,13 @@
       "when": 1795333771467,
       "tag": "0007_post_status_honest",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795334286481,
+      "tag": "0008_workspace_retention",
+      "breakpoints": true
     }
   ]
 }

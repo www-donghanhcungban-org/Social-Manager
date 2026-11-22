@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lt, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, notExists, sql } from "drizzle-orm";
 
 import type { Db } from "../auth/members";
 import {
@@ -8,6 +8,7 @@ import {
   messages,
   session,
   verification,
+  workspaces,
 } from "../db/schema";
 
 const DAY_MS = 86_400_000;
@@ -29,7 +30,8 @@ export interface PurgeResult {
 }
 
 /**
- * Thực thi thời hạn lưu dữ liệu (PROJECT.md §5): tin hộp thư > 365 ngày, phiên và mã xác minh hết hạn,
+ * Thực thi thời hạn lưu dữ liệu (PROJECT.md §5): tin hộp thư/tin nhắn quá hạn của từng workspace (mặc định 365 ngày,
+ * owner đổi được hoặc giữ vô thời hạn — D-010), phiên và mã xác minh hết hạn,
  * bộ đếm đăng nhập cũ. Xoá theo lô để không giữ khoá bảng lâu; chạy lại an toàn (lũy đẳng).
  *
  * Lưu ý: nếu nhà cung cấp vẫn trả lại tin cũ hơn hạn khi đồng bộ, tin đó sẽ được nhập lại rồi bị xoá ở
@@ -51,11 +53,14 @@ export function createRetentionService({ db }: { db: Db }) {
       if (!Number.isInteger(batchSize) || batchSize < 1)
         throw new Error("batchSize phải là số nguyên dương");
 
-      const inboxCutoff = new Date(now.getTime() - inboxDays * DAY_MS);
+      // Hạn tính theo từng workspace (D-010): số ngày riêng hoặc mặc định; workspace giữ vô thời hạn thì bỏ qua.
+      const cutoff = sql`(${now.toISOString()}::timestamptz - make_interval(days => coalesce(${workspaces.inboxRetentionDays}, ${inboxDays}::int)))`;
+      const purgeable = eq(workspaces.retainInboxForever, false);
       const ids = await db
         .select({ id: inboxItems.id })
         .from(inboxItems)
-        .where(lt(inboxItems.receivedAt, inboxCutoff))
+        .innerJoin(workspaces, eq(workspaces.id, inboxItems.workspaceId))
+        .where(and(purgeable, sql`${inboxItems.receivedAt} < ${cutoff}`))
         .orderBy(inboxItems.receivedAt)
         .limit(batchSize + 1);
       const batch = ids.slice(0, batchSize).map((r) => r.id);
@@ -90,7 +95,8 @@ export function createRetentionService({ db }: { db: Db }) {
       const msgIds = await db
         .select({ id: messages.id })
         .from(messages)
-        .where(lt(messages.sentAt, inboxCutoff))
+        .innerJoin(workspaces, eq(workspaces.id, messages.workspaceId))
+        .where(and(purgeable, sql`${messages.sentAt} < ${cutoff}`))
         .orderBy(messages.sentAt)
         .limit(batchSize + 1);
       const msgBatch = msgIds.slice(0, batchSize).map((r) => r.id);
@@ -102,14 +108,14 @@ export function createRetentionService({ db }: { db: Db }) {
               .where(inArray(messages.id, msgBatch))
               .returning({ id: messages.id });
       // Hội thoại (giữ tên/id người nhắn) hết tin còn hạn thì xoá luôn; còn tin mới hơn hạn thì giữ.
-      const deletedConversations = await db
-        .delete(conversations)
+      const convIds = await db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .innerJoin(workspaces, eq(workspaces.id, conversations.workspaceId))
         .where(
           and(
-            lt(
-              sql`coalesce(${conversations.lastMessageAt}, ${conversations.createdAt})`,
-              inboxCutoff,
-            ),
+            purgeable,
+            sql`coalesce(${conversations.lastMessageAt}, ${conversations.createdAt}) < ${cutoff}`,
             notExists(
               db
                 .select({ one: sql`1` })
@@ -117,13 +123,25 @@ export function createRetentionService({ db }: { db: Db }) {
                 .where(
                   and(
                     eq(messages.conversationId, conversations.id),
-                    gte(messages.sentAt, inboxCutoff),
+                    sql`${messages.sentAt} >= ${cutoff}`,
                   ),
                 ),
             ),
           ),
         )
-        .returning({ id: conversations.id });
+        .limit(batchSize);
+      const deletedConversations =
+        convIds.length === 0
+          ? []
+          : await db
+              .delete(conversations)
+              .where(
+                inArray(
+                  conversations.id,
+                  convIds.map((r) => r.id),
+                ),
+              )
+              .returning({ id: conversations.id });
 
       return {
         inboxItems: deletedInbox.length,

@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -177,6 +178,128 @@ describe("tin nhắn theo hội thoại quá hạn lưu", () => {
     const r = await svc().purgeExpired({ now: NOW, batchSize: 2 });
     expect(r.messages).toBe(2);
     expect(r.more).toBe(true);
+  });
+});
+
+describe("thời hạn lưu theo workspace (D-010)", () => {
+  async function otherWorkspace(
+    over: Partial<typeof workspaces.$inferInsert> = {},
+  ) {
+    const [w] = await t.db
+      .insert(workspaces)
+      .values({ name: "B", ...over })
+      .returning();
+    const [c] = await t.db
+      .insert(providerConnections)
+      .values({
+        workspaceId: w!.id,
+        provider: "demo",
+        label: "c",
+        credentialsEnc: box.encrypt("k"),
+      })
+      .returning();
+    const [a] = await t.db
+      .insert(socialAccounts)
+      .values({
+        connectionId: c!.id,
+        platform: "facebook",
+        externalId: "q",
+        displayName: "Q",
+      })
+      .returning();
+    return { ws: w!.id, acc: a!.id };
+  }
+  const item = (
+    workspaceId: string,
+    socialAccountId: string,
+    ext: string,
+    d: number,
+  ) =>
+    t.db.insert(inboxItems).values({
+      workspaceId,
+      socialAccountId,
+      kind: "dm",
+      externalId: ext,
+      author: "Lan",
+      text: "x",
+      receivedAt: ago(d),
+    });
+  const left = async () =>
+    (await t.db.select().from(inboxItems)).map((i) => i.externalId).sort();
+
+  it("mỗi workspace áp số ngày của mình; null dùng mặc định 365", async () => {
+    await t.db
+      .update(workspaces)
+      .set({ inboxRetentionDays: 30 })
+      .where(eq(workspaces.id, ws));
+    const b = await otherWorkspace();
+    await item(ws, acc, "a-40", 40);
+    await item(ws, acc, "a-20", 20);
+    await item(b.ws, b.acc, "b-40", 40);
+    await item(b.ws, b.acc, "b-400", 400);
+    const r = await svc().purgeExpired({ now: NOW });
+    expect(r.inboxItems).toBe(2);
+    expect(await left()).toEqual(["a-20", "b-40"]);
+  });
+
+  it("giữ vô thời hạn: không xoá tin, tin nhắn, hội thoại của workspace đó; phiên hết hạn vẫn dọn", async () => {
+    const b = await otherWorkspace({
+      retainInboxForever: true,
+      inboxRetentionDays: 1,
+    });
+    await item(b.ws, b.acc, "b-cu", 5000);
+    await item(ws, acc, "a-cu", 5000);
+    const [conv] = await t.db
+      .insert(conversations)
+      .values({
+        workspaceId: b.ws,
+        socialAccountId: b.acc,
+        externalId: "c",
+        participantId: "p",
+        participantName: "Lan",
+        lastMessageAt: ago(5000),
+        createdAt: ago(5000),
+      })
+      .returning();
+    await t.db.insert(messages).values({
+      workspaceId: b.ws,
+      conversationId: conv!.id,
+      socialAccountId: b.acc,
+      externalId: "m",
+      direction: "incoming",
+      author: "Lan",
+      text: "x",
+      sentAt: ago(5000),
+    });
+    await t.db.insert(user).values({
+      id: "u9",
+      name: "x",
+      email: "x@example.com",
+      emailVerified: false,
+    });
+    await t.db.insert(session).values({
+      id: "s",
+      token: "t",
+      userId: "u9",
+      expiresAt: ago(3),
+      createdAt: ago(10),
+      updatedAt: ago(10),
+    });
+    const r = await svc().purgeExpired({ now: NOW });
+    expect(await left()).toEqual(["b-cu"]);
+    expect(r).toMatchObject({ messages: 0, conversations: 0, sessions: 1 });
+    expect(await t.db.select().from(messages)).toHaveLength(1);
+  });
+
+  it("CSDL từ chối số ngày 0, âm hoặc quá 36500", async () => {
+    for (const bad of [0, -1, 36_501]) {
+      await expect(
+        t.db
+          .update(workspaces)
+          .set({ inboxRetentionDays: bad })
+          .where(eq(workspaces.id, ws)),
+      ).rejects.toMatchObject({ cause: { code: "23514" } });
+    }
   });
 });
 
