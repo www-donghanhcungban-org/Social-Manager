@@ -1,0 +1,11 @@
+# Toolchain của dự án cho mọi job CI (ci.yml gọi khi file này tồn tại). Node lấy từ `.nvmrc` — một nơi ghim phiên bản
+# cho máy dev, CI và container (PRF-WEB-010, BASE-DEP-003); không dùng Node cài sẵn trên runner.
+name: xt-ci-tools
+description: Cài Node đúng phiên bản ghim trong .nvmrc và bật cache npm
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: npm

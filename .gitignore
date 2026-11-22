@@ -78,3 +78,10 @@ docs/ops/MAINTENANCE-REPORT.md
 # coverage.py (scripts/test-py-coverage.sh sinh ở gốc)
 .coverage
 htmlcov/
+
+# Công cụ quy trình: trạng thái autopilot cục bộ, settings cá nhân
+.autopilot/
+
+# Playwright
+/test-results
+/playwright-report

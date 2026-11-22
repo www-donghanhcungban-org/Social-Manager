@@ -1,0 +1,337 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { createAuth } from "@/src/auth/auth";
+import { loginThrottle, session, user } from "@/src/db/schema";
+
+import { createTestDb } from "../db/helpers";
+
+const SECRET = "x".repeat(48);
+const PASSWORD = "mat-khau-du-dai-123";
+
+let t: Awaited<ReturnType<typeof createTestDb>>;
+let auth: ReturnType<typeof createAuth>;
+
+beforeEach(async () => {
+  t = await createTestDb();
+  auth = createAuth({
+    db: t.db,
+    secret: SECRET,
+    baseURL: "http://localhost:3000",
+  });
+});
+afterEach(async () => {
+  await t.client.close();
+});
+
+const signUp = (email = "lan@example.com", password = PASSWORD) =>
+  auth.api.signUpEmail({ body: { name: "Lan", email, password } });
+
+/** Đăng nhập và lấy cookie phiên để dùng cho getSession. */
+async function login(email = "lan@example.com", password = PASSWORD) {
+  const { headers } = await auth.api.signInEmail({
+    body: { email, password },
+    returnHeaders: true,
+  });
+  const cookie = (headers.getSetCookie?.() ?? [])
+    .map((c) => c.split(";")[0])
+    .join("; ");
+  return new Headers({ cookie });
+}
+
+describe("cookie phiên (SEC-WEB-007)", () => {
+  it("HttpOnly và SameSite=Lax (không Secure trên http cục bộ)", async () => {
+    await signUp();
+    const { headers } = await auth.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    const cookies = headers.getSetCookie();
+    expect(cookies.length).toBeGreaterThan(0);
+    for (const c of cookies) {
+      expect(c).toMatch(/;\s*HttpOnly/i);
+      expect(c).toMatch(/;\s*SameSite=Lax/i);
+    }
+  });
+
+  it("có Secure khi baseURL là https", async () => {
+    const secure = createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "https://app.example.com",
+    });
+    await secure.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { headers } = await secure.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    for (const c of headers.getSetCookie()) expect(c).toMatch(/;\s*Secure/i);
+  });
+});
+
+describe("đăng ký", () => {
+  it("tạo người dùng và lưu mật khẩu đã băm, không lưu mật khẩu rõ", async () => {
+    await signUp();
+    const rows = await t.client.query<{ password: string }>(
+      `select password from account where provider_id = 'credential'`,
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0]?.password).toBeTruthy();
+    expect(rows.rows[0]?.password).not.toContain(PASSWORD);
+    expect(rows.rows[0]?.password).toMatch(
+      /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/,
+    );
+  });
+
+  it("đăng ký trùng email (kể cả khác hoa/thường) không tạo thêm người dùng, không đổi mật khẩu", async () => {
+    await signUp("lan@example.com");
+    await signUp("lan@example.com", "mat-khau-khac-456789").catch(() => {});
+    await signUp("LAN@Example.com", "mat-khau-khac-456789").catch(() => {});
+    expect(await t.db.select().from(user)).toHaveLength(1);
+    // mật khẩu cũ vẫn dùng được, mật khẩu của lần đăng ký trùng thì không
+    await expect(login("lan@example.com", PASSWORD)).resolves.toBeInstanceOf(
+      Headers,
+    );
+    await expect(
+      login("lan@example.com", "mat-khau-khac-456789"),
+    ).rejects.toMatchObject({ body: { code: "INVALID_EMAIL_OR_PASSWORD" } });
+  });
+
+  it("không lộ email đã đăng ký: email mới và email đã có cho phản hồi giống nhau, đều không cấp phiên", async () => {
+    await signUp("lan@example.com");
+    const existing = await signUp("lan@example.com").catch((e: unknown) => e);
+    const fresh = await signUp("moi@example.com");
+    expect(existing).not.toBeInstanceOf(Error);
+    expect(fresh.token).toBeNull();
+    expect((existing as { token: unknown }).token).toBeNull();
+    expect(Object.keys(existing as object).sort()).toEqual(
+      Object.keys(fresh).sort(),
+    );
+    expect(await t.db.select().from(session)).toHaveLength(0);
+  });
+
+  it("từ chối mật khẩu ngắn hơn 12 ký tự", async () => {
+    await expect(signUp("a@example.com", "ngan-qua")).rejects.toMatchObject({
+      body: { code: "PASSWORD_TOO_SHORT" },
+    });
+    expect(await t.db.select().from(user)).toHaveLength(0);
+  });
+});
+
+describe("giới hạn tần suất đăng nhập (review 🟡 9)", () => {
+  const signIn = (auth2: ReturnType<typeof createAuth>, ip: string) =>
+    auth2.handler(
+      new Request("http://localhost:3000/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-test-ip": ip },
+        body: JSON.stringify({
+          email: "ai-do@example.com",
+          password: "mat-khau-sai-123456",
+        }),
+      }),
+    );
+
+  it("quá hạn mức trong cửa sổ thì 429; mỗi IP một bộ đếm riêng; IP lấy từ header đã cấu hình", async () => {
+    const limited = createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "http://localhost:3000",
+      clientIpHeader: "x-test-ip",
+      rateLimitPerMinute: 3,
+    });
+    const statuses: number[] = [];
+    for (let i = 0; i < 5; i++)
+      statuses.push((await signIn(limited, "203.0.113.1")).status);
+    expect(statuses.slice(0, 3)).toEqual([401, 401, 401]);
+    expect(statuses.slice(3)).toEqual([429, 429]);
+    // IP khác không bị ảnh hưởng
+    expect((await signIn(limited, "203.0.113.2")).status).toBe(401);
+  });
+});
+
+describe("đăng nhập và phiên", () => {
+  it("đăng nhập đúng mật khẩu → có phiên dùng được", async () => {
+    await signUp();
+    const headers = await login();
+    const s = await auth.api.getSession({ headers });
+    expect(s?.user.email).toBe("lan@example.com");
+  });
+
+  it("sai mật khẩu và email không tồn tại cho cùng một phản hồi (không lộ email nào đã đăng ký)", async () => {
+    await signUp();
+    const wrongPassword = await auth.api
+      .signInEmail({
+        body: { email: "lan@example.com", password: "sai-mat-khau-123" },
+      })
+      .catch((e: unknown) => e);
+    const noUser = await auth.api
+      .signInEmail({
+        body: { email: "khong-co@example.com", password: PASSWORD },
+      })
+      .catch((e: unknown) => e);
+    const expected = {
+      status: "UNAUTHORIZED",
+      body: { code: "INVALID_EMAIL_OR_PASSWORD" },
+    };
+    expect(wrongPassword).toMatchObject(expected);
+    expect(noUser).toMatchObject(expected);
+    expect((wrongPassword as { body: unknown }).body).toEqual(
+      (noUser as { body: unknown }).body,
+    );
+  });
+
+  it("không có cookie thì không có phiên", async () => {
+    expect(await auth.api.getSession({ headers: new Headers() })).toBeNull();
+  });
+
+  it("phiên hết hạn không còn dùng được", async () => {
+    await signUp();
+    const headers = await login();
+    expect((await auth.api.getSession({ headers }))?.user.email).toBe(
+      "lan@example.com",
+    );
+    await t.db
+      .update(session)
+      .set({ expiresAt: new Date(Date.now() - 60_000) });
+    expect(await auth.api.getSession({ headers })).toBeNull();
+  });
+
+  it("đăng xuất xoá đúng phiên đang dùng, cookie cũ hết tác dụng", async () => {
+    await signUp(); // tự đăng nhập: tạo phiên thứ nhất
+    const headers = await login(); // phiên thứ hai
+    const before = (await t.db.select().from(session)).length;
+    await auth.api.signOut({ headers });
+    expect(await auth.api.getSession({ headers })).toBeNull();
+    expect(await t.db.select().from(session)).toHaveLength(before - 1);
+  });
+});
+
+describe("khoá đăng nhập theo tài khoản (BE-AUTH-003)", () => {
+  const attempt = (email: string, password: string) =>
+    auth.api
+      .signInEmail({ body: { email, password } })
+      .then(() => ({ status: 200, code: undefined as string | undefined }))
+      .catch((e: { statusCode: number; body?: { code?: string } }) => ({
+        status: e.statusCode,
+        code: e.body?.code,
+      }));
+
+  it("20 lần sai → bị chặn 429; email có thật và không có thật cho cùng một kiểu phản hồi", async () => {
+    await signUp();
+    const run = async (email: string) => {
+      const results = [];
+      for (let i = 0; i < 20; i++)
+        results.push(await attempt(email, "sai-mat-khau-12345"));
+      return results;
+    };
+    const real = await run("lan@example.com");
+    const fake = await run("khong-co@example.com");
+    expect(real.slice(0, 5).every((r) => r.status === 401)).toBe(true);
+    for (const r of [real, fake]) {
+      expect(r.at(-1)).toEqual({ status: 429, code: "TOO_MANY_ATTEMPTS" });
+    }
+    // chuỗi trạng thái giống hệt nhau → không phân biệt được email nào tồn tại
+    expect(real.map((r) => r.status)).toEqual(fake.map((r) => r.status));
+  });
+
+  it("đang bị khoá thì mật khẩu đúng cũng bị từ chối; hết hạn khoá thì đăng nhập được và bộ đếm về 0", async () => {
+    await signUp();
+    for (let i = 0; i < 8; i++)
+      await attempt("lan@example.com", "sai-xxxxxxxx12");
+    expect(await attempt("lan@example.com", PASSWORD)).toMatchObject({
+      status: 429,
+    });
+    await t.db
+      .update(loginThrottle)
+      .set({ lockedUntil: new Date(Date.now() - 1000) });
+    expect(await attempt("lan@example.com", PASSWORD)).toMatchObject({
+      status: 200,
+    });
+    expect(await t.db.select().from(loginThrottle)).toHaveLength(0);
+  });
+
+  it("khoá một email không ảnh hưởng email khác", async () => {
+    await signUp("a@example.com");
+    await signUp("b@example.com");
+    for (let i = 0; i < 10; i++)
+      await attempt("a@example.com", "sai-xxxxxxxx12");
+    expect(await attempt("b@example.com", PASSWORD)).toMatchObject({
+      status: 200,
+    });
+  });
+});
+
+describe("phiên an toàn (BE-AUTH-004)", () => {
+  const httpsAuth = () =>
+    createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "https://app.example.com",
+    });
+
+  async function httpsLogin(a: ReturnType<typeof httpsAuth>) {
+    const { headers } = await a.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    const setCookies = headers.getSetCookie();
+    return {
+      setCookies,
+      cookie: new Headers({
+        cookie: setCookies.map((c) => c.split(";")[0]).join("; "),
+      }),
+    };
+  }
+
+  it("trên https: cookie phiên có tiền tố __Host-, Secure, HttpOnly, SameSite, Path=/, không Domain", async () => {
+    const a = httpsAuth();
+    await a.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { setCookies } = await httpsLogin(a);
+    const sessionCookie = setCookies.find((c) => /session_token=/.test(c))!;
+    expect(sessionCookie).toMatch(/^__Host-sm\.session_token=/);
+    expect(sessionCookie).toMatch(/;\s*Secure/i);
+    expect(sessionCookie).toMatch(/;\s*HttpOnly/i);
+    expect(sessionCookie).toMatch(/;\s*SameSite=Lax/i);
+    expect(sessionCookie).toMatch(/;\s*Path=\//i);
+    expect(sessionCookie).not.toMatch(/;\s*Domain=/i);
+    for (const c of setCookies) expect(c).not.toMatch(/^__Secure-/);
+  });
+
+  it("cookie __Host- đọc lại được phiên; logout rồi dùng lại cookie cũ → không còn phiên", async () => {
+    const a = httpsAuth();
+    await a.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { cookie } = await httpsLogin(a);
+    expect((await a.api.getSession({ headers: cookie }))?.user.email).toBe(
+      "lan@example.com",
+    );
+    await a.api.signOut({ headers: cookie });
+    expect(await a.api.getSession({ headers: cookie })).toBeNull();
+    expect(await t.db.select().from(session)).toHaveLength(0);
+  });
+
+  it("mã phiên ≥ 128 bit và mỗi lần đăng nhập một mã mới (không dùng lại)", async () => {
+    await signUp();
+    await login();
+    await login();
+    const tokens = (await t.db.select().from(session)).map((s) => s.token);
+    expect(tokens).toHaveLength(2);
+    expect(new Set(tokens).size).toBe(2);
+    // 128 bit = 16 byte; chuỗi ký tự chữ-số base62 cần ≥ 22 ký tự cho 128 bit (log2(62) ≈ 5.95)
+    for (const tk of tokens) expect(tk.length).toBeGreaterThanOrEqual(22);
+  });
+});
+
+describe("cấu hình", () => {
+  it("thiếu secret hoặc secret quá ngắn thì dừng, không chạy với giá trị mặc định", () => {
+    for (const secret of ["", "ngan"]) {
+      expect(() =>
+        createAuth({ db: t.db, secret, baseURL: "http://localhost:3000" }),
+      ).toThrow(/secret/i);
+    }
+  });
+});

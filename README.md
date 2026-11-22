@@ -1,59 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Social Manager
 
-Repo là ca thử áp dụng khung phát triển có AI agent [`seeker19110/projects-template`](https://github.com/seeker19110/projects-template)
-(`AGENTS.md`, `.claude/`, `docs/framework/`, `scripts/`) lên một scaffold Next.js mới; phần ứng dụng vẫn là trang mẫu.
+Web app tự host để một nhóm quản lý mạng xã hội ở một nơi: hộp thư hợp nhất, đăng bài và lên lịch, tự động trả lời bằng AI, thống kê. Dành cho người/nhóm vận hành nhiều trang và tài khoản muốn giữ dữ liệu và khoá của mình.
 
-## Getting Started
+Nguồn dữ liệu **cắm được nhiều nhà cung cấp** (`src/providers/`): SocialAPI, demo, và nhà cung cấp tự viết thêm. Mỗi nhà cung cấp khai báo nền tảng × tính năng nó hỗ trợ; tính năng chưa có trả lỗi rõ ràng, không giả vờ chạy.
 
-First, run the development server:
+> Trạng thái: đang xây. Đã có: đăng nhập, workspace và phân quyền, kết nối nhà cung cấp, hộp thư, đăng bài và lịch, hàng đợi nền, nhận webhook SocialAPI (bật ở màn hình Kết nối: dán secret, trỏ SocialAPI tới địa chỉ hiển thị). Chưa có: tự động trả lời AI, thống kê. Xem `PROGRESS.md`.
+
+## Yêu cầu môi trường
+
+- Node.js 22 hoặc 24 LTS (`.nvmrc`)
+- PostgreSQL 15+
+- Python 3.15 (chỉ cho công cụ quy trình `.xtemplates/`)
+
+## Cài và chạy
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Chạy test
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Cổng đầy đủ: `npm run format:check && npm run lint && npm run type-check && npm test && npm run build`.
 
-## Learn More
+## Cấu hình
 
-To learn more about Next.js, take a look at the following resources:
+Cấu hình bằng biến môi trường, kiểm lúc khởi động (thiếu/sai thì dừng, mã thoát 1, chỉ nêu tên biến, không in giá trị):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Biến                             | Ý nghĩa                                           |
+| -------------------------------- | ------------------------------------------------- |
+| `DATABASE_URL`                   | Chuỗi kết nối PostgreSQL                          |
+| `BETTER_AUTH_SECRET`             | Bí mật phiên đăng nhập, ≥ 32 ký tự                |
+| `BETTER_AUTH_URL`                | URL công khai của app                             |
+| `APP_SECRET_KEY`                 | Khoá mã hoá khoá nhà cung cấp, base64 của 32 byte |
+| `NODE_ENV`, `SOCIALAPI_BASE_URL` | Tuỳ chọn, có giá trị mặc định; URL phải là https  |
+| `RUN_WORKERS`                    | `true` (mặc định) bật worker nền trong tiến trình |
+| `CLIENT_IP_HEADER`               | Header do reverse proxy đặt chứa IP client        |
+| `AUTH_RATE_LIMIT_PER_MIN`        | Hạn mức đăng nhập mỗi IP mỗi phút (mặc định 10)   |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Không commit file env; mẫu `.env.example` đang chờ chủ dự án tạo (xem `PROGRESS.md`).
 
-## Deploy on Vercel
+## Triển khai tự host (Docker Compose)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Tạo bốn bí mật rồi chạy; thiếu biến nào thì Compose dừng ngay và nêu tên biến:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+export APP_SECRET_KEY="$(openssl rand -base64 32)"
+export BETTER_AUTH_URL="https://social.example.com"
+```
 
-## Ủng hộ và liên hệ
+```bash
+docker compose up -d --build
+```
 
-*English: you can donate via the VietQR code below and get implementation support in Ho Chi Minh City or online.*
+- Container chạy bằng người dùng `node` (không root), tự chạy migration (`scripts/migrate.mjs`) trước khi nghe cổng.
+- App publish ở `127.0.0.1:3000` và CSDL không publish ra host. Đặt reverse proxy có TLS (Caddy, nginx) phía trước rồi đặt `CLIENT_IP_HEADER` theo header mà proxy đó ghi đè.
+- Ngoài container, `npm start` bind `127.0.0.1`; chỉ `CMD` của container bind `0.0.0.0` để Docker chuyển cổng được.
 
-Dự án miễn phí và mở mã. Nếu nó giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ để tác giả duy trì và phát triển tiếp:
+## Đóng góp và liên hệ
 
-<img src="docs/assets/donate-vietqr-techcombank.png" alt="Mã VietQR ủng hộ: Techcombank, số tài khoản 890977819110" width="260">
-
-- Quét mã VietQR bằng ứng dụng ngân hàng bất kỳ, hoặc chuyển khoản **Techcombank — số tài khoản `890977819110`**.
-- Liên hệ, góp ý, hợp tác: điện thoại / Zalo **[+84 977 819 110](https://zalo.me/0977819110)** ·
-  email **admin@donghanhcungban.org**. Lỗi và đề xuất tính năng xin mở issue trên GitHub.
-- **Hỗ trợ triển khai:** tác giả hỗ trợ cài đặt và áp dụng dự án cho nhu cầu của bạn — **trực tiếp tại TP. Hồ Chí Minh**
-  hoặc **online** ở bất kỳ đâu. Liên hệ qua điện thoại/Zalo hoặc email ở trên để trao đổi.
-
-Ủng hộ là tự nguyện, không kèm quyền lợi riêng; hỗ trợ triển khai thoả thuận riêng theo từng dự án.
+Xem `CONTRIBUTING.md`. Báo lỗ hổng theo `SECURITY.md`. Luật làm việc cho AI agent: `AGENTS.md`.
 
 ## License
 
-[MIT](LICENSE) — xem thêm [NOTICE](NOTICE) cho thành phần bên thứ ba và nhãn hiệu.
+MIT — xem `LICENSE`.
