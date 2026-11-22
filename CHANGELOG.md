@@ -2,6 +2,13 @@
 
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/); phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
+## 1.0.0 (2026-11-22)
+
+
+### Features
+
+* Social Manager — nền tảng, hộp thư, đăng bài, webhook, bảo mật và triển khai (T-001..T-038) ([#18](https://github.com/www-donghanhcungban-org/Social-Manager/issues/18)) ([a24ca77](https://github.com/www-donghanhcungban-org/Social-Manager/commit/a24ca77401d09a6f317cab61d171faafd4b3e655))
+
 ## [Unreleased]
 
 ### Added
