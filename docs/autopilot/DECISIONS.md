@@ -50,3 +50,10 @@
 - Chọn: hash-wasm 4.13.0 (WASM thuần, MIT, ghim đúng)
 - Lý do (tiêu chí chất lượng cuối): Blueprint đòi Argon2id; WASM thuần chạy mọi nền tảng/Docker không cần binary prebuilt nên bền và dễ tự host; scrypt chỉ được khi không có Argon2id; chấp nhận chậm hơn native vài chục ms
 - Đường lùi: Bỏ password.hash/verify trong auth.ts (về scrypt) — hash cũ khác định dạng nên người dùng phải đặt lại mật khẩu
+
+### D-008 · 2026-11-22T05:08:29+00:00 · Thêm @axe-core/playwright 4.14.0 (devDependency) để kiểm a11y tự động (UX-A11Y-001)?
+
+- Phương án: (1) Thêm @axe-core/playwright (MPL-2.0, peer playwright-core, bản 2026-11-19) · (2) Chỉ kiểm tay/grep, không có máy kiểm a11y
+- Chọn: Thêm @axe-core/playwright (MPL-2.0, peer playwright-core, bản 2026-11-19)
+- Lý do (tiêu chí chất lượng cuối): Tiêu chí 1 đúng và an toàn: máy kiểm a11y đáng tin hơn grep; chỉ devDependency, không vào bản chạy; giấy phép MPL-2.0 tương thích dùng nội bộ
+- Đường lùi: Gỡ devDependency và e2e/a11y.spec.ts

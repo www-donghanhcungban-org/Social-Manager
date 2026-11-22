@@ -232,7 +232,7 @@ Nguồn khung: [`05-architecture/resilience-and-scalability.md`](.xtemplates/fra
 
 Nguồn khung: [`06-design-ux/accessibility.md`](.xtemplates/framework/06-design-ux/accessibility.md)
 
-- [ ] `UX-A11Y-001` **MUST** Mọi trang/màn hình qua quét axe-core với tag `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` không có vi phạm (`violations.length === 0`). → Kiểm: `@axe-core/playwright` trong mọi smoke test E2E; CI đỏ nếu vi phạm. · Nguồn: WCAG 2.2 AA
+- [x] `UX-A11Y-001` **MUST** Mọi trang/màn hình qua quét axe-core với tag `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` không có vi phạm (`violations.length === 0`). → Kiểm: `@axe-core/playwright` trong mọi smoke test E2E; CI đỏ nếu vi phạm. · Nguồn: WCAG 2.2 AA — Kiểm: `E2E_DATABASE_URL=<db đã migrate> npx playwright test e2e/a11y-responsive.spec.ts`
 - [ ] `UX-A11Y-002` **MUST** Tương phản chữ ≥ 4.5:1 (chữ lớn ≥ 3:1 — chữ lớn chỉ khi ≥ 24 px, hoặc ≥ 18,66 px **và** đậm; chữ thường 18–23 px vẫn cần 4.5:1); thành phần UI và trạng thái (viền input, icon, focus) ≥ 3:1 với nền kề. → Kiểm: `xt.py contrast` trên token (`UX-DS-003`) + axe rule `color-contrast` ở cả hai theme. · Nguồn: WCAG 2.2 SC 1.4.3, 1.4.11
 - [ ] `UX-A11Y-003` **MUST** Toàn bộ chức năng dùng được bằng bàn phím; không bẫy focus (trừ dialog modal có Esc để thoát). → Kiểm: E2E luồng chính chỉ dùng `keyboard.press('Tab'|'Enter'|'Escape')`; axe rule `focus-order-semantics`. · Nguồn: WCAG 2.2 SC 2.1.1, 2.1.2
 - [ ] `UX-A11Y-011` **MUST** Mọi ô nhập có nhãn gắn chương trình (`<label for>`, `aria-labelledby`); placeholder không thay nhãn. → Kiểm: axe rule `label`; lint `label-has-associated-control`. · Nguồn: WCAG 2.2 SC 1.3.1, 3.3.2
@@ -283,8 +283,8 @@ Nguồn khung: [`06-design-ux/motion-and-visual-quality.md`](.xtemplates/framewo
 
 Nguồn khung: [`06-design-ux/responsive-and-mobile-first.md`](.xtemplates/framework/06-design-ux/responsive-and-mobile-first.md)
 
-- [ ] `UX-RESP-001` **MUST** Không cuộn ngang ở bề rộng 320 CSS px trên mọi trang/màn hình; không mất nội dung/chức năng. → Kiểm: Playwright viewport 320×800 cho mỗi route trong sitemap: `scrollWidth <= clientWidth`. · Nguồn: WCAG 2.2 SC 1.4.10
-- [ ] `UX-RESP-002` **MUST** Thẻ viewport `width=device-width, initial-scale=1` và không `user-scalable=no`/`maximum-scale<2`. → Kiểm: grep meta viewport trong layout; axe rule `meta-viewport`. · Nguồn: WCAG 2.2 SC 1.4.4
+- [x] `UX-RESP-001` **MUST** Không cuộn ngang ở bề rộng 320 CSS px trên mọi trang/màn hình; không mất nội dung/chức năng. → Kiểm: Playwright viewport 320×800 cho mỗi route trong sitemap: `scrollWidth <= clientWidth`. · Nguồn: WCAG 2.2 SC 1.4.10 — Kiểm: `E2E_DATABASE_URL=<db đã migrate> npx playwright test e2e/a11y-responsive.spec.ts`
+- [x] `UX-RESP-002` **MUST** Thẻ viewport `width=device-width, initial-scale=1` và không `user-scalable=no`/`maximum-scale<2`. → Kiểm: grep meta viewport trong layout; axe rule `meta-viewport`. · Nguồn: WCAG 2.2 SC 1.4.4 — Kiểm: `E2E_DATABASE_URL=<db đã migrate> npx playwright test e2e/a11y-responsive.spec.ts`
 - [ ] `UX-RESP-005` **MUST** Chức năng không phụ thuộc hover: mọi menu/tooltip/hành động mở được bằng chạm hoặc focus. → Kiểm: E2E project mobile (touch) mở được mọi menu; CSS hover chỉ bọc trong `@media (hover: hover)`. · Nguồn: MDN `@media (hover)`; WCAG 2.2 SC 1.4.13
 - [ ] `UX-RESP-008` **MUST** Luồng chính chạy xanh trên **hai** project E2E: desktop và mobile (thiết bị giả lập Playwright). → Kiểm: `playwright.config` có projects `desktop` + `mobile`; CI chạy cả hai. · Nguồn: khung cũ `quality-supplements.md` Nhóm 2 mục 1; [`../14-testing-quality/e2e-and-accessibility.md`](.xtemplates/framework/14-testing-quality/e2e-and-accessibility.md)
 
