@@ -1,10 +1,10 @@
 # AGENTS.md — luật vận hành cho AI agent trong dự án này
 
-> Sửa phần `[ĐIỀN]`; phần còn lại là luật chung của công cụ quy trình `.xtemplates/` (nguồn, phiên bản: `.xtemplates/README.md`; `framework/` = thư viện yêu cầu; `<XT>` dưới đây = `python3 .xtemplates/scripts/xt.py`). CPython 3.15.x trên PATH; `CLAUDE.md` chỉ import file này. Hướng dẫn này **không thay cho hook/permission**: hàng rào thật là `.claude/settings.json` + hook guard.
+> Luật vận hành của dự án. Công cụ quy trình `.xtemplates/` **thuộc dự án** (tiếp quản từ X-Templates 3.35.0, ADR-0003): sửa như mã của dự án qua PR và cổng, không chạy `install.py` đè lên. `framework/` = thư viện yêu cầu; `<XT>` dưới đây = `python3 .xtemplates/scripts/xt.py`. CPython 3.15.x trên PATH (`uv python install 3.15`); `CLAUDE.md` chỉ import file này. Hướng dẫn này **không thay cho hook/permission**: hàng rào thật là `.claude/settings.json` + hook guard.
 
 ## 1. Dự án này
 
-- **Tên / mục tiêu:** Social Manager — web app tự host quản lý mạng xã hội (hộp thư hợp nhất, đăng bài, tự động trả lời AI, thống kê) với nguồn dữ liệu cắm được nhiều nhà cung cấp. Kế hoạch: `docs/work/2026-11-22-social-manager-plan/working.md`.
+- **Tên / mục tiêu:** X-Working (slug `x-working`) — trợ lý công việc có bộ nhớ dài hạn, phát triển từ Social Manager (web app tự host: hộp thư hợp nhất, đăng bài, nguồn dữ liệu cắm được). Kế hoạch sản phẩm: `docs/work/2026-11-22-x-working-plan/source-plan.md`; kế hoạch triển khai: `docs/work/2026-11-22-x-working-plan/working.md` (ADR-0002). Tên repo/package giữ `Social-Manager`/`social-manager` tới khi chủ dự án yêu cầu đổi.
 - **Hồ sơ khung:** `web-app` · **Gói ngành:** (không) · **Quy mô:** `M`
 - **Blueprint:** `BLUEPRINT.md` (`<XT> compose …`).
 - **Stack thật:** đọc manifest/CI — **không hỏi người điều đã có trong code**. Lệnh chuẩn ở `xt.yaml`.

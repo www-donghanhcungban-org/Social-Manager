@@ -1,9 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "model": "claude-sonnet-5",
-  "fallbackModel": [
-    "claude-haiku-4-5"
-  ],
+  "fallbackModel": ["claude-haiku-4-5"],
   "effortLevel": "medium",
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "500000",
@@ -14,7 +12,7 @@
       "Edit",
       "Write",
       "Read",
-      "Bash(scripts/dev-task.sh *)",
+      "Bash(.xtemplates/scripts/dev-task.sh *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git status*)",
@@ -115,18 +113,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-resume.sh"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-guide.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"",
             "timeout": 20
           }
@@ -134,19 +120,6 @@
       }
     ],
     "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-dangerous-git.sh"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-commit-gate.sh"
-          }
-        ]
-      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -183,19 +156,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-format.sh"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/ui-intelligence.sh"
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
@@ -211,18 +171,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/usage-guard.sh"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/telemetry-record.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-guard.sh\"",
             "timeout": 30
           }
@@ -234,14 +182,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/telemetry-record.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/subagent-stop.sh\"",
             "timeout": 10
           }
@@ -249,14 +189,6 @@
       }
     ],
     "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/precompact-checkpoint.sh"
-          }
-        ]
-      },
       {
         "hooks": [
           {
