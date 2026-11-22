@@ -16,6 +16,8 @@ const d = ADMIN_URL ? describe : describe.skip;
 const noRetention = {
   purgeExpired: async () => ({
     inboxItems: 0,
+    messages: 0,
+    conversations: 0,
     sessions: 0,
     verifications: 0,
     loginThrottle: 0,

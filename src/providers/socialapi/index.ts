@@ -44,6 +44,67 @@ const ConversationList = z.object({
     .nullable(),
 });
 
+/**
+ * Phân trang của SocialAPI (guides/pagination.md, đọc 2026-11-22): `pagination{has_more,next_cursor}`, có endpoint đặt
+ * `next_cursor` ở gốc; vắng hoặc rỗng = trang cuối.
+ */
+const Pagination = {
+  pagination: z
+    .object({
+      has_more: z.boolean().nullish(),
+      next_cursor: z.string().nullish(),
+    })
+    .nullish(),
+  next_cursor: z.string().nullish(),
+};
+
+function nextCursorOf(res: {
+  pagination?: {
+    has_more?: boolean | null;
+    next_cursor?: string | null;
+  } | null;
+  next_cursor?: string | null;
+}): string | null {
+  if (res.pagination?.has_more === false) return null;
+  const c = res.pagination?.next_cursor ?? res.next_cursor ?? null;
+  return c === null || c === "" ? null : c;
+}
+
+const ConversationPage = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string(),
+        platform: z.string(),
+        participant_id: z.string(),
+        participant_name: z.string().nullish(),
+        last_message_at: z.string().nullish(),
+      }),
+    )
+    .nullable(),
+  ...Pagination,
+});
+
+/** Tin nhắn trong hội thoại (guides/direct-messages.md): mới nhất trước; `platform_id` là id của nền tảng. */
+const MessagePage = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string(),
+        platform_id: z.string().nullish(),
+        direction: z.string(),
+        text: z.string().nullish(),
+        sender_id: z.string().nullish(),
+        sender_name: z.string().nullish(),
+        created_at: z.string(),
+      }),
+    )
+    .nullable(),
+  ...Pagination,
+});
+
+const MAX_PAGE = 100;
+
 const STATUS_MAP = new Map<string, "scheduled" | "published">([
   ["scheduled", "scheduled"],
   ["publishing", "published"],
@@ -103,6 +164,46 @@ export function createSocialApiProvider(
         );
       }
       return { id: res.data.id, status };
+    },
+
+    async listConversations({ platform, accountId, cursor }) {
+      const res = await client.get("/inbox/conversations", ConversationPage, {
+        account_id: accountId,
+        limit: MAX_PAGE,
+        cursor,
+      });
+      return {
+        items: (res.data ?? [])
+          .filter((c) => matchesPlatform(c.platform, platform))
+          .map((c) => ({
+            id: c.id,
+            participantId: c.participant_id,
+            participantName: c.participant_name || c.participant_id,
+            lastMessageAt: c.last_message_at ?? null,
+          })),
+        nextCursor: nextCursorOf(res),
+      };
+    },
+
+    async listMessages({ accountId, conversationId, cursor }) {
+      const res = await client.get(
+        `/inbox/conversations/${encodeURIComponent(conversationId)}/messages`,
+        MessagePage,
+        { account_id: accountId, limit: MAX_PAGE, cursor },
+      );
+      return {
+        // Hướng lạ/ngày hỏng để tầng dịch vụ loại và đếm, không ném cả trang.
+        items: (res.data ?? []).map((m) => ({
+          id: m.platform_id || m.id,
+          identityWeak: !m.platform_id,
+          providerMessageId: m.id,
+          direction: m.direction as "incoming" | "outgoing",
+          author: m.sender_name || m.sender_id || "",
+          text: m.text ?? "",
+          sentAt: m.created_at,
+        })),
+        nextCursor: nextCursorOf(res),
+      };
     },
 
     async listInbox({ platform, accountId, kind }) {

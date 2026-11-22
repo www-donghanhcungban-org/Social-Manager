@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { listInbox, publishPost } from "@/src/providers/actions";
+import {
+  listConversations,
+  listInbox,
+  listMessages,
+  parseIsoWithOffset,
+  publishPost,
+  supportsConversations,
+} from "@/src/providers/actions";
 import { createDemoProvider } from "@/src/providers/demo";
 import { createSocialApiProvider } from "@/src/providers/socialapi";
 import {
   CAPABILITIES,
+  MESSAGE_DIRECTIONS,
   PLATFORMS,
   UnsupportedError,
   ValidationError,
@@ -34,8 +42,50 @@ function fakeSocialApiFetch() {
         { status: 200 },
       );
     }
+    if (u.includes("/messages")) {
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "m-uuid-2",
+              platform_id: "mid.2",
+              direction: "outgoing",
+              text: "Dạ còn",
+              sender_id: "page",
+              created_at: "2026-11-22T09:01:00Z",
+            },
+            {
+              id: "m-uuid-1",
+              platform_id: "mid.1",
+              direction: "incoming",
+              text: "Còn hàng?",
+              sender_id: "psid",
+              sender_name: "Lan",
+              created_at: "2026-11-22T09:00:00Z",
+            },
+          ],
+          pagination: { has_more: false },
+        }),
+        { status: 200 },
+      );
+    }
     if (u.includes("/inbox/conversations")) {
-      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      const platform = new URL(u).searchParams.get("platform") ?? "facebook";
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "conv-1",
+              platform,
+              participant_id: "psid",
+              participant_name: "Lan",
+              last_message_at: "2026-11-22T09:01:00Z",
+              created_at: "2026-11-01T00:00:00Z",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
     }
     return new Response("{}", { status: 404 });
   };
@@ -118,6 +168,42 @@ describe.each(providersUnderContract)(
           }
         }
       }
+    });
+
+    it("đọc DM theo hội thoại + tin nhắn: hình dạng trang, tin mới nhất trước, định danh và thời gian hợp lệ", async () => {
+      const p = make();
+      const platforms = PLATFORMS.filter((pl) => supportsConversations(p, pl));
+      expect(platforms.length).toBeGreaterThan(0);
+      let seen = 0;
+      for (const platform of platforms) {
+        const convs = await listConversations(p, {
+          platform,
+          accountId: "acc1",
+        });
+        expect(
+          convs.nextCursor === null || typeof convs.nextCursor === "string",
+        ).toBe(true);
+        for (const c of convs.items) {
+          expect(c.id).toBeTruthy();
+          if (c.lastMessageAt !== null)
+            expect(parseIsoWithOffset(c.lastMessageAt)).toBeTypeOf("number");
+          const msgs = await listMessages(p, {
+            platform,
+            accountId: "acc1",
+            conversationId: c.id,
+          });
+          const times = msgs.items.map((m) => parseIsoWithOffset(m.sentAt)!);
+          expect(times.every((t) => typeof t === "number")).toBe(true);
+          expect([...times].sort((a, b) => b - a)).toEqual(times);
+          for (const m of msgs.items) {
+            seen++;
+            expect(m.id).toBeTruthy();
+            expect(m.providerMessageId).toBeTruthy();
+            expect(MESSAGE_DIRECTIONS).toContain(m.direction);
+          }
+        }
+      }
+      expect(seen).toBeGreaterThan(0);
     });
 
     it("publishPost trả id và trạng thái published khi không hẹn giờ", async () => {

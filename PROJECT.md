@@ -70,12 +70,16 @@ Nguyên tắc: chỉ thu cái cần cho chức năng; lớp bí mật không bao
 | `social_accounts.external_id`             | định danh        | ánh xạ sang nhà cung cấp                 | như trên                            | như trên                                         |
 | `inbox_items.author`                      | PII (bên thứ ba) | hiển thị người gửi tin                   | hạn chế truy cập theo workspace     | 365 ngày (tính từ `received_at`)                 |
 | `inbox_items.text`                        | PII (bên thứ ba) | nội dung cần trả lời                     | như trên                            | 365 ngày (tính từ `received_at`)                 |
+| `conversations.participant_id`            | định danh        | ghép tin về đúng người nhắn              | hạn chế truy cập theo workspace     | xoá khi hết tin còn hạn (365 ngày)               |
+| `conversations.participant_name`          | PII (bên thứ ba) | hiển thị người nhắn                      | như trên                            | xoá khi hết tin còn hạn (365 ngày)               |
+| `messages.author`                         | PII (bên thứ ba) | hiển thị người gửi từng tin              | hạn chế truy cập theo workspace     | 365 ngày (tính từ `sent_at`)                     |
+| `messages.text`                           | PII (bên thứ ba) | lưu nguyên văn hội thoại để tra cứu      | như trên                            | 365 ngày (tính từ `sent_at`)                     |
 | `members.user_id`                         | định danh        | quyền thành viên                         | hạn chế truy cập                    | đến khi gỡ thành viên                            |
 | `login_throttle.key_hash`                 | định danh        | giới hạn đăng nhập theo tài khoản        | HMAC của email, không lưu email rõ  | 24 giờ kể từ lần sai gần nhất                    |
 
 - Các cột `account.access_token`, `account.refresh_token`, `account.id_token` do Better Auth tạo cho đăng nhập OAuth; ứng dụng chỉ dùng email + mật khẩu nên luôn rỗng. Nếu sau này bật OAuth phải phân loại là bí mật và mã hoá trước khi lưu.
 - Mã hoá at-rest toàn bộ ổ đĩa là việc của người triển khai (volume mã hoá của host); riêng khoá API được mã hoá ở tầng ứng dụng.
-- **Thực thi:** job `maintenance.purge-expired` (`src/retention/service.ts`, chạy 03:17 UTC hằng ngày, xoá theo lô) xoá tin quá 365 ngày, phiên và mã xác minh hết hạn quá 1 ngày, bộ đếm đăng nhập cũ hơn 24 giờ. Chỉ chạy khi `RUN_WORKERS=true`. Chưa thực thi: xoá dữ liệu cá nhân theo yêu cầu của từng người (xoá tài khoản) và xoá `social_accounts.display_name`/`members` khi người dùng bị xoá (nợ ghi ở mục 10).
+- **Thực thi:** job `maintenance.purge-expired` (`src/retention/service.ts`, chạy 03:17 UTC hằng ngày, xoá theo lô) xoá tin quá 365 ngày (cả `inbox_items` lẫn `messages`, và hội thoại không còn tin trong hạn), phiên và mã xác minh hết hạn quá 1 ngày, bộ đếm đăng nhập cũ hơn 24 giờ. Chỉ chạy khi `RUN_WORKERS=true`. Chưa thực thi: xoá dữ liệu cá nhân theo yêu cầu của từng người (xoá tài khoản) và xoá `social_accounts.display_name`/`members` khi người dùng bị xoá (nợ ghi ở mục 10).
 
 ## 6. Kiến trúc & API
 

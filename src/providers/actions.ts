@@ -2,7 +2,12 @@ import {
   UnsupportedError,
   ValidationError,
   type Capability,
+  type ConversationQuery,
+  type ConversationSummary,
   type InboxItem,
+  type MessageQuery,
+  type Page,
+  type ProviderMessage,
   type InboxKind,
   type InboxQuery,
   type Platform,
@@ -41,6 +46,41 @@ export async function listInbox(
   if (!provider.listInbox)
     throw new UnsupportedError(query.platform, capability, "not_implemented");
   return provider.listInbox(query);
+}
+
+/** Provider có đọc DM theo hội thoại + tin nhắn không (khai `dm` và cài đủ hai hàm). */
+export function supportsConversations(
+  provider: SocialProvider,
+  platform: Platform,
+): boolean {
+  return (
+    Object.hasOwn(provider.support, platform) &&
+    provider.support[platform]!.includes("dm") &&
+    typeof provider.listConversations === "function" &&
+    typeof provider.listMessages === "function"
+  );
+}
+
+export async function listConversations(
+  provider: SocialProvider,
+  query: ConversationQuery,
+): Promise<Page<ConversationSummary>> {
+  requireSupport(provider, query.platform, "dm");
+  if (!provider.listConversations || !provider.listMessages)
+    throw new UnsupportedError(query.platform, "dm", "not_implemented");
+  return provider.listConversations(query);
+}
+
+export async function listMessages(
+  provider: SocialProvider,
+  query: MessageQuery,
+): Promise<Page<ProviderMessage>> {
+  requireSupport(provider, query.platform, "dm");
+  if (!provider.listConversations || !provider.listMessages)
+    throw new UnsupportedError(query.platform, "dm", "not_implemented");
+  if (query.conversationId === "")
+    throw new ValidationError("Thiếu id hội thoại");
+  return provider.listMessages(query);
 }
 
 export async function publishPost(

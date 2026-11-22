@@ -46,6 +46,8 @@ export interface JobRunnerDeps {
   retention: {
     purgeExpired(): Promise<{
       inboxItems: number;
+      messages: number;
+      conversations: number;
       sessions: number;
       verifications: number;
       loginThrottle: number;
@@ -135,6 +137,8 @@ export function createJobRunner({
         guarded(QUEUES.purgeExpired, async () => {
           const total = {
             inboxItems: 0,
+            messages: 0,
+            conversations: 0,
             // Không đặt tên chứa "session": logger che các khóa trông như bí mật.
             expiredLogins: 0,
             verifications: 0,
@@ -144,6 +148,8 @@ export function createJobRunner({
           for (let i = 0; i < MAX_PURGE_BATCHES; i++) {
             const r = await retention.purgeExpired();
             total.inboxItems += r.inboxItems;
+            total.messages += r.messages;
+            total.conversations += r.conversations;
             total.expiredLogins += r.sessions;
             total.verifications += r.verifications;
             total.loginThrottle += r.loginThrottle;

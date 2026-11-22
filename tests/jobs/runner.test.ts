@@ -49,6 +49,8 @@ function setup() {
   const retention = {
     purgeExpired: vi.fn(async () => ({
       inboxItems: 2,
+      messages: 0,
+      conversations: 0,
       sessions: 1,
       verifications: 0,
       loginThrottle: 0,
@@ -93,6 +95,8 @@ describe("createJobRunner", () => {
     retention.purgeExpired
       .mockResolvedValueOnce({
         inboxItems: 5000,
+        messages: 0,
+        conversations: 0,
         sessions: 1,
         verifications: 0,
         loginThrottle: 0,
@@ -100,6 +104,8 @@ describe("createJobRunner", () => {
       })
       .mockResolvedValueOnce({
         inboxItems: 7,
+        messages: 0,
+        conversations: 0,
         sessions: 0,
         verifications: 2,
         loginThrottle: 1,
@@ -123,6 +129,8 @@ describe("createJobRunner", () => {
     const { q, runner, retention } = setup();
     retention.purgeExpired.mockResolvedValue({
       inboxItems: 1,
+      messages: 0,
+      conversations: 0,
       sessions: 0,
       verifications: 0,
       loginThrottle: 0,

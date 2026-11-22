@@ -41,6 +41,52 @@ export interface InboxItem {
   receivedAt: string;
 }
 
+/** Một trang kết quả; `nextCursor` null = trang cuối. */
+export interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+/** Hội thoại tin nhắn riêng bên nhà cung cấp (khác tin nhắn: một hội thoại có nhiều tin). */
+export interface ConversationSummary {
+  /** Id hội thoại bên nhà cung cấp. */
+  id: string;
+  participantId: string;
+  participantName: string;
+  /** ISO 8601 có múi giờ; null khi nhà cung cấp chưa có tin nào. */
+  lastMessageAt: string | null;
+}
+
+export const MESSAGE_DIRECTIONS = ["incoming", "outgoing"] as const;
+export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number];
+
+export interface ProviderMessage {
+  /**
+   * Định danh ổn định của tin để khử trùng giữa đồng bộ và webhook: id của nền tảng (`platform_id`) khi có, nếu không
+   * thì id của nhà cung cấp và `identityWeak = true` (cùng một tin có thể mang id khác ở webhook).
+   */
+  id: string;
+  identityWeak: boolean;
+  /** Id tin theo nhà cung cấp (vd UUID của SocialAPI). */
+  providerMessageId: string;
+  direction: MessageDirection;
+  author: string;
+  /** Nội dung gốc, không cắt. */
+  text: string;
+  /** ISO 8601 có múi giờ. */
+  sentAt: string;
+}
+
+export interface ConversationQuery {
+  platform: Platform;
+  accountId: string;
+  cursor?: string;
+}
+
+export interface MessageQuery extends ConversationQuery {
+  conversationId: string;
+}
+
 export interface InboxQuery {
   platform: Platform;
   accountId: string;
@@ -72,6 +118,12 @@ export interface SocialProvider {
   /** Nền tảng nào làm được việc gì; nền tảng vắng mặt = không hỗ trợ. */
   readonly support: Partial<Record<Platform, readonly Capability[]>>;
   listInbox?(query: InboxQuery): Promise<InboxItem[]>;
+  /** Hội thoại DM, hoạt động gần nhất trước. Khai `dm` mà có hàm này thì đồng bộ đọc theo hội thoại + tin nhắn. */
+  listConversations?(
+    query: ConversationQuery,
+  ): Promise<Page<ConversationSummary>>;
+  /** Tin nhắn của một hội thoại, mới nhất trước. Cài cùng `listConversations`. */
+  listMessages?(query: MessageQuery): Promise<Page<ProviderMessage>>;
   publishPost?(input: PublishInput): Promise<PublishResult>;
 }
 

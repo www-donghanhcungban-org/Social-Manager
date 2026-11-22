@@ -61,7 +61,7 @@ describe("phân loại dữ liệu cá nhân/nhạy cảm (BASE-SEC-013)", () =>
       (m) => m[1]!,
     );
     const sensitive =
-      /^(email|password|token|ip_address|user_agent|author|text|access_token|refresh_token|id_token|display_name|[a-z_]+_enc)$/;
+      /^(email|password|token|ip_address|user_agent|author|text|participant_id|participant_name|access_token|refresh_token|id_token|display_name|[a-z_]+_enc)$/;
     // Đã giải thích riêng trong PROJECT.md (cột OAuth không dùng) hoặc không phải dữ liệu cá nhân:
     const documentedElsewhere = new Set([
       "account.access_token",
@@ -87,7 +87,9 @@ describe("phân loại dữ liệu cá nhân/nhạy cảm (BASE-SEC-013)", () =>
   });
 
   it("thời hạn lưu trong bảng khớp với hằng số của job dọn dữ liệu", () => {
-    const inboxRows = rows.filter((r) => r[1]!.startsWith("`inbox_items."));
+    const inboxRows = rows.filter((r) =>
+      /^`(inbox_items|messages|conversations)\./.test(r[1]!),
+    );
     expect(inboxRows.length).toBeGreaterThan(0);
     for (const r of inboxRows)
       expect(r[5], r[1]).toContain(`${DEFAULT_INBOX_DAYS} ngày`);

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -150,6 +151,81 @@ export const inboxItems = pgTable(
       t.receivedAt,
       t.id,
     ),
+  ],
+);
+
+/**
+ * Hội thoại tin nhắn riêng (ADR-0002, H1). Một hội thoại có nhiều tin; mốc đồng bộ nằm ở đây để đồng bộ tăng dần và
+ * tiếp tục lấy lịch sử cũ qua nhiều lượt (backfill) mà không bỏ sót tin mới của hội thoại cũ.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    /** Id hội thoại bên nhà cung cấp. */
+    externalId: text("external_id").notNull(),
+    participantId: text("participant_id").notNull(),
+    participantName: text("participant_name").notNull(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+    /** Mọi tin gửi tới thời điểm này đã được lấy về (đồng bộ tăng dần dừng ở đây). */
+    syncedThrough: timestamp("synced_through", { withTimezone: true }),
+    /** Còn lịch sử cũ chưa lấy: cursor của nhà cung cấp để lượt sau đọc tiếp. */
+    backfillCursor: text("backfill_cursor"),
+    /** Lấy lịch sử cũ tới mốc này thì dừng (null = tới đầu hội thoại). */
+    backfillUntil: timestamp("backfill_until", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("conversations_account_external").on(
+      t.socialAccountId,
+      t.externalId,
+    ),
+  ],
+);
+
+export const MESSAGE_DIRECTIONS = ["incoming", "outgoing"] as const;
+
+/**
+ * Tin nhắn, lưu nguyên văn (không cắt). Khoá khử trùng (tài khoản, external_id) với external_id là id của nền tảng
+ * (`platform_id`) khi có để đồng bộ và webhook cùng khớp một tin; `identity_weak` = chỉ có id của nhà cung cấp.
+ */
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    externalId: text("external_id").notNull(),
+    identityWeak: boolean("identity_weak").notNull().default(false),
+    providerMessageId: text("provider_message_id"),
+    direction: text("direction", { enum: MESSAGE_DIRECTIONS }).notNull(),
+    author: text("author").notNull(),
+    text: text("text").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    /** Lúc hệ thống ghi nhận tin (khác `sent_at`: lúc tin được gửi). */
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("messages_account_external").on(t.socialAccountId, t.externalId),
+    check(
+      "messages_direction_check",
+      sql`${t.direction} in (${inList(MESSAGE_DIRECTIONS)})`,
+    ),
+    index("messages_conversation_sent_idx").on(t.conversationId, t.sentAt),
+    index("messages_sent_idx").on(t.sentAt),
   ],
 );
 

@@ -1,7 +1,14 @@
-import { inArray, lt } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, notExists, sql } from "drizzle-orm";
 
 import type { Db } from "../auth/members";
-import { inboxItems, loginThrottle, session, verification } from "../db/schema";
+import {
+  conversations,
+  inboxItems,
+  loginThrottle,
+  messages,
+  session,
+  verification,
+} from "../db/schema";
 
 const DAY_MS = 86_400_000;
 export const DEFAULT_INBOX_DAYS = 365;
@@ -12,6 +19,8 @@ const THROTTLE_STALE_MS = DAY_MS;
 
 export interface PurgeResult {
   inboxItems: number;
+  messages: number;
+  conversations: number;
   sessions: number;
   verifications: number;
   loginThrottle: number;
@@ -77,12 +86,53 @@ export function createRetentionService({ db }: { db: Db }) {
         )
         .returning({ key: loginThrottle.keyHash });
 
+      // Tin nhắn theo hội thoại (ADR-0002): cùng hạn, tính từ lúc tin được gửi.
+      const msgIds = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(lt(messages.sentAt, inboxCutoff))
+        .orderBy(messages.sentAt)
+        .limit(batchSize + 1);
+      const msgBatch = msgIds.slice(0, batchSize).map((r) => r.id);
+      const deletedMessages =
+        msgBatch.length === 0
+          ? []
+          : await db
+              .delete(messages)
+              .where(inArray(messages.id, msgBatch))
+              .returning({ id: messages.id });
+      // Hội thoại (giữ tên/id người nhắn) hết tin còn hạn thì xoá luôn; còn tin mới hơn hạn thì giữ.
+      const deletedConversations = await db
+        .delete(conversations)
+        .where(
+          and(
+            lt(
+              sql`coalesce(${conversations.lastMessageAt}, ${conversations.createdAt})`,
+              inboxCutoff,
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(messages)
+                .where(
+                  and(
+                    eq(messages.conversationId, conversations.id),
+                    gte(messages.sentAt, inboxCutoff),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .returning({ id: conversations.id });
+
       return {
         inboxItems: deletedInbox.length,
+        messages: deletedMessages.length,
+        conversations: deletedConversations.length,
         sessions: sessions.length,
         verifications: verifications.length,
         loginThrottle: throttles.length,
-        more: ids.length > batchSize,
+        more: ids.length > batchSize || msgIds.length > batchSize,
       };
     },
   };

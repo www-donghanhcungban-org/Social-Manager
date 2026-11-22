@@ -3,9 +3,11 @@ import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  conversations,
   inboxItems,
   loginThrottle,
   members,
+  messages,
   providerConnections,
   session,
   socialAccounts,
@@ -108,6 +110,73 @@ describe("tin hộp thư quá hạn lưu (365 ngày)", () => {
         svc().purgeExpired({ now: NOW, inboxDays: bad }),
       ).rejects.toThrow(/inboxDays/);
     }
+  });
+});
+
+describe("tin nhắn theo hội thoại quá hạn lưu", () => {
+  async function seedConv(ext: string, lastMessageAt: Date | null) {
+    const [c] = await t.db
+      .insert(conversations)
+      .values({
+        workspaceId: ws,
+        socialAccountId: acc,
+        externalId: ext,
+        participantId: "psid",
+        participantName: "Lan",
+        lastMessageAt,
+        createdAt: ago(800),
+      })
+      .returning();
+    return c!.id;
+  }
+  const seedMsg = (conversationId: string, ext: string, sentAt: Date) =>
+    t.db.insert(messages).values({
+      workspaceId: ws,
+      conversationId,
+      socialAccountId: acc,
+      externalId: ext,
+      direction: "incoming",
+      author: "Lan",
+      text: "x",
+      sentAt,
+    });
+
+  it("xoá tin cũ hơn hạn theo sent_at, giữ tin trong hạn và hội thoại còn tin mới", async () => {
+    const c = await seedConv("c1", ago(1));
+    await seedMsg(c, "cu", ago(366));
+    await seedMsg(c, "moi", ago(1));
+    const r = await svc().purgeExpired({ now: NOW });
+    expect(r.messages).toBe(1);
+    expect(r.conversations).toBe(0);
+    expect(
+      (await t.db.select().from(messages)).map((m) => m.externalId),
+    ).toEqual(["moi"]);
+  });
+
+  it("hội thoại không còn tin trong hạn bị xoá (cả khi last_message_at rỗng)", async () => {
+    const c = await seedConv("c-cu", ago(400));
+    await seedMsg(c, "cu", ago(400));
+    await seedConv("c-rong", null);
+    const keep = await seedConv("c-moi", ago(2));
+    const r = await svc().purgeExpired({ now: NOW });
+    expect(r.conversations).toBe(2);
+    expect((await t.db.select().from(conversations)).map((x) => x.id)).toEqual([
+      keep,
+    ]);
+  });
+
+  it("last_message_at lệch cũ nhưng còn tin trong hạn thì giữ hội thoại", async () => {
+    const c = await seedConv("c", ago(500));
+    await seedMsg(c, "moi", ago(3));
+    expect((await svc().purgeExpired({ now: NOW })).conversations).toBe(0);
+  });
+
+  it("tin nhắn cũng xoá theo lô và báo còn", async () => {
+    const c = await seedConv("c", ago(1));
+    for (let i = 0; i < 3; i++) await seedMsg(c, `cu${i}`, ago(400 + i));
+    const r = await svc().purgeExpired({ now: NOW, batchSize: 2 });
+    expect(r.messages).toBe(2);
+    expect(r.more).toBe(true);
   });
 });
 

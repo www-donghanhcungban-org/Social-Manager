@@ -43,6 +43,13 @@
       "when": 1795323105279,
       "tag": "0005_webhook_secret",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795332352110,
+      "tag": "0006_conversations",
+      "breakpoints": true
     }
   ]
 }
