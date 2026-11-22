@@ -42,7 +42,7 @@ const svc = (s: BlobStore = store) =>
   createEvidenceService({ db: t.db, store: s });
 const base = (over = {}) => ({
   workspaceId: wsA,
-  source: "message" as const,
+  source: "document" as const,
   externalId: "m1",
   content: "Còn hàng không?",
   contentType: "text/plain" as const,
@@ -82,7 +82,7 @@ describe("ingest", () => {
     });
     expect(new TextDecoder().decode(got.content)).toBe("Còn hàng không?");
     expect(got.item).toMatchObject({
-      source: "message",
+      source: "document",
       externalId: "m1",
       sizeBytes: Buffer.byteLength("Còn hàng không?"),
     });
@@ -137,6 +137,7 @@ describe("ingest", () => {
       { content: new Uint8Array(MAX_EVIDENCE_BYTES + 1).fill(97) },
       { contentType: "application/x-msdownload" },
       { source: "ftp" },
+      { source: "message" }, // thiếu messageId
       { externalId: "   " },
       { externalId: "x".repeat(501) },
       { observedAt: new Date("không phải ngày") },

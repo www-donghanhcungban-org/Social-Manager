@@ -51,7 +51,7 @@ runtime Python riêng và quota tài nguyên (working.md §2, research §2).
 ### Lát 1 — Kho bản gốc (M04)
 
 - [x] `T-201` Kho bản gốc theo hash: bảng `evidence_blobs` (sha256 duy nhất theo workspace, kích thước, loại) và `evidence_items` (mỗi lần nhập: nguồn, id ngoài, thời điểm nhập, tham chiếu blob) — migration 0010 + down; cổng `BlobStore` (bản thư mục theo `sha256`, bản bộ nhớ cho test); dịch vụ `ingest` kiểm quyền. Given cùng nội dung nhập hai lần When ingest Then một blob, hai lần xuất hiện; ca biên: nội dung rỗng, trần kích thước, hash lệch khi đọc lại bị phát hiện, workspace khác không thấy blob, blob ghi dở (lỗi giữa chừng) không để lại mục mồ côi (files: src/evidence/, src/db/schema.ts, drizzle/, PROJECT.md, tests/evidence/, tests/db/; exec: deep) — Gate: `npx vitest run tests/evidence tests/db tests/config/data-classification.test.ts`
-- [ ] `T-202` Nhập tin nhắn vào kho: mỗi tin mới trong `messages` có một `evidence_item` (nguồn `message`) tham chiếu nội dung nguyên văn; đồng bộ lại không nhân đôi. Given tin được đồng bộ và nhận qua webhook When ingest Then đúng một bằng chứng cho tin đó (sau: T-201; files: src/evidence/, src/conversations/, src/inbox/, tests/evidence/, tests/conversations/) — Gate: `npx vitest run tests/evidence tests/conversations tests/inbox`
+- [x] `T-202` Nhập tin nhắn vào kho: mỗi tin mới trong `messages` có một `evidence_item` (nguồn `message`) tham chiếu nội dung nguyên văn; đồng bộ lại không nhân đôi. Given tin được đồng bộ và nhận qua webhook When ingest Then đúng một bằng chứng cho tin đó (sau: T-201; files: src/evidence/, src/conversations/, src/inbox/, tests/evidence/, tests/conversations/) — Gate: `npx vitest run tests/evidence tests/conversations tests/inbox`
 
 ### Lát 2 — Dự án và liên kết (M06)
 

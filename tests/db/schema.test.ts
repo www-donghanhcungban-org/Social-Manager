@@ -90,6 +90,8 @@ describe("migration", () => {
     "inbox_items",
     "conversations",
     "messages",
+    "evidence_blobs",
+    "evidence_items",
   ];
 
   // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,

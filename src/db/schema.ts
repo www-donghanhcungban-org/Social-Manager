@@ -306,6 +306,13 @@ export const evidenceItems = pgTable(
     blobId: uuid("blob_id")
       .notNull()
       .references(() => evidenceBlobs.id, { onDelete: "cascade" }),
+    /**
+     * Với nguồn `message`: tin nhắn gốc. Xoá tin (hết hạn lưu, xoá tài khoản/hội thoại) xoá luôn bản sao này — bản sao
+     * không được sống lâu hơn tin (H5, Luật 91/2025).
+     */
+    messageId: uuid("message_id").references(() => messages.id, {
+      onDelete: "cascade",
+    }),
     source: text("source", { enum: EVIDENCE_SOURCES }).notNull(),
     /** Id của mục bên nguồn (vd id tin nhắn, `owner/repo#12`, đường dẫn tài liệu). */
     externalId: text("external_id").notNull(),
@@ -328,7 +335,12 @@ export const evidenceItems = pgTable(
       "evidence_items_external_check",
       sql`length(${t.externalId}) between 1 and 500`,
     ),
+    check(
+      "evidence_items_message_check",
+      sql`(${t.source} = 'message') = (${t.messageId} is not null)`,
+    ),
     index("evidence_items_blob_idx").on(t.blobId),
+    index("evidence_items_message_idx").on(t.messageId),
     index("evidence_items_ws_observed_idx").on(t.workspaceId, t.observedAt),
   ],
 );

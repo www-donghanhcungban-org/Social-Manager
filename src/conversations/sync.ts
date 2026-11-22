@@ -54,6 +54,15 @@ type ConvRow = typeof conversations.$inferSelect;
 
 const clean = (s: string) => s.normalize("NFC");
 
+/** Phần của dịch vụ bằng chứng mà đồng bộ cần (cổng hẹp: test thay được, không kéo cả dịch vụ). */
+export interface EvidenceBackfill {
+  backfillMessages(input: {
+    workspaceId: string;
+    socialAccountId?: string;
+    limit?: number;
+  }): Promise<{ ingested: number; failed: number; more: boolean }>;
+}
+
 /** Tạo/cập nhật hội thoại; không lùi mốc tin gần nhất, không đụng mốc đồng bộ. Dùng chung cho đồng bộ và webhook. */
 export async function upsertConversationRow(
   db: Db,
@@ -138,9 +147,12 @@ export async function touchDmInbox(
 export function createConversationSync({
   db,
   errorCode,
+  evidence,
 }: {
   db: Db;
   errorCode: (e: unknown) => string;
+  /** Có thì sau mỗi lượt đồng bộ, tin mới (và tin còn thiếu từ lượt lỗi trước) được nhập vào kho bằng chứng. */
+  evidence?: EvidenceBackfill;
 }) {
   const upsertConversation = (
     workspaceId: string,
@@ -429,6 +441,18 @@ export function createConversationSync({
         cursor = res.nextCursor;
       }
       await backfill(provider, account, out);
+      if (evidence) {
+        try {
+          const r = await evidence.backfillMessages({
+            workspaceId,
+            socialAccountId: account.id,
+          });
+          if (r.more) out.more = true;
+        } catch (e) {
+          // Tin đã lưu; bằng chứng bù ở lượt sau. Chỉ mã lỗi an toàn, không nội dung.
+          out.failed.push({ conversationId: "evidence", code: errorCode(e) });
+        }
+      }
       return out;
     },
   };

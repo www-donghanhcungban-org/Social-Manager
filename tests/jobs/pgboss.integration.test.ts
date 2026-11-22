@@ -18,6 +18,7 @@ const noRetention = {
     inboxItems: 0,
     messages: 0,
     conversations: 0,
+    evidenceBlobs: 0,
     sessions: 0,
     verifications: 0,
     loginThrottle: 0,

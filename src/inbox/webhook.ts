@@ -2,7 +2,11 @@ import { and, eq } from "drizzle-orm";
 
 import { UUID } from "../auth/access";
 import type { Db } from "../auth/members";
-import { touchDmInbox, upsertConversationRow } from "../conversations/sync";
+import {
+  touchDmInbox,
+  upsertConversationRow,
+  type EvidenceBackfill,
+} from "../conversations/sync";
 import {
   inboxItems,
   messages,
@@ -42,10 +46,12 @@ export function createWebhookIngest({
   db,
   box,
   now = () => Date.now(),
+  evidence,
 }: {
   db: Db;
   box: SecretBox;
   now?: () => number;
+  evidence?: EvidenceBackfill;
 }) {
   return {
     async handle(input: {
@@ -142,6 +148,17 @@ export function createWebhookIngest({
                 text: m.text,
                 sentAt: event.item.receivedAt,
               });
+        if (fresh.length > 0 && evidence) {
+          try {
+            await evidence.backfillMessages({
+              workspaceId: conn.workspaceId,
+              socialAccountId: account.id,
+              limit: 20,
+            });
+          } catch {
+            // Tin đã lưu và xác nhận 200 (không bắt nhà cung cấp gửi lại); bằng chứng bù ở lượt đồng bộ sau.
+          }
+        }
         return { status: 200, body: { status: "ok", inserted: updated } };
       }
 

@@ -56,6 +56,7 @@ export interface JobRunnerDeps {
       inboxItems: number;
       messages: number;
       conversations: number;
+      evidenceBlobs: number;
       sessions: number;
       verifications: number;
       loginThrottle: number;
@@ -156,6 +157,7 @@ export function createJobRunner({
             inboxItems: 0,
             messages: 0,
             conversations: 0,
+            evidenceBlobs: 0,
             // Không đặt tên chứa "session": logger che các khóa trông như bí mật.
             expiredLogins: 0,
             verifications: 0,
@@ -167,6 +169,7 @@ export function createJobRunner({
             total.inboxItems += r.inboxItems;
             total.messages += r.messages;
             total.conversations += r.conversations;
+            total.evidenceBlobs += r.evidenceBlobs;
             total.expiredLogins += r.sessions;
             total.verifications += r.verifications;
             total.loginThrottle += r.loginThrottle;

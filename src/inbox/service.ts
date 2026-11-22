@@ -9,7 +9,10 @@ import {
   inboxItems,
   type InboxStatus,
 } from "../db/schema";
-import { createConversationSync } from "../conversations/sync";
+import {
+  createConversationSync,
+  type EvidenceBackfill,
+} from "../conversations/sync";
 import {
   listInbox,
   parseIsoWithOffset,
@@ -95,16 +98,20 @@ export interface InboxServiceDeps {
     providerId: string,
     credentials: string,
   ) => SocialProvider | undefined;
+  /** Có thì tin nhắn đồng bộ về được nhập vào kho bằng chứng (ADR-0004). */
+  evidence?: EvidenceBackfill;
 }
 
 export function createInboxService({
   db,
   box,
   resolveProvider,
+  evidence,
 }: InboxServiceDeps) {
   const conversationSync = createConversationSync({
     db,
     errorCode: errorCodeOf,
+    evidence,
   });
 
   /** Kéo tin mới từ provider vào DB. Lặp lại an toàn: khoá duy nhất loại bản trùng, không ghi đè. */

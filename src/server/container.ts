@@ -31,6 +31,7 @@ export function createContainer(cfg: Env) {
   const db = drizzle(pool, { schema }) as unknown as Db;
   const box = createSecretBox(cfg.APP_SECRET_KEY);
   const blobStore = createFsBlobStore(cfg.BLOB_DIR);
+  const evidence = createEvidenceService({ db, store: blobStore });
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -60,10 +61,15 @@ export function createContainer(cfg: Env) {
     accounts: createAccountService({ db, registry }),
     connections: createConnectionService({ db, box, registry }),
     posts: createPostService({ db, box, resolveProvider: buildProvider }),
-    inbox: createInboxService({ db, box, resolveProvider: buildProvider }),
-    retention: createRetentionService({ db }),
-    evidence: createEvidenceService({ db, store: blobStore }),
-    webhooks: createWebhookIngest({ db, box }),
+    inbox: createInboxService({
+      db,
+      box,
+      resolveProvider: buildProvider,
+      evidence,
+    }),
+    retention: createRetentionService({ db, evidence }),
+    evidence,
+    webhooks: createWebhookIngest({ db, box, evidence }),
   };
 
   /** Mọi tài khoản mạng xã hội của mọi workspace, cho job đồng bộ định kỳ. */
