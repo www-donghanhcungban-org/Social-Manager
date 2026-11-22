@@ -97,14 +97,12 @@ export function createInboxService({
   box,
   resolveProvider,
 }: InboxServiceDeps) {
-  return {
-    /** Kéo tin mới từ provider vào DB. Lặp lại an toàn: khoá duy nhất loại bản trùng, không ghi đè. */
-    async sync(input: {
-      actorId: string;
-      workspaceId: string;
-      accountId: string;
-    }) {
-      await requireAction(db, input.actorId, input.workspaceId, "inbox.read");
+  /** Kéo tin mới từ provider vào DB. Lặp lại an toàn: khoá duy nhất loại bản trùng, không ghi đè. */
+  async function syncAccount(input: {
+    workspaceId: string;
+    accountId: string;
+  }) {
+    {
       const account = await accountInWorkspace(
         db,
         input.accountId,
@@ -173,7 +171,21 @@ export function createInboxService({
         result.inserted += inserted.length;
       }
       return result;
+    }
+  }
+
+  return {
+    async sync(input: {
+      actorId: string;
+      workspaceId: string;
+      accountId: string;
+    }) {
+      await requireAction(db, input.actorId, input.workspaceId, "inbox.read");
+      return syncAccount(input);
     },
+
+    /** Dành cho job nền (không có người dùng); chỉ gọi từ mã server, không đưa ra API. */
+    syncAsSystem: syncAccount,
 
     /** Mới nhất trước; phân trang keyset (received_at, id) nên không sót/lặp khi có tin mới hoặc trùng giờ. */
     async list(input: {

@@ -33,6 +33,11 @@ const schema = z.object({
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     z.enum(["development", "test", "production"]).default("development"),
   ),
+  /** `false` để tắt worker nền trong tiến trình này (chạy riêng hoặc khi debug). */
+  RUN_WORKERS: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.enum(["true", "false"]).default("true"),
+  ),
   SOCIALAPI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     z.url().default("https://api.social-api.ai/v1"),
