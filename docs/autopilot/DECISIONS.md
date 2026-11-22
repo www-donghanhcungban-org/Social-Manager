@@ -43,3 +43,10 @@
 - Chọn: Tắt Cache Components, render động mọi route, CSP nonce + strict-dynamic
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn thắng: vỏ tĩnh không mang được nonce theo request (đã đo: chrome chặn 11 script, form không hydrate); ứng dụng toàn trang theo người dùng nên mất PPR gần như không thiệt; MUST PRF-WEB-007 cấm unsafe-inline
 - Đường lùi: Bật lại cacheComponents + partialPrefetching trong next.config.ts, bỏ headers() ở app/layout.tsx, đổi CSP sang phương án 2 hoặc 3 và ghi D mới
+
+### D-007 · 2026-11-22T04:02:55+00:00 · Thư viện Argon2id cho mật khẩu (BE-AUTH-001)?
+
+- Phương án: (1) hash-wasm 4.13.0 (WASM thuần, MIT, ghim đúng) · (2) @node-rs/argon2 2.2.2 (binary native theo nền tảng) · (3) giữ scrypt mặc định của Better Auth
+- Chọn: hash-wasm 4.13.0 (WASM thuần, MIT, ghim đúng)
+- Lý do (tiêu chí chất lượng cuối): Blueprint đòi Argon2id; WASM thuần chạy mọi nền tảng/Docker không cần binary prebuilt nên bền và dễ tự host; scrypt chỉ được khi không có Argon2id; chấp nhận chậm hơn native vài chục ms
+- Đường lùi: Bỏ password.hash/verify trong auth.ts (về scrypt) — hash cũ khác định dạng nên người dùng phải đặt lại mật khẩu

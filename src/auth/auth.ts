@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import * as schema from "../db/schema";
 import type { Db } from "./members";
+import { hashPassword, verifyPassword } from "./password";
 
 const MIN_SECRET_CHARS = 32;
 const MIN_PASSWORD_CHARS = 12;
@@ -51,6 +52,8 @@ export function createAuth({
       // Không tự đăng nhập sau đăng ký: nhờ vậy đăng ký email mới và email đã có cho cùng một phản hồi,
       // kẻ tấn công không dò được email nào đã đăng ký (review 🟠 6, D-005).
       autoSignIn: false,
+      // Argon2id thay scrypt mặc định (BE-AUTH-001).
+      password: { hash: hashPassword, verify: verifyPassword },
     },
     session: { expiresIn: SESSION_DAYS * 24 * 60 * 60 },
     // DEBT: bộ đếm lưu trong bộ nhớ tiến trình | trần: nhiều bản sao server thì hạn mức nhân lên theo số bản |

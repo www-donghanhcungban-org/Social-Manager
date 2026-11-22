@@ -79,6 +79,9 @@ describe("đăng ký", () => {
     expect(rows.rows).toHaveLength(1);
     expect(rows.rows[0]?.password).toBeTruthy();
     expect(rows.rows[0]?.password).not.toContain(PASSWORD);
+    expect(rows.rows[0]?.password).toMatch(
+      /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/,
+    );
   });
 
   it("đăng ký trùng email (kể cả khác hoa/thường) không tạo thêm người dùng, không đổi mật khẩu", async () => {
