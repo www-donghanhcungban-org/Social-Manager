@@ -72,6 +72,46 @@ export async function addAccountAction(
   return { error: null, ok: true };
 }
 
+export async function setWebhookSecretAction(
+  workspaceId: string,
+  connectionId: string,
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const { user } = await requireWorkspace(workspaceId);
+  try {
+    await getContainer().services.connections.setWebhookSecret({
+      actorId: user.id,
+      workspaceId,
+      connectionId,
+      // Chuỗi người dùng dán nguyên văn (không trim ngầm): dịch vụ từ chối khoảng trắng thừa để họ biết.
+      secret: str(form, "secret"),
+    });
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/app/${workspaceId}/connections`);
+  return { error: null, ok: true };
+}
+
+export async function clearWebhookSecretAction(
+  workspaceId: string,
+  connectionId: string,
+): Promise<void> {
+  const { user } = await requireWorkspace(workspaceId);
+  await getContainer()
+    .services.connections.setWebhookSecret({
+      actorId: user.id,
+      workspaceId,
+      connectionId,
+      secret: null,
+    })
+    .catch((e: unknown) => {
+      if (!(e instanceof NotFoundError)) throw e;
+    });
+  revalidatePath(`/app/${workspaceId}/connections`);
+}
+
 export async function removeConnectionAction(
   workspaceId: string,
   connectionId: string,

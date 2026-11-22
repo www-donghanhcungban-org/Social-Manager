@@ -4,7 +4,7 @@ Web app tự host để một nhóm quản lý mạng xã hội ở một nơi: 
 
 Nguồn dữ liệu **cắm được nhiều nhà cung cấp** (`src/providers/`): SocialAPI, demo, và nhà cung cấp tự viết thêm. Mỗi nhà cung cấp khai báo nền tảng × tính năng nó hỗ trợ; tính năng chưa có trả lỗi rõ ràng, không giả vờ chạy.
 
-> Trạng thái: đang xây. Đã có: đăng nhập, workspace và phân quyền, kết nối nhà cung cấp, hộp thư, đăng bài và lịch, hàng đợi nền. Chưa có: webhook, tự động trả lời AI, thống kê. Xem `PROGRESS.md`.
+> Trạng thái: đang xây. Đã có: đăng nhập, workspace và phân quyền, kết nối nhà cung cấp, hộp thư, đăng bài và lịch, hàng đợi nền, nhận webhook SocialAPI (bật ở màn hình Kết nối: dán secret, trỏ SocialAPI tới địa chỉ hiển thị). Chưa có: tự động trả lời AI, thống kê. Xem `PROGRESS.md`.
 
 ## Yêu cầu môi trường
 

@@ -2,8 +2,14 @@ import { can } from "@/src/auth/permissions";
 import { PLATFORMS } from "@/src/providers/types";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
-import { removeAccountAction, removeConnectionAction } from "./actions";
-import { AddAccountForm, AddConnectionForm } from "./forms";
+import { loadEnv, processEnv } from "@/src/config/env";
+
+import {
+  clearWebhookSecretAction,
+  removeAccountAction,
+  removeConnectionAction,
+} from "./actions";
+import { AddAccountForm, AddConnectionForm, WebhookSecretForm } from "./forms";
 
 export const metadata = { title: "Kết nối — Social Manager" };
 
@@ -21,6 +27,8 @@ export default async function ConnectionsPage({
   ]);
   const canManage = can(workspace.role, "connections.manage");
   const providers = registry.list().map((p) => ({ id: p.id, label: p.label }));
+  // URL công khai của app (BETTER_AUTH_URL), bỏ dấu `/` cuối để ghép đường dẫn không bị `//`.
+  const publicUrl = loadEnv(processEnv()).BETTER_AUTH_URL.replace(/\/+$/, "");
 
   return (
     <main className="flex flex-col gap-8">
@@ -114,6 +122,46 @@ export default async function ConnectionsPage({
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {canManage && c.provider === "socialapi" && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-primary underline">
+                        Nhận tin theo thời gian thực (webhook)
+                        {c.webhookEnabled ? " — đã bật" : ""}
+                      </summary>
+                      <div className="mt-3 flex flex-col gap-3">
+                        <p className="text-sm">
+                          Trong SocialAPI, tạo webhook trỏ tới địa chỉ này rồi
+                          dán secret vào ô bên dưới:
+                        </p>
+                        <code
+                          className="block break-all rounded bg-muted px-3 py-2 text-sm"
+                          aria-label={`Địa chỉ webhook của ${c.label}`}
+                        >
+                          {`${publicUrl}/api/webhooks/socialapi/${c.id}`}
+                        </code>
+                        <WebhookSecretForm
+                          workspaceId={workspaceId}
+                          connectionId={c.id}
+                        />
+                        {c.webhookEnabled && (
+                          <form
+                            action={clearWebhookSecretAction.bind(
+                              null,
+                              workspaceId,
+                              c.id,
+                            )}
+                          >
+                            <button
+                              type="submit"
+                              className="text-sm text-danger underline"
+                            >
+                              Tắt webhook (xoá secret)
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    </details>
                   )}
                   {canManage && platforms.length > 0 && (
                     <details className="mt-4">

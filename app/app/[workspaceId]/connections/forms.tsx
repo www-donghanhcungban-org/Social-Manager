@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import {
   addAccountAction,
   addConnectionAction,
+  setWebhookSecretAction,
   type ActionState,
 } from "./actions";
 
@@ -70,6 +71,43 @@ export function AddConnectionForm({
       <Status state={state} />
       <button type="submit" disabled={pending} className={submit}>
         {pending ? "Đang lưu…" : "Thêm kết nối"}
+      </button>
+    </form>
+  );
+}
+
+export function WebhookSecretForm({
+  workspaceId,
+  connectionId,
+}: {
+  workspaceId: string;
+  connectionId: string;
+}) {
+  const [state, action, pending] = useActionState(
+    setWebhookSecretAction.bind(null, workspaceId, connectionId),
+    initial,
+  );
+  return (
+    <form action={action} className="flex max-w-md flex-col gap-3">
+      <label className="block">
+        Secret webhook
+        <input
+          name="secret"
+          type="password"
+          required
+          minLength={16}
+          maxLength={256}
+          autoComplete="off"
+          className={field}
+        />
+        <span className="mt-1 block text-sm text-muted-foreground">
+          Dán secret mà SocialAPI hiển thị một lần khi tạo endpoint. Được mã hoá
+          khi lưu và không hiển thị lại.
+        </span>
+      </label>
+      <Status state={state} />
+      <button type="submit" disabled={pending} className={submit}>
+        {pending ? "Đang lưu…" : "Lưu secret"}
       </button>
     </form>
   );
