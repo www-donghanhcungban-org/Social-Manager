@@ -10,6 +10,14 @@ export default defineConfig({
     url: "http://localhost:3100",
     reuseExistingServer: false,
     timeout: 60_000,
+    // Server kiểm cấu hình lúc khởi động (instrumentation.ts): cấp giá trị giả hợp lệ.
+    // Chưa nối DB thật nên chỉ cần đúng định dạng.
+    env: {
+      DATABASE_URL: "postgres://e2e:e2e@localhost:5432/e2e",
+      BETTER_AUTH_SECRET: "e2e-secret-".padEnd(48, "x"),
+      BETTER_AUTH_URL: "http://localhost:3100",
+      APP_SECRET_KEY: Buffer.alloc(32, 7).toString("base64"),
+    },
   },
   use: {
     baseURL: "http://localhost:3100",

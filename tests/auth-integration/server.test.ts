@@ -6,6 +6,7 @@ const ENV = {
   DATABASE_URL: "postgres://u:p@localhost:5432/db",
   BETTER_AUTH_SECRET: "x".repeat(48),
   BETTER_AUTH_URL: "http://localhost:3000",
+  APP_SECRET_KEY: Buffer.alloc(32, 1).toString("base64"),
 };
 
 describe("createAuthFromEnv", () => {
