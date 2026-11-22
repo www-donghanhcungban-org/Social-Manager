@@ -1,0 +1,13 @@
+# Cấu hình gitleaks (BASE-SEC-002). Dùng toàn bộ luật mặc định, chỉ miễn hẹp cho dữ liệu giả của test.
+# Lý do: test kiểm "khoá không hiện lại / sai mật khẩu" cần một chuỗi trông như khoá/mật khẩu; chúng không dùng ở đâu khác.
+# Miễn theo luật + đường dẫn, không miễn cả repo: khoá thật trong mã nguồn, cấu hình, Dockerfile vẫn bị bắt.
+title = "social-manager"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Chuỗi giả trong test và e2e (không phải bí mật thật)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^(e2e|tests)/.+\.(ts|tsx)$''']
