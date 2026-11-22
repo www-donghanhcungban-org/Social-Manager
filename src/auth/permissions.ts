@@ -11,6 +11,9 @@ export const ACTIONS = [
   "workspace.delete",
   /** Đổi cấu hình workspace (thời hạn lưu dữ liệu, D-010): chỉ owner. */
   "workspace.settings",
+  /** Kho bằng chứng (ADR-0004): mọi thành viên đọc; admin/owner nhập nội dung. */
+  "evidence.read",
+  "evidence.write",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -18,9 +21,11 @@ const MEMBER: readonly Action[] = [
   "inbox.read",
   "inbox.reply",
   "posts.publish",
+  "evidence.read",
 ];
 const ADMIN: readonly Action[] = [
   ...MEMBER,
+  "evidence.write",
   "connections.manage",
   "members.invite",
   "members.remove",

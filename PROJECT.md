@@ -56,26 +56,28 @@ Nguyên tắc: chỉ thu cái cần cho chức năng; lớp bí mật không bao
 
 <!-- bảng sau được `tests/config/data-classification.test.ts` đối chiếu với migration: mỗi cột phải có thật -->
 
-| Cột                                       | Lớp              | Lý do cần thu                            | Bảo vệ khi lưu                      | Thời hạn lưu                                     |
-| ----------------------------------------- | ---------------- | ---------------------------------------- | ----------------------------------- | ------------------------------------------------ |
-| `user.email`                              | PII              | định danh đăng nhập                      | hạn chế truy cập ở tầng dịch vụ     | đến khi xoá tài khoản                            |
-| `user.name`                               | PII              | hiển thị tên người dùng                  | như trên                            | đến khi xoá tài khoản                            |
-| `account.password`                        | bí mật           | xác thực                                 | băm Argon2id, không lưu mật khẩu rõ | đến khi xoá tài khoản                            |
-| `session.token`                           | bí mật           | duy trì phiên                            | bản ghi xoá khi đăng xuất/hết hạn   | 7 ngày kể từ lúc tạo, xoá hẳn sau 1 ngày hết hạn |
-| `session.ip_address`                      | PII              | phát hiện lạm dụng                       | hạn chế truy cập                    | cùng vòng đời phiên                              |
-| `session.user_agent`                      | PII              | phát hiện lạm dụng                       | hạn chế truy cập                    | cùng vòng đời phiên                              |
-| `provider_connections.credentials_enc`    | bí mật           | gọi nhà cung cấp thay mặt người dùng     | AES-256-GCM, khoá `APP_SECRET_KEY`  | đến khi xoá kết nối                              |
-| `provider_connections.webhook_secret_enc` | bí mật           | xác minh chữ ký webhook của nhà cung cấp | AES-256-GCM, khoá `APP_SECRET_KEY`  | đến khi xoá kết nối hoặc gỡ secret               |
-| `social_accounts.display_name`            | PII              | hiển thị trang đã kết nối                | hạn chế truy cập theo workspace     | đến khi xoá tài khoản mạng xã hội                |
-| `social_accounts.external_id`             | định danh        | ánh xạ sang nhà cung cấp                 | như trên                            | như trên                                         |
-| `inbox_items.author`                      | PII (bên thứ ba) | hiển thị người gửi tin                   | hạn chế truy cập theo workspace     | 365 ngày (tính từ `received_at`)                 |
-| `inbox_items.text`                        | PII (bên thứ ba) | nội dung cần trả lời                     | như trên                            | 365 ngày (tính từ `received_at`)                 |
-| `conversations.participant_id`            | định danh        | ghép tin về đúng người nhắn              | hạn chế truy cập theo workspace     | xoá khi hết tin còn hạn (365 ngày)               |
-| `conversations.participant_name`          | PII (bên thứ ba) | hiển thị người nhắn                      | như trên                            | xoá khi hết tin còn hạn (365 ngày)               |
-| `messages.author`                         | PII (bên thứ ba) | hiển thị người gửi từng tin              | hạn chế truy cập theo workspace     | 365 ngày (tính từ `sent_at`)                     |
-| `messages.text`                           | PII (bên thứ ba) | lưu nguyên văn hội thoại để tra cứu      | như trên                            | 365 ngày (tính từ `sent_at`)                     |
-| `members.user_id`                         | định danh        | quyền thành viên                         | hạn chế truy cập                    | đến khi gỡ thành viên                            |
-| `login_throttle.key_hash`                 | định danh        | giới hạn đăng nhập theo tài khoản        | HMAC của email, không lưu email rõ  | 24 giờ kể từ lần sai gần nhất                    |
+| Cột                                       | Lớp              | Lý do cần thu                                 | Bảo vệ khi lưu                             | Thời hạn lưu                                                 |
+| ----------------------------------------- | ---------------- | --------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
+| `user.email`                              | PII              | định danh đăng nhập                           | hạn chế truy cập ở tầng dịch vụ            | đến khi xoá tài khoản                                        |
+| `user.name`                               | PII              | hiển thị tên người dùng                       | như trên                                   | đến khi xoá tài khoản                                        |
+| `account.password`                        | bí mật           | xác thực                                      | băm Argon2id, không lưu mật khẩu rõ        | đến khi xoá tài khoản                                        |
+| `session.token`                           | bí mật           | duy trì phiên                                 | bản ghi xoá khi đăng xuất/hết hạn          | 7 ngày kể từ lúc tạo, xoá hẳn sau 1 ngày hết hạn             |
+| `session.ip_address`                      | PII              | phát hiện lạm dụng                            | hạn chế truy cập                           | cùng vòng đời phiên                                          |
+| `session.user_agent`                      | PII              | phát hiện lạm dụng                            | hạn chế truy cập                           | cùng vòng đời phiên                                          |
+| `provider_connections.credentials_enc`    | bí mật           | gọi nhà cung cấp thay mặt người dùng          | AES-256-GCM, khoá `APP_SECRET_KEY`         | đến khi xoá kết nối                                          |
+| `provider_connections.webhook_secret_enc` | bí mật           | xác minh chữ ký webhook của nhà cung cấp      | AES-256-GCM, khoá `APP_SECRET_KEY`         | đến khi xoá kết nối hoặc gỡ secret                           |
+| `social_accounts.display_name`            | PII              | hiển thị trang đã kết nối                     | hạn chế truy cập theo workspace            | đến khi xoá tài khoản mạng xã hội                            |
+| `social_accounts.external_id`             | định danh        | ánh xạ sang nhà cung cấp                      | như trên                                   | như trên                                                     |
+| `inbox_items.author`                      | PII (bên thứ ba) | hiển thị người gửi tin                        | hạn chế truy cập theo workspace            | 365 ngày (tính từ `received_at`)                             |
+| `inbox_items.text`                        | PII (bên thứ ba) | nội dung cần trả lời                          | như trên                                   | 365 ngày (tính từ `received_at`)                             |
+| `conversations.participant_id`            | định danh        | ghép tin về đúng người nhắn                   | hạn chế truy cập theo workspace            | xoá khi hết tin còn hạn (365 ngày)                           |
+| `conversations.participant_name`          | PII (bên thứ ba) | hiển thị người nhắn                           | như trên                                   | xoá khi hết tin còn hạn (365 ngày)                           |
+| `messages.author`                         | PII (bên thứ ba) | hiển thị người gửi từng tin                   | hạn chế truy cập theo workspace            | 365 ngày (tính từ `sent_at`)                                 |
+| `messages.text`                           | PII (bên thứ ba) | lưu nguyên văn hội thoại để tra cứu           | như trên                                   | 365 ngày (tính từ `sent_at`)                                 |
+| `evidence_items.external_id`              | định danh        | trỏ về mục gốc ở nguồn (tin, issue, tài liệu) | hạn chế truy cập theo workspace            | theo nguồn: tin nhắn cùng hạn `messages` (365 ngày mặc định) |
+| `evidence_blobs.sha256`                   | định danh        | địa chỉ và kiểm toàn vẹn nội dung gốc         | như trên; nội dung ở `BLOB_DIR` quyền 0600 | cùng vòng đời lần xuất hiện cuối trỏ tới nó                  |
+| `members.user_id`                         | định danh        | quyền thành viên                              | hạn chế truy cập                           | đến khi gỡ thành viên                                        |
+| `login_throttle.key_hash`                 | định danh        | giới hạn đăng nhập theo tài khoản             | HMAC của email, không lưu email rõ         | 24 giờ kể từ lần sai gần nhất                                |
 
 - Các cột `account.access_token`, `account.refresh_token`, `account.id_token` do Better Auth tạo cho đăng nhập OAuth; ứng dụng chỉ dùng email + mật khẩu nên luôn rỗng. Nếu sau này bật OAuth phải phân loại là bí mật và mã hoá trước khi lưu.
 - Mã hoá at-rest toàn bộ ổ đĩa là việc của người triển khai (volume mã hoá của host); riêng khoá API được mã hoá ở tầng ứng dụng.

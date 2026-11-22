@@ -7,6 +7,8 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createFsBlobStore } from "../evidence/blob-store";
+import { createEvidenceService } from "../evidence/service";
 import { createInboxService } from "../inbox/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
@@ -28,6 +30,7 @@ export function createContainer(cfg: Env) {
   const pool = new Pool(poolConfig(cfg.DATABASE_URL));
   const db = drizzle(pool, { schema }) as unknown as Db;
   const box = createSecretBox(cfg.APP_SECRET_KEY);
+  const blobStore = createFsBlobStore(cfg.BLOB_DIR);
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -59,6 +62,7 @@ export function createContainer(cfg: Env) {
     posts: createPostService({ db, box, resolveProvider: buildProvider }),
     inbox: createInboxService({ db, box, resolveProvider: buildProvider }),
     retention: createRetentionService({ db }),
+    evidence: createEvidenceService({ db, store: blobStore }),
     webhooks: createWebhookIngest({ db, box }),
   };
 

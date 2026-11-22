@@ -51,6 +51,11 @@ const schema = z.object({
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     z.enum(["true", "false"]).default("true"),
   ),
+  /** Thư mục volume chứa nội dung kho bằng chứng (ADR-0004); phải bền và được sao lưu cùng Postgres. */
+  BLOB_DIR: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.string().min(1).max(500).default("./.data/blobs"),
+  ),
   SOCIALAPI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     // Chỉ https: khoá API không bao giờ được gửi qua kênh không mã hoá (BASE-SEC-004).

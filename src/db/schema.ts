@@ -253,6 +253,86 @@ export const messages = pgTable(
  * `submitted`: nhà cung cấp đã nhận, chờ xác nhận · `partial`: lên được một phần đích · `send_unknown`: không biết
  * đã lên mạng chưa (mất kết nối giữa chừng, quá hạn xác nhận) — không tự đăng lại để tránh đăng hai lần (ADR-0002, H2).
  */
+export const EVIDENCE_SOURCES = ["message", "document", "github"] as const;
+export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
+export const EVIDENCE_CONTENT_TYPES = [
+  "text/plain",
+  "text/markdown",
+  "application/json",
+] as const;
+export type EvidenceContentType = (typeof EVIDENCE_CONTENT_TYPES)[number];
+
+/**
+ * Kho bản gốc theo hash (ADR-0004, M04). Nội dung nằm ở `BlobStore` (thư mục volume theo `sha256`); bảng này giữ
+ * metadata. Duy nhất theo (workspace, sha256): nội dung giống nhau trong một workspace chỉ có một blob, nhưng hai
+ * workspace luôn có hai dòng riêng — quyền đọc theo workspace, không theo hash.
+ */
+export const evidenceBlobs = pgTable(
+  "evidence_blobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    sha256: text("sha256").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    contentType: text("content_type", {
+      enum: EVIDENCE_CONTENT_TYPES,
+    }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("evidence_blobs_ws_sha").on(t.workspaceId, t.sha256),
+    check("evidence_blobs_sha_check", sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
+    check("evidence_blobs_size_check", sql`${t.sizeBytes} > 0`),
+    check(
+      "evidence_blobs_type_check",
+      sql`${t.contentType} in (${inList(EVIDENCE_CONTENT_TYPES)})`,
+    ),
+  ],
+);
+
+/**
+ * Mỗi lần một nguồn đưa nội dung vào kho. Cùng (nguồn, id ngoài, blob) nhập lại là một lần (lũy đẳng); cùng id ngoài
+ * mà nội dung đổi là phiên bản mới (blob khác); cùng nội dung ở id ngoài khác là lần xuất hiện khác của cùng blob.
+ */
+export const evidenceItems = pgTable(
+  "evidence_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    blobId: uuid("blob_id")
+      .notNull()
+      .references(() => evidenceBlobs.id, { onDelete: "cascade" }),
+    source: text("source", { enum: EVIDENCE_SOURCES }).notNull(),
+    /** Id của mục bên nguồn (vd id tin nhắn, `owner/repo#12`, đường dẫn tài liệu). */
+    externalId: text("external_id").notNull(),
+    /** Lúc nội dung xảy ra/được tạo ở nguồn (không phải lúc nhập). */
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("evidence_items_source_external_blob").on(
+      t.workspaceId,
+      t.source,
+      t.externalId,
+      t.blobId,
+    ),
+    check(
+      "evidence_items_source_check",
+      sql`${t.source} in (${inList(EVIDENCE_SOURCES)})`,
+    ),
+    check(
+      "evidence_items_external_check",
+      sql`length(${t.externalId}) between 1 and 500`,
+    ),
+    index("evidence_items_blob_idx").on(t.blobId),
+    index("evidence_items_ws_observed_idx").on(t.workspaceId, t.observedAt),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",

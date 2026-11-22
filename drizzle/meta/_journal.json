@@ -71,6 +71,13 @@
       "when": 1795336668250,
       "tag": "0009_fk_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795362062851,
+      "tag": "0010_evidence_store",
+      "breakpoints": true
     }
   ]
 }
