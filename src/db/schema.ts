@@ -253,6 +253,255 @@ export const messages = pgTable(
  * `submitted`: nhà cung cấp đã nhận, chờ xác nhận · `partial`: lên được một phần đích · `send_unknown`: không biết
  * đã lên mạng chưa (mất kết nối giữa chừng, quá hạn xác nhận) — không tự đăng lại để tránh đăng hai lần (ADR-0002, H2).
  */
+/**
+ * Mốc đồng bộ của một tài khoản: lần chạy cuối, lần thành công cuối, số lần lỗi liên tiếp và mã lỗi an toàn gần nhất.
+ * Cho biết nguồn đã được lấy tới đâu để không nhầm "chưa thấy tin" với "chưa đồng bộ được".
+ */
+export const sourceCheckpoints = pgTable(
+  "source_checkpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    /** Mã ngắn, không chứa nội dung phía nhà cung cấp. */
+    lastErrorCode: text("last_error_code"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("source_checkpoints_account").on(t.socialAccountId),
+    check(
+      "source_checkpoints_failures_check",
+      sql`${t.consecutiveFailures} >= 0`,
+    ),
+    check(
+      "source_checkpoints_code_check",
+      sql`${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
+    ),
+    index("source_checkpoints_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+/**
+ * Con trỏ nhập của một connector theo phạm vi (vd `github` + `owner/repo`): `cursor` là mốc `updated_at` đã xử lý tới
+ * đâu, để lượt sau chỉ lấy phần mới. Khác `source_checkpoints` (theo tài khoản mạng xã hội).
+ */
+export const connectorCursors = pgTable(
+  "connector_cursors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    connector: text("connector").notNull(),
+    scope: text("scope").notNull(),
+    cursor: text("cursor"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+    /** Mã ngắn, không chứa nội dung phía nguồn. */
+    lastErrorCode: text("last_error_code"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("connector_cursors_scope").on(t.workspaceId, t.connector, t.scope),
+    check(
+      "connector_cursors_code_check",
+      sql`${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
+    ),
+  ],
+);
+
+export const EVIDENCE_SOURCES = ["message", "document", "github"] as const;
+export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
+export const EVIDENCE_CONTENT_TYPES = [
+  "text/plain",
+  "text/markdown",
+  "application/json",
+] as const;
+export type EvidenceContentType = (typeof EVIDENCE_CONTENT_TYPES)[number];
+
+/**
+ * Kho bản gốc theo hash (ADR-0004, M04). Nội dung nằm ở `BlobStore` (thư mục volume theo `sha256`); bảng này giữ
+ * metadata. Duy nhất theo (workspace, sha256): nội dung giống nhau trong một workspace chỉ có một blob, nhưng hai
+ * workspace luôn có hai dòng riêng — quyền đọc theo workspace, không theo hash.
+ */
+export const evidenceBlobs = pgTable(
+  "evidence_blobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    sha256: text("sha256").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    contentType: text("content_type", {
+      enum: EVIDENCE_CONTENT_TYPES,
+    }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("evidence_blobs_ws_sha").on(t.workspaceId, t.sha256),
+    check("evidence_blobs_sha_check", sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
+    check("evidence_blobs_size_check", sql`${t.sizeBytes} > 0`),
+    check(
+      "evidence_blobs_type_check",
+      sql`${t.contentType} in (${inList(EVIDENCE_CONTENT_TYPES)})`,
+    ),
+  ],
+);
+
+/**
+ * Mỗi lần một nguồn đưa nội dung vào kho. Cùng (nguồn, id ngoài, blob) nhập lại là một lần (lũy đẳng); cùng id ngoài
+ * mà nội dung đổi là phiên bản mới (blob khác); cùng nội dung ở id ngoài khác là lần xuất hiện khác của cùng blob.
+ */
+export const evidenceItems = pgTable(
+  "evidence_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    blobId: uuid("blob_id")
+      .notNull()
+      .references(() => evidenceBlobs.id, { onDelete: "cascade" }),
+    /**
+     * Với nguồn `message`: tin nhắn gốc. Xoá tin (hết hạn lưu, xoá tài khoản/hội thoại) xoá luôn bản sao này — bản sao
+     * không được sống lâu hơn tin (H5, Luật 91/2025).
+     */
+    messageId: uuid("message_id").references(() => messages.id, {
+      onDelete: "cascade",
+    }),
+    source: text("source", { enum: EVIDENCE_SOURCES }).notNull(),
+    /** Id của mục bên nguồn (vd id tin nhắn, `owner/repo#12`, đường dẫn tài liệu). */
+    externalId: text("external_id").notNull(),
+    /** Lúc nội dung xảy ra/được tạo ở nguồn (không phải lúc nhập). */
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("evidence_items_source_external_blob").on(
+      t.workspaceId,
+      t.source,
+      t.externalId,
+      t.blobId,
+    ),
+    check(
+      "evidence_items_source_check",
+      sql`${t.source} in (${inList(EVIDENCE_SOURCES)})`,
+    ),
+    check(
+      "evidence_items_external_check",
+      sql`length(${t.externalId}) between 1 and 500`,
+    ),
+    check(
+      "evidence_items_message_check",
+      sql`(${t.source} = 'message') = (${t.messageId} is not null)`,
+    ),
+    index("evidence_items_blob_idx").on(t.blobId),
+    index("evidence_items_message_idx").on(t.messageId),
+    index("evidence_items_ws_observed_idx").on(t.workspaceId, t.observedAt),
+  ],
+);
+
+export const PROJECT_LINK_TARGETS = ["conversation", "evidence"] as const;
+export type ProjectLinkTarget = (typeof PROJECT_LINK_TARGETS)[number];
+
+/** Khoá so khớp tên/bí danh: NFC + bỏ khoảng thừa + không phân biệt hoa thường (BASE-DATA-002). */
+export const nameKeyOf = (s: string) =>
+  s.normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+
+/** Dự án: nhóm các nguồn (hội thoại, bằng chứng) thành một ngữ cảnh làm việc (M06). */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** `nameKeyOf(name)`: duy nhất trong workspace. */
+    nameKey: text("name_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("projects_ws_name_key").on(t.workspaceId, t.nameKey),
+    check(
+      "projects_name_check",
+      sql`length(btrim(${t.name})) between 1 and 100`,
+    ),
+  ],
+);
+
+/** Bí danh của dự án (tên viết tắt, tên khách gọi…). Duy nhất trong workspace để một bí danh chỉ trỏ một dự án. */
+export const projectAliases = pgTable(
+  "project_aliases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    alias: text("alias").notNull(),
+    aliasKey: text("alias_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("project_aliases_ws_key").on(t.workspaceId, t.aliasKey),
+    check(
+      "project_aliases_alias_check",
+      sql`length(btrim(${t.alias})) between 1 and 100`,
+    ),
+    index("project_aliases_project_idx").on(t.projectId),
+  ],
+);
+
+/**
+ * Liên kết nguồn–dự án: gắn một hội thoại hoặc một bằng chứng vào dự án. Gỡ liên kết không xoá nguồn; xoá nguồn
+ * (hết hạn lưu, xoá tài khoản) xoá liên kết theo tầng.
+ */
+export const projectLinks = pgTable(
+  "project_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    targetType: text("target_type", { enum: PROJECT_LINK_TARGETS }).notNull(),
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "cascade",
+    }),
+    evidenceItemId: uuid("evidence_item_id").references(
+      () => evidenceItems.id,
+      { onDelete: "cascade" },
+    ),
+    /** Người gắn (`user.id` của Better Auth). */
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("project_links_conversation").on(t.projectId, t.conversationId),
+    unique("project_links_evidence").on(t.projectId, t.evidenceItemId),
+    check(
+      "project_links_target_check",
+      sql`(${t.targetType} = 'conversation' and ${t.conversationId} is not null and ${t.evidenceItemId} is null)
+        or (${t.targetType} = 'evidence' and ${t.evidenceItemId} is not null and ${t.conversationId} is null)`,
+    ),
+    index("project_links_workspace_idx").on(t.workspaceId),
+    index("project_links_conversation_idx").on(t.conversationId),
+    index("project_links_evidence_idx").on(t.evidenceItemId),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",

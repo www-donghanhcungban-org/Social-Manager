@@ -19,7 +19,11 @@ describe("createContainer", () => {
     expect(Object.keys(c.services).sort()).toEqual([
       "accounts",
       "connections",
+      "coverage",
+      "erasure",
+      "evidence",
       "inbox",
+      "knowledge",
       "posts",
       "retention",
       "webhooks",

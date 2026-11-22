@@ -7,9 +7,14 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createCoverageService } from "../conversations/coverage";
+import { createFsBlobStore } from "../evidence/blob-store";
+import { createEvidenceService } from "../evidence/service";
 import { createInboxService } from "../inbox/service";
+import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
+import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
 import { createRegistry } from "../providers/registry";
@@ -28,6 +33,9 @@ export function createContainer(cfg: Env) {
   const pool = new Pool(poolConfig(cfg.DATABASE_URL));
   const db = drizzle(pool, { schema }) as unknown as Db;
   const box = createSecretBox(cfg.APP_SECRET_KEY);
+  const blobStore = createFsBlobStore(cfg.BLOB_DIR);
+  const evidence = createEvidenceService({ db, store: blobStore });
+  const coverage = createCoverageService({ db });
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -57,9 +65,19 @@ export function createContainer(cfg: Env) {
     accounts: createAccountService({ db, registry }),
     connections: createConnectionService({ db, box, registry }),
     posts: createPostService({ db, box, resolveProvider: buildProvider }),
-    inbox: createInboxService({ db, box, resolveProvider: buildProvider }),
-    retention: createRetentionService({ db }),
-    webhooks: createWebhookIngest({ db, box }),
+    inbox: createInboxService({
+      db,
+      box,
+      resolveProvider: buildProvider,
+      evidence,
+      coverage,
+    }),
+    coverage,
+    retention: createRetentionService({ db, evidence }),
+    erasure: createErasureService({ db, evidence }),
+    evidence,
+    knowledge: createKnowledgeService({ db, evidence }),
+    webhooks: createWebhookIngest({ db, box, evidence }),
   };
 
   /** Mọi tài khoản mạng xã hội của mọi workspace, cho job đồng bộ định kỳ. */

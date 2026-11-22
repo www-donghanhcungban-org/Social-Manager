@@ -5,8 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createConnectionService } from "@/src/connections/service";
 import { createConversationSync } from "@/src/conversations/sync";
+import { createMemoryBlobStore } from "@/src/evidence/blob-store";
+import { createEvidenceService } from "@/src/evidence/service";
 import {
   conversations,
+  evidenceItems,
   inboxItems,
   members,
   messages,
@@ -411,6 +414,25 @@ describe("dm.received theo hội thoại (cùng khoá với đồng bộ)", () =
     expect(convs[0]!.lastMessageAt!.toISOString()).toBe(
       "2026-11-22T09:00:00.000Z",
     );
+  });
+
+  it("có dịch vụ bằng chứng: tin vào kho một lần; giao trùng không nhân đôi", async () => {
+    const evidence = createEvidenceService({
+      db: t.db,
+      store: createMemoryBlobStore(),
+    });
+    const handle = () =>
+      createWebhookIngest({ db: t.db, box, now: () => NOW, evidence }).handle({
+        connectionId: connA,
+        rawBody: Buffer.from(withConv()),
+        timestamp: TS,
+        signature: sign(withConv()),
+      });
+    expect((await handle()).status).toBe(200);
+    expect((await handle()).status).toBe(200);
+    const items = await t.db.select().from(evidenceItems);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ source: "message" });
   });
 
   it("thiếu platform_id: dùng data.id, đánh dấu định danh yếu", async () => {

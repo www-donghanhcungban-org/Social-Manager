@@ -31,6 +31,10 @@ COPY --from=build --chown=node:node /app/public ./public
 COPY --chown=node:node package.json next.config.mjs ./
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node scripts/migrate.mjs ./scripts/migrate.mjs
+# Kho nội dung bằng chứng (ADR-0004): thư mục riêng, chủ là `node`, mount volume bền lên đây (compose: blobdata).
+ENV BLOB_DIR=/data/blobs
+RUN mkdir -p /data/blobs && chown -R node:node /data
+VOLUME ["/data/blobs"]
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

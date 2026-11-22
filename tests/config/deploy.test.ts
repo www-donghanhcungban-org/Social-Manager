@@ -80,6 +80,20 @@ describe("cổng mạng (BASE-SEC-010)", () => {
 });
 
 describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngoài (BASE-SEC-004/005)", () => {
+  it("kho bằng chứng có volume bền: compose mount blobdata vào BLOB_DIR, Dockerfile cấp thư mục cho người dùng không phải root", () => {
+    const compose = read("docker-compose.yml");
+    const d = read("Dockerfile");
+    expect(compose).toMatch(/BLOB_DIR:\s*\/data\/blobs/);
+    expect(compose).toMatch(/-\s*blobdata:\/data\/blobs/);
+    expect(compose).toMatch(/^volumes:\n(?:\s+\w+:\n)*\s+blobdata:/m);
+    expect(d).toMatch(/ENV BLOB_DIR=\/data\/blobs/);
+    expect(d).toMatch(/chown -R node:node \/data/);
+    // thư mục phải được cấp trước khi chuyển sang người dùng không phải root
+    expect(d.indexOf("chown -R node:node /data")).toBeLessThan(
+      d.indexOf("USER node"),
+    );
+  });
+
   it("compose bắt buộc đặt bí mật: thiếu là dừng, không có giá trị mặc định", () => {
     const compose = read("docker-compose.yml");
     for (const v of [

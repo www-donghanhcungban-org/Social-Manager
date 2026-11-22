@@ -85,3 +85,10 @@
 - Chọn: X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú
 - Lý do (tiêu chí chất lượng cuối): Chủ dự án chọn qua câu hỏi trong phiên; một tên thống nhất tránh lệch giữa repo, giao diện và tài liệu; bản ghi lịch sử không viết lại (ADR append-only)
 - Đường lùi: Một commit đổi tên riêng: git revert commit đó; GitHub vẫn chuyển hướng URL cũ
+
+### D-013 · 2026-11-22T15:39:58+00:00 · Phạm vi và thứ tự đợt xw-2 (kho bằng chứng) của X-Workspace
+
+- Phương án: (1) Kho bản gốc theo hash trước, rồi dự án/liên kết, dòng thời gian/bao phủ/xoá-xuất, connector GitHub bằng cổng fetch tiêm được; tài liệu nhập là văn bản/Markdown, PDF-Docling để đợt sau · (2) Làm đủ PDF/Docling và connector GitHub thật ngay trong xw-2
+- Chọn: Kho bản gốc theo hash trước, rồi dự án/liên kết, dòng thời gian/bao phủ/xoá-xuất, connector GitHub bằng cổng fetch tiêm được; tài liệu nhập là văn bản/Markdown, PDF-Docling để đợt sau
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: lớp dẫn xuất (tri thức, AI) chỉ đáng tin khi bằng chứng gốc có hash và xoá xuyên lớp được. Docling cần runtime Python riêng và quota tài nguyên; token GitHub thật là khoá chỉ chủ dự án có (mặc định tự host, kiểm bằng fixture, token thật defer T-209)
+- Đường lùi: PLAN-xw-2 chỉ là tài liệu; mỗi task một commit có migration down, revert theo commit

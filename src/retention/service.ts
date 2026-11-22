@@ -22,6 +22,8 @@ export interface PurgeResult {
   inboxItems: number;
   messages: number;
   conversations: number;
+  /** Blob bằng chứng mồ côi đã xoá (cùng tệp nếu không nơi nào khác dùng). */
+  evidenceBlobs: number;
   sessions: number;
   verifications: number;
   loginThrottle: number;
@@ -37,7 +39,21 @@ export interface PurgeResult {
  * Lưu ý: nếu nhà cung cấp vẫn trả lại tin cũ hơn hạn khi đồng bộ, tin đó sẽ được nhập lại rồi bị xoá ở
  * lần dọn sau; đồng bộ chỉ hỏi tin gần đây nên hiếm gặp.
  */
-export function createRetentionService({ db }: { db: Db }) {
+export function createRetentionService({
+  db,
+  evidence,
+}: {
+  db: Db;
+  /**
+   * Có thì sau khi xoá tin (bản sao bằng chứng của chúng đã tự xoá theo khoá ngoại), dọn blob không còn lần xuất hiện nào
+   * và tệp của nó: nội dung tin không được sống lâu hơn hạn lưu (H5).
+   */
+  evidence?: {
+    sweepOrphanBlobs(input?: {
+      limit?: number;
+    }): Promise<{ blobs: number; files: number }>;
+  };
+}) {
   return {
     async purgeExpired({
       now = new Date(),
@@ -143,7 +159,12 @@ export function createRetentionService({ db }: { db: Db }) {
               )
               .returning({ id: conversations.id });
 
+      const swept = evidence
+        ? await evidence.sweepOrphanBlobs({ limit: batchSize })
+        : { blobs: 0, files: 0 };
+
       return {
+        evidenceBlobs: swept.blobs,
         inboxItems: deletedInbox.length,
         messages: deletedMessages.length,
         conversations: deletedConversations.length,

@@ -71,6 +71,41 @@
       "when": 1795336668250,
       "tag": "0009_fk_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795362062851,
+      "tag": "0010_evidence_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795362413290,
+      "tag": "0011_evidence_message_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795363643459,
+      "tag": "0012_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795364279394,
+      "tag": "0013_source_checkpoints",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795364849477,
+      "tag": "0014_connector_cursors",
+      "breakpoints": true
     }
   ]
 }
