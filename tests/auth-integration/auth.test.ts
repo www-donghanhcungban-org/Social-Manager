@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createAuth } from "@/src/auth/auth";
-import { session, user } from "@/src/db/schema";
+import { loginThrottle, session, user } from "@/src/db/schema";
 
 import { createTestDb } from "../db/helpers";
 
@@ -204,6 +204,61 @@ describe("đăng nhập và phiên", () => {
     await auth.api.signOut({ headers });
     expect(await auth.api.getSession({ headers })).toBeNull();
     expect(await t.db.select().from(session)).toHaveLength(before - 1);
+  });
+});
+
+describe("khoá đăng nhập theo tài khoản (BE-AUTH-003)", () => {
+  const attempt = (email: string, password: string) =>
+    auth.api
+      .signInEmail({ body: { email, password } })
+      .then(() => ({ status: 200, code: undefined as string | undefined }))
+      .catch((e: { statusCode: number; body?: { code?: string } }) => ({
+        status: e.statusCode,
+        code: e.body?.code,
+      }));
+
+  it("20 lần sai → bị chặn 429; email có thật và không có thật cho cùng một kiểu phản hồi", async () => {
+    await signUp();
+    const run = async (email: string) => {
+      const results = [];
+      for (let i = 0; i < 20; i++)
+        results.push(await attempt(email, "sai-mat-khau-12345"));
+      return results;
+    };
+    const real = await run("lan@example.com");
+    const fake = await run("khong-co@example.com");
+    expect(real.slice(0, 5).every((r) => r.status === 401)).toBe(true);
+    for (const r of [real, fake]) {
+      expect(r.at(-1)).toEqual({ status: 429, code: "TOO_MANY_ATTEMPTS" });
+    }
+    // chuỗi trạng thái giống hệt nhau → không phân biệt được email nào tồn tại
+    expect(real.map((r) => r.status)).toEqual(fake.map((r) => r.status));
+  });
+
+  it("đang bị khoá thì mật khẩu đúng cũng bị từ chối; hết hạn khoá thì đăng nhập được và bộ đếm về 0", async () => {
+    await signUp();
+    for (let i = 0; i < 8; i++)
+      await attempt("lan@example.com", "sai-xxxxxxxx12");
+    expect(await attempt("lan@example.com", PASSWORD)).toMatchObject({
+      status: 429,
+    });
+    await t.db
+      .update(loginThrottle)
+      .set({ lockedUntil: new Date(Date.now() - 1000) });
+    expect(await attempt("lan@example.com", PASSWORD)).toMatchObject({
+      status: 200,
+    });
+    expect(await t.db.select().from(loginThrottle)).toHaveLength(0);
+  });
+
+  it("khoá một email không ảnh hưởng email khác", async () => {
+    await signUp("a@example.com");
+    await signUp("b@example.com");
+    for (let i = 0; i < 10; i++)
+      await attempt("a@example.com", "sai-xxxxxxxx12");
+    expect(await attempt("b@example.com", PASSWORD)).toMatchObject({
+      status: 200,
+    });
   });
 });
 

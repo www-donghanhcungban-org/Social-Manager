@@ -196,3 +196,20 @@ export const posts = pgTable(
     index("posts_due_idx").on(t.status, t.scheduledAt),
   ],
 );
+
+/**
+ * Đếm đăng nhập thất bại liên tiếp theo email đã chuẩn hoá (BE-AUTH-003), kể cả email chưa đăng ký để
+ * phản hồi không lộ tài khoản nào tồn tại. Lưu băm của email (không lưu email rõ).
+ */
+export const loginThrottle = pgTable(
+  "login_throttle",
+  {
+    keyHash: text("key_hash").primaryKey(),
+    failures: integer("failures").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [check("login_throttle_failures_check", sql`${t.failures} >= 0`)],
+);

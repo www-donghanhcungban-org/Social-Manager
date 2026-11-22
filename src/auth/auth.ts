@@ -1,9 +1,11 @@
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import * as schema from "../db/schema";
 import type { Db } from "./members";
 import { hashPassword, verifyPassword } from "./password";
+import { createLoginThrottle } from "./throttle";
 
 const MIN_SECRET_CHARS = 32;
 const MIN_PASSWORD_CHARS = 12;
@@ -42,6 +44,13 @@ export function createAuth({
       `Thiếu secret đăng nhập (BETTER_AUTH_SECRET, tối thiểu ${MIN_SECRET_CHARS} ký tự)`,
     );
   }
+  const throttle = createLoginThrottle({ db, secret });
+  const emailOf = (body: unknown): string | undefined => {
+    const e = (body as { email?: unknown } | null | undefined)?.email;
+    return typeof e === "string" && e.length > 0 && e.length <= 320
+      ? e
+      : undefined;
+  };
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
@@ -56,6 +65,32 @@ export function createAuth({
       password: { hash: hashPassword, verify: verifyPassword },
     },
     session: { expiresIn: SESSION_DAYS * 24 * 60 * 60 },
+    hooks: {
+      // Khoá theo tài khoản (BE-AUTH-003), ngoài giới hạn theo IP. Cùng một phản hồi cho email có
+      // đăng ký lẫn chưa đăng ký.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-in/email") return;
+        const email = emailOf(ctx.body);
+        if (email && (await throttle.isLocked(email)))
+          throw new APIError("TOO_MANY_REQUESTS", {
+            code: "TOO_MANY_ATTEMPTS",
+            message: "Thử đăng nhập quá nhiều lần, hãy thử lại sau ít phút",
+          });
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-in/email") return;
+        const email = emailOf(ctx.body);
+        if (!email) return;
+        const returned = ctx.context.returned;
+        if (isAPIError(returned)) {
+          const code = (returned.body as { code?: string } | undefined)?.code;
+          if (code === "INVALID_EMAIL_OR_PASSWORD")
+            await throttle.recordFailure(email);
+        } else if (returned) {
+          await throttle.recordSuccess(email);
+        }
+      }),
+    },
     // DEBT: bộ đếm lưu trong bộ nhớ tiến trình | trần: nhiều bản sao server thì hạn mức nhân lên theo số bản |
     // xem lại khi: chạy nhiều instance (chuyển storage sang "database")
     rateLimit: {
