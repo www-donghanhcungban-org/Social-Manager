@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "type-check": "next typegen && tsc --noEmit",
     "db:migrate": "drizzle-kit migrate",
     "audit:deps": "npm audit --audit-level=high",
