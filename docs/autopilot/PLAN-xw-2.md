@@ -66,7 +66,7 @@ runtime Python riêng và quota tài nguyên (working.md §2, research §2).
 
 ### Lát 4 — Connector GitHub (M07)
 
-- [ ] `T-208` Connector GitHub nhập issue, PR, review theo con trỏ: cổng `GithubPort` (fetch tiêm được), phân trang `Link`/`since`, giới hạn tốc độ (`403/429` + `retry-after`/`x-ratelimit-reset`), nhập vào kho với id ngoài `owner/repo#số`. Ca biên: lặp lại không nhân đôi, issue bị sửa tạo phiên bản mới, hết hạn mức dừng có mã `rate_limited` không đốt thêm lượt, token không vào log/lỗi (sau: T-201; files: src/connectors/github/, src/evidence/, tests/connectors/; exec: deep) — Gate: `npx vitest run tests/connectors tests/evidence`
+- [x] `T-208` Connector GitHub nhập issue, PR, review theo con trỏ: cổng `GithubPort` (fetch tiêm được), phân trang `Link`/`since`, giới hạn tốc độ (`403/429` + `retry-after`/`x-ratelimit-reset`), nhập vào kho với id ngoài `owner/repo#số`. Ca biên: lặp lại không nhân đôi, issue bị sửa tạo phiên bản mới, hết hạn mức dừng có mã `rate_limited` không đốt thêm lượt, token không vào log/lỗi (sau: T-201; files: src/connectors/github/, src/evidence/, tests/connectors/; exec: deep) — Gate: `npx vitest run tests/connectors tests/evidence`
 
 ### Việc cần người
 

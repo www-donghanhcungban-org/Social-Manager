@@ -288,6 +288,34 @@ export const sourceCheckpoints = pgTable(
   ],
 );
 
+/**
+ * Con trỏ nhập của một connector theo phạm vi (vd `github` + `owner/repo`): `cursor` là mốc `updated_at` đã xử lý tới
+ * đâu, để lượt sau chỉ lấy phần mới. Khác `source_checkpoints` (theo tài khoản mạng xã hội).
+ */
+export const connectorCursors = pgTable(
+  "connector_cursors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    connector: text("connector").notNull(),
+    scope: text("scope").notNull(),
+    cursor: text("cursor"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+    /** Mã ngắn, không chứa nội dung phía nguồn. */
+    lastErrorCode: text("last_error_code"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("connector_cursors_scope").on(t.workspaceId, t.connector, t.scope),
+    check(
+      "connector_cursors_code_check",
+      sql`${t.lastErrorCode} is null or ${t.lastErrorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
+    ),
+  ],
+);
+
 export const EVIDENCE_SOURCES = ["message", "document", "github"] as const;
 export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
 export const EVIDENCE_CONTENT_TYPES = [
