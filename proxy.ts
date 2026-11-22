@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isCrossSiteMutation } from "@/src/security/csrf";
 import {
   cacheControlFor,
   newNonce,
@@ -8,6 +9,12 @@ import {
 
 /** Gắn CSP có nonce, header bảo mật và Cache-Control riêng tư cho mọi phản hồi (PRF-WEB-001/007). */
 export function proxy(request: NextRequest) {
+  if (isCrossSiteMutation(request.method, request.headers)) {
+    return new NextResponse("Forbidden", {
+      status: 403,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
   const nonce = newNonce();
   const headers = securityHeaders({
     nonce,

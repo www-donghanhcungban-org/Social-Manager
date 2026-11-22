@@ -38,6 +38,38 @@ async function login(email = "lan@example.com", password = PASSWORD) {
   return new Headers({ cookie });
 }
 
+describe("cookie phiên (SEC-WEB-007)", () => {
+  it("HttpOnly và SameSite=Lax (không Secure trên http cục bộ)", async () => {
+    await signUp();
+    const { headers } = await auth.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    const cookies = headers.getSetCookie();
+    expect(cookies.length).toBeGreaterThan(0);
+    for (const c of cookies) {
+      expect(c).toMatch(/;\s*HttpOnly/i);
+      expect(c).toMatch(/;\s*SameSite=Lax/i);
+    }
+  });
+
+  it("có Secure khi baseURL là https", async () => {
+    const secure = createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "https://app.example.com",
+    });
+    await secure.api.signUpEmail({
+      body: { name: "Lan", email: "lan@example.com", password: PASSWORD },
+    });
+    const { headers } = await secure.api.signInEmail({
+      body: { email: "lan@example.com", password: PASSWORD },
+      returnHeaders: true,
+    });
+    for (const c of headers.getSetCookie()) expect(c).toMatch(/;\s*Secure/i);
+  });
+});
+
 describe("đăng ký", () => {
   it("tạo người dùng và lưu mật khẩu đã băm, không lưu mật khẩu rõ", async () => {
     await signUp();

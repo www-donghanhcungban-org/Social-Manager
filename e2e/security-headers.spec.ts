@@ -34,3 +34,20 @@ test("tài nguyên tĩnh không bị ép private/no-store", async ({ request }) 
   const res = await request.get("/favicon.ico");
   expect(res.headers()["cache-control"] ?? "").not.toContain("no-store");
 });
+
+test("POST cross-site bị từ chối 403, cùng nguồn không bị chặn bởi lớp CSRF (SEC-WEB-007)", async ({
+  request,
+}) => {
+  const attempts: Record<string, string>[] = [
+    { "sec-fetch-site": "cross-site" },
+    { origin: "https://evil.example" },
+  ];
+  for (const headers of attempts) {
+    const res = await request.post("/api/auth/sign-out", { headers });
+    expect(res.status(), JSON.stringify(headers)).toBe(403);
+  }
+  const ok = await request.post("/api/auth/sign-out", {
+    headers: { "sec-fetch-site": "same-origin" },
+  });
+  expect(ok.status()).not.toBe(403);
+});
