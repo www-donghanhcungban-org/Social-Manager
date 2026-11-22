@@ -26,6 +26,7 @@ describe("createContainer", () => {
       "knowledge",
       "posts",
       "retention",
+      "search",
       "webhooks",
       "workspaces",
     ]);

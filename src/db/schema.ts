@@ -502,6 +502,33 @@ export const projectLinks = pgTable(
   ],
 );
 
+/**
+ * Chỉ mục tìm kiếm toàn văn của một bằng chứng (H8): nội dung đã bỏ dấu bằng `src/search/fold.ts`, tìm bằng
+ * `to_tsvector('simple', …)` (chỉ mục GIN). Ghi cùng giao dịch với lần nhập; xoá bằng chứng xoá theo tầng.
+ */
+export const searchDocuments = pgTable(
+  "search_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    evidenceItemId: uuid("evidence_item_id")
+      .notNull()
+      .references(() => evidenceItems.id, { onDelete: "cascade" }),
+    textFolded: text("text_folded").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("search_documents_item").on(t.evidenceItemId),
+    index("search_documents_fts_idx").using(
+      "gin",
+      sql`to_tsvector('simple', ${t.textFolded})`,
+    ),
+    index("search_documents_workspace_idx").on(t.workspaceId),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",

@@ -14,6 +14,7 @@ import { createInboxService } from "../inbox/service";
 import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
+import { createSearchService } from "../search/service";
 import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
@@ -76,6 +77,7 @@ export function createContainer(cfg: Env) {
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,
+    search: createSearchService({ db, evidence }),
     knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),
   };

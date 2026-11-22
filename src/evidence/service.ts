@@ -11,10 +11,12 @@ import {
   evidenceBlobs,
   evidenceItems,
   messages,
+  searchDocuments,
   type EvidenceContentType,
   type EvidenceSource,
 } from "../db/schema";
 import { ValidationError } from "../providers/types";
+import { fold } from "../search/fold";
 import type { BlobStore } from "./blob-store";
 
 /** Trần một bản gốc: tin nhắn, issue, Markdown đều nhỏ; chặn nhập nhầm tệp khổng lồ vào RAM/đĩa. */
@@ -159,7 +161,16 @@ export function createEvidenceService({
           ],
         })
         .returning({ id: evidenceItems.id });
-      if (item[0])
+      if (item[0]) {
+        // Chỉ mục tìm kiếm cùng giao dịch: bằng chứng mới nào cũng tìm được, lỗi thì không để lại bằng chứng không tìm được.
+        await tx
+          .insert(searchDocuments)
+          .values({
+            workspaceId: input.workspaceId,
+            evidenceItemId: item[0].id,
+            textFolded: fold(new TextDecoder().decode(bytes)),
+          })
+          .onConflictDoNothing({ target: searchDocuments.evidenceItemId });
         return {
           itemId: item[0].id,
           blobId,
@@ -167,6 +178,7 @@ export function createEvidenceService({
           blobReused,
           duplicate: false,
         };
+      }
       const [dup] = await tx
         .select({ id: evidenceItems.id })
         .from(evidenceItems)
