@@ -33,6 +33,19 @@ const schema = z.object({
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     z.enum(["development", "test", "production"]).default("development"),
   ),
+  /** Header do reverse proxy đặt chứa IP client (vd `x-real-ip`); bỏ trống = mặc định của thư viện. */
+  CLIENT_IP_HEADER: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z
+      .string()
+      .regex(/^[A-Za-z0-9-]{1,64}$/, "tên header không hợp lệ")
+      .optional(),
+  ),
+  /** Hạn mức đăng nhập/đăng ký mỗi IP mỗi phút. */
+  AUTH_RATE_LIMIT_PER_MIN: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? Number(v) : undefined),
+    z.number().int().min(1).max(10_000).default(10),
+  ),
   /** `false` để tắt worker nền trong tiến trình này (chạy riêng hoặc khi debug). */
   RUN_WORKERS: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),

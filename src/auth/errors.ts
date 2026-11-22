@@ -23,7 +23,8 @@ export class ConflictError extends Error {
       | "last_owner"
       | "already_member"
       | "duplicate_label"
-      | "idempotency_conflict",
+      | "idempotency_conflict"
+      | "workspace_limit",
     message: string,
   ) {
     super(message);

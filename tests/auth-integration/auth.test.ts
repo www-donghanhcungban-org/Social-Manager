@@ -84,6 +84,37 @@ describe("đăng ký", () => {
   });
 });
 
+describe("giới hạn tần suất đăng nhập (review 🟡 9)", () => {
+  const signIn = (auth2: ReturnType<typeof createAuth>, ip: string) =>
+    auth2.handler(
+      new Request("http://localhost:3000/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-test-ip": ip },
+        body: JSON.stringify({
+          email: "ai-do@example.com",
+          password: "mat-khau-sai-123456",
+        }),
+      }),
+    );
+
+  it("quá hạn mức trong cửa sổ thì 429; mỗi IP một bộ đếm riêng; IP lấy từ header đã cấu hình", async () => {
+    const limited = createAuth({
+      db: t.db,
+      secret: SECRET,
+      baseURL: "http://localhost:3000",
+      clientIpHeader: "x-test-ip",
+      rateLimitPerMinute: 3,
+    });
+    const statuses: number[] = [];
+    for (let i = 0; i < 5; i++)
+      statuses.push((await signIn(limited, "203.0.113.1")).status);
+    expect(statuses.slice(0, 3)).toEqual([401, 401, 401]);
+    expect(statuses.slice(3)).toEqual([429, 429]);
+    // IP khác không bị ảnh hưởng
+    expect((await signIn(limited, "203.0.113.2")).status).toBe(401);
+  });
+});
+
 describe("đăng nhập và phiên", () => {
   it("đăng nhập đúng mật khẩu → có phiên dùng được", async () => {
     await signUp();

@@ -83,6 +83,31 @@ describe("loadEnv", () => {
     }
   });
 
+  it("CLIENT_IP_HEADER và AUTH_RATE_LIMIT_PER_MIN: mặc định, hợp lệ và từ chối giá trị sai", () => {
+    const base = valid();
+    const d = loadEnv(base);
+    expect(d.CLIENT_IP_HEADER).toBeUndefined();
+    expect(d.AUTH_RATE_LIMIT_PER_MIN).toBe(10);
+    const ok = loadEnv({
+      ...base,
+      CLIENT_IP_HEADER: " x-real-ip ",
+      AUTH_RATE_LIMIT_PER_MIN: "25",
+    });
+    expect(ok.CLIENT_IP_HEADER).toBe("x-real-ip");
+    expect(ok.AUTH_RATE_LIMIT_PER_MIN).toBe(25);
+    for (const bad of [
+      { CLIENT_IP_HEADER: "x real ip" },
+      { CLIENT_IP_HEADER: "a:b" },
+      { AUTH_RATE_LIMIT_PER_MIN: "0" },
+      { AUTH_RATE_LIMIT_PER_MIN: "-3" },
+      { AUTH_RATE_LIMIT_PER_MIN: "2.5" },
+      { AUTH_RATE_LIMIT_PER_MIN: "abc" },
+      { AUTH_RATE_LIMIT_PER_MIN: "10001" },
+    ]) {
+      expect(() => loadEnv({ ...base, ...bad })).toThrow(ConfigError);
+    }
+  });
+
   it("thông báo lỗi không chứa giá trị bí mật dù giá trị đó là nguyên nhân gây lỗi", () => {
     const secretLooking = "mat-khau-sieu-bi-mat-khong-duoc-lo";
     try {

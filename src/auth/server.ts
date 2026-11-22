@@ -10,6 +10,8 @@ export function createAuthFromEnv(env: Record<string, string | undefined>) {
     db: createDb(cfg.DATABASE_URL) as unknown as Db,
     secret: cfg.BETTER_AUTH_SECRET,
     baseURL: cfg.BETTER_AUTH_URL,
+    clientIpHeader: cfg.CLIENT_IP_HEADER,
+    rateLimitPerMinute: cfg.AUTH_RATE_LIMIT_PER_MIN,
   });
 }
 

@@ -1,0 +1,10 @@
+--foreground on --background min 4.5
+--muted-foreground on --background min 4.5
+--muted-foreground on --muted min 4.5
+--foreground on --muted min 4.5
+--primary-foreground on --primary min 4.5
+--primary on --background min 4.5
+--danger-foreground on --danger min 4.5
+--danger on --background min 4.5
+--border on --background min 3
+--ring on --background min 3
