@@ -20,6 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Cảnh báo (WF-DOC-001) — đổi cấu hình/giao diện công khai mà không chạm tài liệu
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          if printf '%s\n' "$changed" | grep -Eq '^(app/api/|src/config/env\.ts|xt\.yaml|docker-compose\.yml|Dockerfile)' \
+            && ! printf '%s\n' "$changed" | grep -Eq '^(docs/|README\.md|CHANGELOG\.md)'; then
+            echo "::warning::PR đổi cấu hình hoặc giao diện công khai nhưng không chạm docs/ hay README.md — cập nhật tài liệu cùng PR hoặc ghi lý do ở mục Docs."
+          fi
       - name: Mô tả PR có đủ Mục tiêu, Bằng chứng, Rủi ro và đường lùi
         env:
           BODY: ${{ github.event.pull_request.body }}

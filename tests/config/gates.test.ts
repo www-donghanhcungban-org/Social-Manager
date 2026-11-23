@@ -119,3 +119,98 @@ describe("thời gian luôn có múi giờ (BASE-DATA-006)", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * MUST nhóm cổng/repo/tài liệu (T-513): mỗi `it` nêu ID nó giữ. Blueprint tick kèm
+ * `— Kiểm: npx vitest run tests/config/gates.test.ts tests/config/repo-docs.test.ts`.
+ */
+describe("cổng, repo và quy ước commit (T-513)", () => {
+  const ci = read(".github/workflows/ci.yml");
+  const xt = read("xt.yaml");
+
+  it("BASE-GATE-005: test chạy bằng một lệnh tất định, CI chạy toàn bộ và không bước nào được đỏ mà xanh", () => {
+    expect(pkg.scripts.test).toMatch(/vitest run/);
+    expect(xt).toMatch(/^test: "npm test"/m);
+    expect(ci).toMatch(/dev-task\.sh gate-par/);
+    expect(ci).not.toMatch(/continue-on-error:\s*true/);
+    expect(pkg.scripts.test).not.toMatch(
+      /--bail|--passWithNoTests|\|\|\s*true/,
+    );
+  });
+
+  it("BASE-GATE-006: mọi cổng của commit_gate (format_check, lint, typecheck, test) được CI chạy lại", () => {
+    expect(xt).toMatch(/^commit_gate: fast/m);
+    for (const k of ["format_check", "lint", "typecheck", "test"])
+      expect(xt, k).toMatch(new RegExp(`^${k}: "npm `, "m"));
+    expect(ci).toMatch(/gate-par/); // typecheck ∥ lint ∥ build → test
+    expect(ci).toMatch(/xt\.py floor --run/); // format_check, coverage
+  });
+
+  it("BASE-GATE-008: CI cài phụ thuộc đóng băng (npm ci) rồi build trên runner mới", () => {
+    expect(xt).toMatch(/^setup: "npm ci"/m);
+    expect(xt).toMatch(/^build: "npm run build"/m);
+    expect(ci).toMatch(/runs-on: ubuntu-latest/);
+    expect(ci).toMatch(/dev-task\.sh setup/);
+    expect(tracked()).toContain("package-lock.json");
+  });
+
+  it("BASE-REPO-001: file cần để build đều đã commit (lockfile, Dockerfile, migration, cấu hình)", () => {
+    const t = tracked();
+    for (const f of [
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "next.config.mjs",
+      "Dockerfile",
+      "docker-compose.yml",
+      "xt.yaml",
+      "drizzle.config.ts",
+    ])
+      expect(t, f).toContain(f);
+    expect(t.some((f) => /^drizzle\/\d+_.*\.sql$/.test(f))).toBe(true);
+  });
+
+  it("BASE-REPO-005, STD-PROC-004: Conventional Commits ≤ 100 ký tự được cưỡng chế ở tiêu đề PR (squash) và lúc đặt commit", () => {
+    const wf = read(".github/workflows/pr-title.yml");
+    expect(wf).toMatch(/feat\|fix\|docs/);
+    expect(wf).toMatch(/-gt 100/);
+    expect(read(".claude/hooks/guard.py")).toMatch(/LOOP-HARNESS-029/);
+  });
+
+  it("BASE-REPO-013: ruleset chặn force-push/xoá nhánh chính; quy ước rewrite ghi ở AGENTS.md", () => {
+    const rs = read(".github/rulesets/main.json");
+    expect(rs).toMatch(/"non_fast_forward"/);
+    expect(rs).toMatch(/"deletion"/);
+    expect(read("AGENTS.md")).toMatch(
+      /không force-push, không rewrite history nhánh người khác/,
+    );
+  });
+
+  it("WF-GIT-010: .gitignore đủ nhóm env/khoá/build/OS/IDE, không .env hay khoá trong git, quét bí mật toàn lịch sử ở CI", () => {
+    const ig = read(".gitignore");
+    for (const p of [
+      "/node_modules",
+      ".env*",
+      "*.pem",
+      "/.next/",
+      "/coverage",
+      ".DS_Store",
+    ])
+      expect(ig, p).toContain(p);
+    const bad = tracked().filter(
+      (f) =>
+        (/(^|\/)\.env($|\.)/.test(f) && !/\.env\.example$/.test(f)) ||
+        /\.(pem|key|p12|pfx)$/.test(f) ||
+        /\.(dump|sql\.gz|bak)$/.test(f),
+    );
+    expect(bad).toEqual([]);
+    const scan = read(".github/workflows/secret-scan.yml");
+    expect(scan).toMatch(/fetch-depth:\s*0/);
+    expect(scan).toMatch(/gitleaks/);
+  });
+
+  it("WF-DOC-001: mẫu PR có mục Docs cập nhật/không cần và pr-policy cảnh báo khi đổi cấu hình mà không chạm docs", () => {
+    expect(read(".github/pull_request_template.md")).toMatch(/Docs cập nhật/);
+    expect(read(".github/workflows/pr-policy.yml")).toMatch(/::warning::/);
+  });
+});

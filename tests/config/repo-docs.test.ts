@@ -86,3 +86,43 @@ describe("tệp cộng đồng và phát hành", () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe("tài liệu khớp mã (BASE-DOC-007, WF-DOC-002 phần nội bộ)", () => {
+  it("BASE-DOC-007: mọi biến môi trường trong schema src/config/env.ts đều có trong bảng Cấu hình của README", () => {
+    const env = read("src/config/env.ts");
+    const keys = [...env.matchAll(/^ {2}([A-Z][A-Z0-9_]+): /gm)].map(
+      (m) => m[1]!,
+    );
+    expect(keys.length).toBeGreaterThanOrEqual(10);
+    const readme = read("README.md");
+    expect(keys.filter((k) => !readme.includes(`\`${k}\``))).toEqual([]);
+  });
+
+  it("WF-DOC-002 (nội bộ): liên kết tương đối trong tài liệu của dự án trỏ tới tệp có thật", () => {
+    const docs = [
+      "README.md",
+      "CONTRIBUTING.md",
+      "SECURITY.md",
+      "SUPPORT.md",
+      "SCOPE.md",
+      "PROJECT.md",
+      "docs/RUNBOOK.md",
+      "docs/RISKS.md",
+      "docs/THREAT-MODEL.md",
+    ];
+    const broken: string[] = [];
+    for (const f of docs) {
+      for (const m of read(f).matchAll(
+        /\]\((?!https?:|mailto:|#)([^)\s#]+)/g,
+      )) {
+        const target = new URL(m[1]!, `file:///repo/${f}`).pathname.replace(
+          "/repo/",
+          "",
+        );
+        if (!existsSync(decodeURIComponent(target)))
+          broken.push(`${f} → ${m[1]}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});

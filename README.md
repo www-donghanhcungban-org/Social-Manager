@@ -31,17 +31,20 @@ Cổng đầy đủ: `npm run format:check && npm run lint && npm run type-check
 
 Cấu hình bằng biến môi trường, kiểm lúc khởi động (thiếu/sai thì dừng, mã thoát 1, chỉ nêu tên biến, không in giá trị):
 
-| Biến                             | Ý nghĩa                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------ |
-| `DATABASE_URL`                   | Chuỗi kết nối PostgreSQL                                                             |
-| `BETTER_AUTH_SECRET`             | Bí mật phiên đăng nhập, ≥ 32 ký tự                                                   |
-| `BETTER_AUTH_URL`                | URL công khai của app                                                                |
-| `APP_SECRET_KEY`                 | Khoá mã hoá khoá nhà cung cấp, base64 của 32 byte                                    |
-| `NODE_ENV`, `SOCIALAPI_BASE_URL` | Tuỳ chọn, có giá trị mặc định; URL phải là https                                     |
-| `RUN_WORKERS`                    | `true` (mặc định) bật worker nền trong tiến trình                                    |
-| `OUTBOUND_LIVE`                  | `false` (mặc định): khoá hệ thống cho gửi tin thật; còn cần owner bật từng workspace |
-| `CLIENT_IP_HEADER`               | Header do reverse proxy đặt chứa IP client                                           |
-| `AUTH_RATE_LIMIT_PER_MIN`        | Hạn mức đăng nhập mỗi IP mỗi phút (mặc định 10)                                      |
+| Biến                             | Ý nghĩa                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                   | Chuỗi kết nối PostgreSQL                                                                |
+| `BETTER_AUTH_SECRET`             | Bí mật phiên đăng nhập, ≥ 32 ký tự                                                      |
+| `BETTER_AUTH_URL`                | URL công khai của app                                                                   |
+| `APP_SECRET_KEY`                 | Khoá mã hoá khoá nhà cung cấp, base64 của 32 byte                                       |
+| `NODE_ENV`, `SOCIALAPI_BASE_URL` | Tuỳ chọn, có giá trị mặc định; URL phải là https                                        |
+| `RUN_WORKERS`                    | `true` (mặc định) bật worker nền trong tiến trình                                       |
+| `OUTBOUND_LIVE`                  | `false` (mặc định): khoá hệ thống cho gửi tin thật; còn cần owner bật từng workspace    |
+| `BLOB_DIR`                       | Thư mục lưu bản gốc tài liệu theo hash (mặc định `./.data/blobs`; sao lưu cùng CSDL)    |
+| `AI_BASE_URL`                    | Điểm cuối AI tương thích OpenAI; trống = tắt AI (điểm cuối ngoài máy cần owner bật)     |
+| `AI_MODEL`, `AI_API_KEY`         | Tên mô hình và khoá API (bí mật) của điểm cuối AI; khoá có thể bỏ trống khi chạy cục bộ |
+| `CLIENT_IP_HEADER`               | Header do reverse proxy đặt chứa IP client                                              |
+| `AUTH_RATE_LIMIT_PER_MIN`        | Hạn mức đăng nhập mỗi IP mỗi phút (mặc định 10)                                         |
 
 Không commit file env; mẫu `.env.example` đang chờ chủ dự án tạo (xem `PROGRESS.md`).
 
