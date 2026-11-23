@@ -145,6 +145,8 @@ docker compose exec -T db psql -U social -d social -c "select status, count(*) f
 docker compose exec -T db psql -U social -d social -c "select name, state, count(*) from pgboss.job group by 1, 2"
 ```
 
+Job nền thử lại tối đa 4 lần (cách nhau mũ có jitter, trần 1 giờ). Hết lượt, hoặc gặp lỗi vĩnh viễn (dữ liệu job sai, 4xx nghiệp vụ), job nằm ở hàng chết `<tên hàng đợi>.dlq` (giữ 30 ngày). Xem tồn đọng bằng truy vấn `pgboss.job` ở trên với `name like '%.dlq'`; cảnh báo tự động và quy trình đưa lại hàng đợi (redrive) **chưa có** (BE-JOB-004 chờ người).
+
 ## 4. Leo thang
 
 1. Người trực đầu tiên: chủ dự án.

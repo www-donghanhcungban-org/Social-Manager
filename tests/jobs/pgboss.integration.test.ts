@@ -4,6 +4,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { pgBossQueue, startBoss } from "@/src/jobs/pgboss";
+import { dlqName, JOB_RETRY } from "@/src/jobs/policy";
 import { createJobRunner, QUEUES } from "@/src/jobs/runner";
 import { createLogger } from "@/src/log/logger";
 
@@ -127,6 +128,20 @@ d("pg-boss trên Postgres thật", () => {
           QUEUES.actionsRecoverStuck,
         ].sort(),
       );
+      // BE-JOB-003/004: chính sách retry và hàng chết thật sự được pg-boss lưu cho từng hàng đợi.
+      for (const name of Object.values(QUEUES)) {
+        const q = await boss.getQueue(name);
+        expect(q, name).toMatchObject({
+          retryLimit: JOB_RETRY.retryLimit,
+          retryDelay: JOB_RETRY.retryDelay,
+          retryBackoff: true,
+          deadLetter: dlqName(name),
+        });
+        expect(
+          await boss.getQueue(dlqName(name)),
+          dlqName(name),
+        ).not.toBeNull();
+      }
     } finally {
       await boss.stop({ graceful: false, timeout: 2000 });
     }
