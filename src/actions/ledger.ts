@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-
+import { textHashOf } from "./text-hash";
 import {
   and,
   asc,
@@ -59,9 +58,7 @@ const LIVE_STATES: ActionState[] = [
   "confirmed",
 ];
 
-/** Băm nội dung đúng như khi ghi sổ (NFC, trim): đối soát so băm, không cần giữ nội dung. */
-export const textHashOf = (text: string) =>
-  createHash("sha256").update(text.normalize("NFC").trim()).digest("hex");
+export { textHashOf };
 
 export interface ActionView {
   id: string;
