@@ -49,7 +49,7 @@ lại tin gửi đi. Chỉ số: các ca trong Gate xanh trên nhà cung cấp g
 
 ### Lát 1 — Bản nháp (M09)
 
-- [ ] `T-401` Bản nháp có phiên bản cho một hội thoại (migration 0018 + down): `drafts`, `draft_versions` (số phiên bản tăng dần, nguồn `human`/`ai`, người sửa); sửa nháp tạo phiên bản mới không ghi đè; hủy nháp; đọc lịch sử. Ca biên: hai người sửa cùng lúc (xung đột phiên bản, không mất bản nào), nháp rỗng, quá dài, hội thoại workspace khác, nháp đã gửi không sửa được, member được soạn (quyền `inbox.reply`) (files: src/actions/, src/db/schema.ts, drizzle/, tests/actions/, tests/db/; exec: deep) — Gate: `npx vitest run tests/actions tests/db`
+- [x] `T-401` Bản nháp có phiên bản cho một hội thoại (migration 0018 + down): `drafts`, `draft_versions` (số phiên bản tăng dần, nguồn `human`/`ai`, người sửa); sửa nháp tạo phiên bản mới không ghi đè; hủy nháp; đọc lịch sử. Ca biên: hai người sửa cùng lúc (xung đột phiên bản, không mất bản nào), nháp rỗng, quá dài, hội thoại workspace khác, nháp đã gửi không sửa được, member được soạn (quyền `inbox.reply`) (files: src/actions/, src/db/schema.ts, drizzle/, tests/actions/, tests/db/; exec: deep) — Gate: `npx vitest run tests/actions tests/db`
 
 ### Lát 2 — Hợp đồng gửi (M09, H3)
 
