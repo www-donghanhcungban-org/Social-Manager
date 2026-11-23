@@ -10,7 +10,10 @@ export interface HealthResult {
 export async function checkHealth(
   ping: () => Promise<void>,
   timeoutMs: number,
+  opts: { draining?: boolean } = {},
 ): Promise<HealthResult> {
+  // Đang tắt êm: readiness lỗi ngay, không cần chạm CSDL (BE-REL-004).
+  if (opts.draining) return { status: 503, body: { status: "degraded" } };
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([

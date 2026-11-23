@@ -20,6 +20,8 @@ services:
   app:
     build: .
     restart: unless-stopped
+    # Tắt êm (ARC-RES-009): hạn dừng worker 25 s + dự phòng 5 s (src/server/shutdown.ts) phải nhỏ hơn mức này.
+    stop_grace_period: 40s
     depends_on:
       db:
         condition: service_healthy

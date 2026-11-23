@@ -11,16 +11,22 @@ export async function register() {
   const { installProcessHandlers, defaultLogger } =
     await import("./src/log/process");
   installProcessHandlers();
+  let stop: (() => Promise<void>) | undefined;
   try {
     const { startWorkers } = await import("./src/jobs/start");
-    const stop = await startWorkers(cfg);
-    if (stop) {
-      const shutdown = () => void stop().finally(() => process.exit(0));
-      process.once("SIGTERM", shutdown);
-      process.once("SIGINT", shutdown);
-    }
+    stop = await startWorkers(cfg);
   } catch (error) {
     // Worker không lên được không được làm sập web, nhưng phải nhìn thấy rõ trong log.
     defaultLogger().error("không khởi động được worker nền", { error });
   }
+  // Tắt êm (ARC-RES-009): readiness lỗi → dừng worker êm → đóng pool; máy chủ Next tự đợi request đang chạy rồi thoát,
+  // nên ở đây không gọi process.exit (xem src/server/shutdown.ts).
+  const { createShutdown } = await import("./src/server/shutdown");
+  const shutdown = createShutdown({
+    stopWorkers: stop ?? (async () => {}),
+    log: defaultLogger(),
+    exit: (code) => process.exit(code),
+  });
+  process.once("SIGTERM", () => void shutdown.trigger("SIGTERM"));
+  process.once("SIGINT", () => void shutdown.trigger("SIGINT"));
 }
