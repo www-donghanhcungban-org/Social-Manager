@@ -17,17 +17,43 @@
 
 ## 2. Phạm vi MVP (MoSCoW)
 
-- Must have:
-  - Đăng ký, đăng nhập, workspace nhiều thành viên với vai trò owner/admin/member (tiêu chí: người ngoài workspace không thấy được gì — `tests/auth/idor.test.ts`).
-  - Kết nối nhà cung cấp, thêm tài khoản mạng xã hội; khoá mã hoá khi lưu, không hiển thị lại.
-  - Hộp thư hợp nhất: đồng bộ, lọc, đánh dấu đã xử lý.
-  - Đăng bài ngay và hẹn giờ, chạy bằng hàng đợi nền, không đăng trùng.
-  - Triển khai bằng Docker Compose.
+Phạm vi MVP đóng băng ở cổng G1; mọi thay đổi sau đó đi qua `SCOPE.md`.
+
+| Mức  | ID    | Tính năng                                                                                 | Spec                                    |
+| ---- | ----- | ----------------------------------------------------------------------------------------- | --------------------------------------- |
+| Must | F-001 | Đăng ký, đăng nhập, workspace nhiều thành viên với vai trò owner/admin/member             | `docs/specs/F-001-workspace-auth.md`    |
+| Must | F-002 | Kết nối nhà cung cấp, thêm tài khoản mạng xã hội; khoá mã hoá khi lưu, không hiển thị lại | `docs/specs/F-002-provider-accounts.md` |
+| Must | F-003 | Hộp thư hợp nhất: đồng bộ, lọc, đánh dấu đã xử lý                                         | `docs/specs/F-003-unified-inbox.md`     |
+| Must | F-004 | Đăng bài ngay và hẹn giờ, chạy bằng hàng đợi nền, không đăng trùng                        | `docs/specs/F-004-publish-posts.md`     |
+| Must | F-005 | Triển khai bằng Docker Compose                                                            | `docs/specs/F-005-self-host-deploy.md`  |
+
 - Should have: webhook nhận tin theo thời gian thực; trả lời từ hộp thư; nhật ký kiểm toán.
 - Could have: tự động trả lời bằng AI có chế độ duyệt nháp, thống kê, CRM nhẹ, PWA, i18n vi/en.
 - Won't have (lúc này): bản desktop, duyệt bài nhiều cấp, gọi thẳng API từng nền tảng.
 
+### Yêu cầu (ID ổn định, không tái sử dụng ID đã bỏ)
+
+| ID    | Yêu cầu                                                                                        | Tính năng |
+| ----- | ---------------------------------------------------------------------------------------------- | --------- |
+| R-001 | Người ngoài workspace không đọc, sửa hay biết sự tồn tại của dữ liệu trong workspace           | F-001     |
+| R-002 | Luôn còn ít nhất một owner trong mỗi workspace, kể cả khi thao tác song song                   | F-001     |
+| R-003 | Khoá nhà cung cấp mã hoá khi lưu và không hiển thị hay ghi log lại                             | F-002     |
+| R-004 | Tin nhắn và bình luận đồng bộ về hộp thư đúng một lần, kể cả khi đồng bộ hay webhook lặp       | F-003     |
+| R-005 | Mỗi bài chỉ đăng đúng một lần; trạng thái hiển thị đúng sự thật, không tự đăng lại khi chưa rõ | F-004     |
+| R-006 | Tự host được bằng một lệnh Docker Compose, migration lũy đẳng, không chạy bằng root            | F-005     |
+
 ## 3. Yêu cầu phi chức năng
+
+Bảng chất lượng theo đặc tính ISO/IEC 25010:2023 (số đo và ngưỡng; nguồn đo ghi ở cột cuối, chưa đo = nêu rõ):
+
+| Đặc tính (25010)       | Số đo và ngưỡng                                                                      | Nguồn đo                                             |
+| ---------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| Performance efficiency | LCP ≤ 2,5 s · INP ≤ 200 ms · CLS ≤ 0,1 trên trang chính                              | chưa đo (hàng `perf` của `xt.py release-check`)      |
+| Reliability            | Không đăng trùng: 0 bài trùng khi chạy lặp/song song; hành động gửi kẹt gỡ ≤ 10 phút | `tests/posts/`, `tests/actions/ledger-stuck.test.ts` |
+| Security               | ASVS mức 2; 0 phát hiện bảo mật 🔴/🟠 mở trong sổ audit                              | `docs/ops/AUDIT-STATUS.md`, `docs/THREAT-MODEL.md`   |
+| Compatibility          | 4 trình duyệt hiện đại (Chrome, Firefox, Safari, Edge)                               | `e2e/`                                               |
+| Usability              | WCAG 2.2 AA: 28 cặp màu, 0 đỏ                                                        | `xt.py contrast` (`contrast-pairs.txt`)              |
+| Maintainability        | Độ phủ câu lệnh ≥ ngưỡng ở `xt.yaml`; hiện 92,07%                                    | `npm run test:coverage`                              |
 
 - Tốc độ mục tiêu: LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1 trên trang chính (chưa đo — xem `docs/autopilot/PLAN.md`).
 - Bảo mật: kiểm quyền ở server, Argon2id, khoá theo tài khoản, CSP nonce, kiểm CSRF, khoá nhà cung cấp mã hoá AES-256-GCM (chi tiết `docs/THREAT-MODEL.md`).

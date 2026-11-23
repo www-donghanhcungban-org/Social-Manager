@@ -1,0 +1,33 @@
+# Kiểm mô tả PR có đủ mục bắt buộc (WF-REVIEW-002): mục tiêu, cách đã xác minh (bằng chứng), rủi ro và đường lùi.
+# Thiếu mục → chưa đủ điều kiện review. Không phải required check (ruleset chỉ bắt `quality`, `gitleaks`); PR của bot được miễn.
+# Thêm ở T-512 (PLAN-harden) — chỉ đọc, không dùng bí mật; thân PR đi qua biến môi trường, không nội suy vào lệnh.
+name: pr-policy
+
+on:
+  pull_request:
+    { branches: [main], types: [opened, edited, synchronize, reopened] }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  body:
+    name: pr-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Mô tả PR có đủ Mục tiêu, Bằng chứng, Rủi ro và đường lùi
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [[ "$AUTHOR" == *"[bot]" ]]; then echo "Bỏ qua PR của bot."; exit 0; fi
+          missing=0
+          for h in "## Mục tiêu" "## Bằng chứng" "## Rủi ro"; do
+            if ! printf '%s' "$BODY" | grep -Fq "$h"; then echo "::error::Mô tả PR thiếu mục '$h'"; missing=1; fi
+          done
+          exit "$missing"
