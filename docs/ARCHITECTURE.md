@@ -45,6 +45,18 @@ C4Container
   Rel(core, ai, "HTTPS qua cổng AI (ADR-0005)")
 ```
 
+## Điểm cuối công khai (BE-API-009)
+
+Route handler trong `app/api/` là **danh sách công khai đã duyệt**; mọi route khác phải xác thực ở server. Test `tests/security/web-security.test.ts` so khớp thư mục với bảng này.
+
+| Route                                    | Cách xác thực                                                         |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `/api/auth/*`                            | Better Auth (đăng ký/đăng nhập; giới hạn tần suất; CSRF qua proxy)    |
+| `/api/health`                            | công khai, chỉ đọc, không dữ liệu người dùng (`{status}` ok/degraded) |
+| `/api/webhooks/socialapi/[connectionId]` | chữ ký HMAC-SHA256 trên thân thô + timestamp; secret theo kết nối     |
+
+Trang và Server Action của `/app/*` luôn qua `requireUser`/`requireWorkspace` (`src/server/runtime.ts`).
+
 ## Quy tắc ranh giới (kiểm bằng test)
 
 `tests/config/architecture.test.ts` giữ: `src/` không import `next`/`react` ngoài `src/server/` và `src/auth/client.ts`; hạ tầng (`pg`, `pg-boss`, `better-auth`) chỉ ở thư mục đã khai; tệp lõi thuần không import ORM/khung/mạng; không import `app/` từ `src/`; không vòng import; ngoài module chỉ import tệp cấp một hoặc `index.ts`. Chi tiết và đánh đổi: ADR-0007.

@@ -19,6 +19,8 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/prefer-nullish-coalescing": "error",
       // QA-STATIC-005: không console.* gỡ lỗi trong mã ứng dụng (dùng src/log/logger.ts).
       "no-console": "error",
+      // FE-SEC-001: không DOM sink (dangerouslySetInnerHTML) — thêm điểm tắt escape phải đi kèm sanitizer + lý do.
+      "react/no-danger": "error",
     },
   },
   // Override default ignores of eslint-config-next.

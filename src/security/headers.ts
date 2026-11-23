@@ -31,7 +31,7 @@ export function buildCsp({
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
-    "base-uri 'self'",
+    "base-uri 'none'",
     "form-action 'self'",
   ].join("; ");
 }
