@@ -29,11 +29,12 @@ describe("README (BASE-DOC-001)", () => {
 });
 
 describe("tệp cộng đồng và phát hành", () => {
-  it("CHANGELOG có [Unreleased] ở đầu (BASE-REPO-007)", () => {
+  it("CHANGELOG có [Unreleased] hoặc bản phát hành mới nhất ở đầu (BASE-REPO-007)", () => {
     const first = read("CHANGELOG.md")
       .split("\n")
       .find((l) => l.startsWith("## "));
-    expect(first).toBe("## [Unreleased]");
+    // Trước bản phát hành đầu: `## [Unreleased]`. Sau khi Release Please phát hành: `## 1.0.0 (ngày)` hoặc `## [1.0.1](url) (ngày)`.
+    expect(first).toMatch(/^## (\[Unreleased\]$|\[?\d+\.\d+\.\d+)/);
   });
 
   it("LICENSE tồn tại và package.json khai license SPDX khớp (BASE-REPO-004)", () => {

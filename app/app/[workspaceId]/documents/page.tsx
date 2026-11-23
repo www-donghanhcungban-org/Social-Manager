@@ -1,7 +1,9 @@
+import Link from "next/link";
+
 import { can } from "@/src/auth/permissions";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
-import { ImportForm, ProjectForm } from "./forms";
+import { AliasForm, ImportForm, ProjectForm, RemoveAliasForm } from "./forms";
 
 export const metadata = { title: "Tài liệu và dự án — X-Workspace" };
 
@@ -46,12 +48,38 @@ export default async function DocumentsPage({
           <ul className="flex flex-col gap-2" aria-label="Danh sách dự án">
             {projects.map((p) => (
               <li key={p.id} className="rounded border border-border p-3">
-                <span className="font-medium">{p.name}</span>
+                <Link
+                  href={`/app/${workspaceId}/projects/${p.id}`}
+                  className="font-medium text-primary underline"
+                >
+                  {p.name}
+                </Link>
                 {p.aliases.length > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    {" "}
-                    · còn gọi: {p.aliases.map((a) => a.alias).join(", ")}
-                  </span>
+                  <ul
+                    className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground"
+                    aria-label={`Bí danh của ${p.name}`}
+                  >
+                    {p.aliases.map((a) => (
+                      <li key={a.id}>
+                        {canProject ? (
+                          <RemoveAliasForm
+                            workspaceId={workspaceId}
+                            aliasId={a.id}
+                            alias={a.alias}
+                          />
+                        ) : (
+                          a.alias
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {canProject && (
+                  <AliasForm
+                    workspaceId={workspaceId}
+                    projectId={p.id}
+                    projectName={p.name}
+                  />
                 )}
               </li>
             ))}

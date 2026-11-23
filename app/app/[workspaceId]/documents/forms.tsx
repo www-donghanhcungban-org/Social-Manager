@@ -3,8 +3,10 @@
 import { useActionState } from "react";
 
 import {
+  addAliasAction,
   createProjectAction,
   importDocumentAction,
+  removeAliasAction,
   type DocState,
 } from "./actions";
 
@@ -19,6 +21,73 @@ function Status({ state }: { state: DocState }) {
     >
       {state.message}
     </span>
+  );
+}
+
+export function AliasForm({
+  workspaceId,
+  projectId,
+  projectName,
+}: {
+  workspaceId: string;
+  projectId: string;
+  projectName: string;
+}) {
+  const [state, action, pending] = useActionState(
+    addAliasAction.bind(null, workspaceId, projectId),
+    initial,
+  );
+  const id = `alias-${projectId}`;
+  return (
+    <form action={action} className="mt-3 flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id}>Bí danh cho {projectName}</label>
+        <input
+          id={id}
+          name="alias"
+          required
+          maxLength={100}
+          className="rounded border border-border p-2"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded border border-border px-3 py-1 disabled:opacity-60"
+      >
+        {pending ? "Đang thêm…" : "Thêm bí danh"}
+      </button>
+      <Status state={state} />
+    </form>
+  );
+}
+
+export function RemoveAliasForm({
+  workspaceId,
+  aliasId,
+  alias,
+}: {
+  workspaceId: string;
+  aliasId: string;
+  alias: string;
+}) {
+  const [state, action, pending] = useActionState(
+    removeAliasAction.bind(null, workspaceId, aliasId),
+    initial,
+  );
+  return (
+    <form action={action} className="flex items-center gap-2">
+      <span>{alias}</span>
+      <button
+        type="submit"
+        disabled={pending}
+        aria-label={`Xoá bí danh ${alias}`}
+        className="rounded border border-border px-2 py-1 disabled:opacity-60"
+      >
+        Xoá
+      </button>
+      <Status state={state} />
+    </form>
   );
 }
 
