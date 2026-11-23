@@ -120,3 +120,10 @@
 - Chọn: Duyệt PLAN 40 task do Opus soạn: audit full trước, khai lệnh migration_check/rollback/attack/acceptance sớm, rồi 22 nhóm MUST theo tiền tố, chờ người ở T-009/T-108/T-540/T-541/T-542
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: hàng audit và blueprint là BLOCKER nên không thể bỏ; thứ tự chạy đề nghị bỏ BLOCKER rẻ trước. Việc cần quyền hoặc khoá của chủ dự án nằm ngoài đường chính (loop defer). Gửi thật giữ TẮT. Cờ cổng không bị nới.
 - Đường lùi: PLAN chỉ là tài liệu; mỗi task một commit/PR, revert theo PR; chưa chạy loop init
+
+### D-018 · 2026-11-23T15:11:12+00:00 · Duyệt kế hoạch sửa sau audit full 2026-11-23: thứ tự đợt và mức các phát hiện
+
+- Phương án: (1) Sửa theo đợt: đường gửi tin trước (AUD-CODE-001, AUD-CODE-002), rồi CI Postgres, tài liệu, xoá/xuất dữ liệu, harness; hạ các lệch tài liệu và cấu hình không có hành vi sai xuống 🟢 nợ có chủ · (2) Giữ mọi 🟠 do cụm DOC/HAR/XFEAT báo và sửa tất cả trước khi làm MUST blueprint
+- Chọn: Sửa theo đợt: đường gửi tin trước (AUD-CODE-001, AUD-CODE-002), rồi CI Postgres, tài liệu, xoá/xuất dữ liệu, harness; hạ các lệch tài liệu và cấu hình không có hành vi sai xuống 🟢 nợ có chủ
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: hai lỗi trên đường gửi tin là hành động ra ngoài không đảo ngược nên sửa đầu tiên với test đỏ trước; các lệch tài liệu không có đường tái hiện dẫn tới hành vi sai nên xử lý theo task PLAN-harden đã có, không nới cổng, không hạ mức để biến mất phát hiện (mọi dòng vẫn giữ trong sổ)
+- Đường lùi: Kế hoạch chỉ là tài liệu: sửa AUDIT-STATUS.md và AUDIT-REPORT-2026-11-23.md rồi lập lại thứ tự đợt
