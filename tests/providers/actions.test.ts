@@ -286,7 +286,9 @@ describe.each(providersUnderContract)(
         { ...base(p), scheduledAt: "2026-12-01T10:00:00+07:00" },
         clock,
       );
-      expect(spy.mock.calls[0][0].scheduledAt).toBe("2026-12-01T03:00:00.000Z");
+      expect(spy.mock.calls[0]?.[0].scheduledAt).toBe(
+        "2026-12-01T03:00:00.000Z",
+      );
     });
 
     it("tên nền tảng lạ (__proto__, toString) là UnsupportedError, không phải TypeError", async () => {

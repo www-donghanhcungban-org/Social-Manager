@@ -102,11 +102,11 @@ export function createErasureService({
         ),
       );
     if (!conv) throw new NotFoundError();
-    const [{ n: msgs }] = await tx
+    const [{ n: msgs } = { n: 0 }] = await tx
       .select({ n: count() })
       .from(messages)
       .where(eq(messages.conversationId, conv.id));
-    const [{ n: evs }] = await tx
+    const [{ n: evs } = { n: 0 }] = await tx
       .select({ n: count() })
       .from(evidenceItems)
       .innerJoin(messages, eq(evidenceItems.messageId, messages.id))
@@ -259,7 +259,7 @@ export function createErasureService({
             out.evidenceItems += gone.length;
           }
         }
-        const [{ n: aliasN }] = await tx
+        const [{ n: aliasN } = { n: 0 }] = await tx
           .select({ n: count() })
           .from(projectAliases)
           .where(eq(projectAliases.projectId, p.id));

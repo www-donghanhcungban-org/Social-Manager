@@ -148,3 +148,10 @@
 - Chọn: LOOP-OPT-001/002/003/005 = Không áp dụng có điều kiện kiểm bằng test (chưa có task tối ưu); LOOP-ORCH-001/003, LOOP-STOP-001/002 (harness-check đỏ do di sản T-108) và LOOP-STOP-005 (nhãn risk PR) = loop defer cho người, giữ [ ]
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: không khai xanh khi harness-check đỏ thật; gỡ cấu hình ask/agent coordinator là hạ hàng rào, guard cấm agent tự làm; OPT chỉ áp khi mở task tối ưu
 - Đường lùi: Bỏ [~] của OPT khi thêm perf/trial.json; hết defer khi người gỡ di sản T-108
+
+### D-022 · 2026-11-23T21:57:35+00:00 · T-514: giữ skipLibCheck=true trong tsconfig hay bỏ để đạt FE-BUILD-003/PRF-WEB-002?
+
+- Phương án: (1) Đặt skipLibCheck=false · (2) Giữ skipLibCheck=true: chỉ bỏ qua .d.ts của gói bên thứ ba, mã dự án vẫn strict + noUncheckedIndexedAccess
+- Chọn: Giữ skipLibCheck=true: chỉ bỏ qua .d.ts của gói bên thứ ba, mã dự án vẫn strict + noUncheckedIndexedAccess
+- Lý do (tiêu chí chất lượng cuối): Đo được: tsc --skipLibCheck false báo lỗi ở 4+ gói bên thứ ba (pglite, drizzle, next) không thuộc dự án và không sửa được; skipLibCheck không che lỗi mã dự án. Đúng và đơn giản; test khoá strict
+- Đường lùi: Đặt lại skipLibCheck=false khi gói bên thứ ba sạch kiểu

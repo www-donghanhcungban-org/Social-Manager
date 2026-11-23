@@ -12,7 +12,7 @@ function setup() {
     now: () => new Date("2026-11-22T03:04:05.678Z"),
   });
   const last = () =>
-    JSON.parse(lines[lines.length - 1]) as Record<string, unknown>;
+    JSON.parse(lines[lines.length - 1] ?? "null") as Record<string, unknown>;
   return { log, lines, last };
 }
 
@@ -102,7 +102,7 @@ describe("chống log injection (BASE-ERR-008)", () => {
     const { log, lines, last } = setup();
     log.info("đăng nhập\n[ERROR] fake\r\n", { user: "a\nb\u0007" });
     expect(lines).toHaveLength(1);
-    expect(lines[0].split("\n")).toHaveLength(1);
+    expect(lines[0]?.split("\n")).toHaveLength(1);
     expect(last().message).toBe("đăng nhập\\n[ERROR] fake\\r\\n");
     expect(last().user).toBe("a\\nb\\u0007");
   });
@@ -131,8 +131,8 @@ describe("ngoại lệ (BASE-ERR-009)", () => {
     const cause2 = (
       cause1 as unknown as Record<string, Record<string, string>>
     )["exception.cause"];
-    expect(cause2["exception.type"]).toBe("TypeError");
-    expect(cause2["exception.message"]).toBe("gốc");
+    expect(cause2?.["exception.type"]).toBe("TypeError");
+    expect(cause2?.["exception.message"]).toBe("gốc");
     expect(rec.error).toBeUndefined();
   });
 

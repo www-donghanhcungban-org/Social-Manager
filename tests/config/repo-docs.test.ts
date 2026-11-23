@@ -51,7 +51,7 @@ describe("tệp cộng đồng và phát hành", () => {
   it("SECURITY.md chỉ nêu đường dẫn có thật và không khai RLS (AUD-DOC-001)", () => {
     const text = read("SECURITY.md");
     const paths = [...text.matchAll(/`([^`\s]+)`/g)]
-      .map((m) => m[1])
+      .map((m) => m[1] ?? "")
       .filter(
         (p) =>
           /^[\w.-]+(\/[\w.-]+)+$/.test(p) ||

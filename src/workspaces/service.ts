@@ -49,7 +49,7 @@ export function createWorkspaceService({ db }: { db: Db }) {
       if (name === "" || name.length > MAX_NAME)
         throw new ValidationError(`Tên phải dài 1-${MAX_NAME} ký tự`);
       return db.transaction(async (tx) => {
-        const [{ n }] = await tx
+        const [{ n } = { n: 0 }] = await tx
           .select({ n: count() })
           .from(members)
           .where(eq(members.userId, input.actorId));

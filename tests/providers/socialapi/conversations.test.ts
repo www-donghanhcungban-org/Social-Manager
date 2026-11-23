@@ -168,6 +168,22 @@ describe("SocialAPI: tin nhắn trong hội thoại", () => {
     });
   });
 
+  it('platform_id và tên người gửi là "" được coi như thiếu (BASE-DATA-003: rỗng ≠ giá trị hợp lệ ở đây)', async () => {
+    const page = await listMessages(
+      provider(
+        vi.fn(async () =>
+          json({ data: [message({ platform_id: "", sender_name: "" })] }),
+        ),
+      ),
+      { platform: "zalo", accountId: "acc_1", conversationId: "c" },
+    );
+    expect(page.items[0]).toMatchObject({
+      id: "7a000000-0000-4000-8000-000000000001",
+      identityWeak: true,
+      author: "psid_9",
+    });
+  });
+
   it("nội dung dài hơn 10.000 ký tự được giữ nguyên", async () => {
     const long = "ă".repeat(25_000);
     const page = await listMessages(

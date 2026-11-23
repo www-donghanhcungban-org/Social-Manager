@@ -5,6 +5,8 @@ const executablePath = process.env.PW_CHROMIUM_PATH;
 
 export default defineConfig({
   testDir: "e2e",
+  // QA-STRAT-008: `test.only` lọt vào nhánh chính làm CI chạy một phần mà vẫn xanh.
+  forbidOnly: !!process.env.CI,
   // UX-RESP-008: luồng chính chạy trên cả desktop và thiết bị di động giả lập (cùng Chromium).
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

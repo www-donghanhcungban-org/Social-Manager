@@ -34,6 +34,15 @@ jobs:
             && ! printf '%s\n' "$changed" | grep -Eq '^(docs/|README\.md|CHANGELOG\.md)'; then
             echo "::warning::PR đổi cấu hình hoặc giao diện công khai nhưng không chạm docs/ hay README.md — cập nhật tài liệu cùng PR hoặc ghi lý do ở mục Docs."
           fi
+      - name: Cảnh báo (QA-STRAT-005) — PR `fix:` không kèm thay đổi test
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$TITLE" == fix* ]] && ! git diff --name-only "$BASE" "$HEAD" | grep -Eq '(^|/)(tests?|e2e)/|\.(test|spec)\.[tj]sx?$'; then
+            echo "::warning::PR sửa lỗi (fix) nhưng không đổi file test nào — sửa lỗi cần test tái hiện (đỏ trước, xanh sau)."
+          fi
       - name: Mô tả PR có đủ Mục tiêu, Bằng chứng, Rủi ro và đường lùi
         env:
           BODY: ${{ github.event.pull_request.body }}
