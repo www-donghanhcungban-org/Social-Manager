@@ -29,6 +29,9 @@ export default async function WorkspaceLayout({
         <Link href={`${base}/conversations`} className="text-primary underline">
           Hội thoại
         </Link>
+        <Link href={`${base}/documents`} className="text-primary underline">
+          Tài liệu
+        </Link>
         <Link href={`${base}/search`} className="text-primary underline">
           Tìm kiếm
         </Link>

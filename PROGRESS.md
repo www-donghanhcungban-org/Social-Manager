@@ -4,11 +4,11 @@
 
 ## Đang làm
 
-- xw-4 đã merge (PR #27: nháp, chính sách gửi, sổ hành động, `send_unknown`, job, `OUTBOUND_LIVE` tắt). Đợt xw-4b (T-411..T-413, đã merge PR #28): dịch vụ đọc hội thoại, nhãn tiếng Việt, trang `/conversations` (soạn nháp, yêu cầu gửi, lịch sử, quyết định `send_unknown`); Đợt xw-4c (T-421, T-422): trang `/search` tìm kiếm và hỏi đáp có trích dẫn (AI tắt thì chỉ tìm kiếm); PR của đợt chờ CI. Gửi thật CHƯA bật
+- xw-4 đã merge (PR #27: nháp, chính sách gửi, sổ hành động, `send_unknown`, job, `OUTBOUND_LIVE` tắt). Đợt xw-4b (T-411..T-413, đã merge PR #28): dịch vụ đọc hội thoại, nhãn tiếng Việt, trang `/conversations` (soạn nháp, yêu cầu gửi, lịch sử, quyết định `send_unknown`); Đợt xw-4c (T-421, T-422, đã merge PR #29): trang `/search` tìm kiếm và hỏi đáp có trích dẫn (AI tắt thì chỉ tìm kiếm). Đợt xw-4d (T-431): trang `/documents` nhập tài liệu và tạo dự án; PR chờ CI. Gửi thật CHƯA bật
 
 ## Tiếp theo
 
-1. Giao diện cho kho bằng chứng (nhập tài liệu), dự án, sổ quyết định, độ bao phủ; T-406 bật gửi thật khi có khoá SocialAPI
+1. Giao diện cho bí danh/liên kết dự án, sổ quyết định, độ bao phủ, xuất/xoá dữ liệu; T-406 bật gửi thật khi có khoá SocialAPI
 2. Giao diện cho kho bằng chứng, dự án, hộp chờ, tìm kiếm, hỏi đáp, độ bao phủ (hiện mới có dịch vụ; chỉ có màn hình thời hạn lưu)
 3. Nối dịch vụ hỏi đáp/tìm kiếm vào Server Action và trang; thử AI thật (T-306) và đối chiếu chất lượng; thêm tìm kiếm mờ `pg_trgm` khi cần
 4. Còn ~440 MUST blueprint mở (`xt.py blueprint-status BLUEPRINT.md --json`), đầu tiên BASE-CFG-003 (cần `.env.example`)
@@ -22,7 +22,7 @@
 
 ## Bàn giao phiên
 
-- Nền trên nhánh chính: `66411e9` (PR #23, #25, #26, #27, #28 đã merge) · Việc xw-4c ở nhánh này · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh
+- Nền trên nhánh chính: `ceea920` (PR #23, #25..#29 đã merge) · Việc xw-4d ở nhánh này · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh
 - Đang chặn (cần người):
   - T-009: tạo `.env.example` (quy tắc quyền chặn agent ghi `.env*`); biến mới cần có trong đó: `BLOB_DIR` (mặc định `./.data/blobs`; compose `/data/blobs`), `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY` (AI tắt khi `AI_BASE_URL` trống), `OUTBOUND_LIVE` (mặc định `false`)
   - T-108: gỡ di sản projects-template (guard chặn agent gỡ hook/agent/lệnh). Người chạy ở gốc repo:
