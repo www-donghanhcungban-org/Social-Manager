@@ -19,6 +19,13 @@ import { socialApiPlatformSupport } from "./matrix";
 
 export { socialApiPlatformSupport } from "./matrix";
 export { createSocialApiClient, SocialApiError } from "./client";
+// Điểm xuất công khai cho tầng HTTP (ARC-MOD-005): route webhook không import `./webhook` nội bộ.
+export {
+  parseWebhookEvent,
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
+  verifyWebhookSignature,
+} from "./webhook";
 
 /**
  * Hình dạng phản hồi theo kiểu của repo tham chiếu qthupro/socials-manager (các kiểu này tự dẫn

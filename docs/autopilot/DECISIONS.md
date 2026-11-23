@@ -162,3 +162,10 @@
 - Chọn: Cho phép qua ngoại lệ có hạn 2027-06-30 trong license-policy.json (dùng nguyên bản, không sửa), ghi công ở THIRD_PARTY_NOTICES.md
 - Lý do (tiêu chí chất lượng cuối): Đo được: 14 gói LGPL là nhị phân native tuỳ chọn của sharp, MPL là lightningcss/axe-core (bộ công cụ build/dev), CC-BY là dữ liệu caniuse; không thay được vì thuộc Next/Tailwind; dùng nguyên bản thì tuân thủ; ngoại lệ có hạn, test đỏ khi hết hạn hoặc thêm gói mới ngoài danh sách
 - Đường lùi: Xoá ngoại lệ tương ứng; test license đỏ cho tới khi gỡ gói
+
+### D-024 · 2026-11-23T23:10:25+00:00 · Kiểu kiến trúc và cách kiểm ranh giới module (ADR-0007)
+
+- Phương án: (1) Modular monolith một deployable, ranh giới kiểm bằng test tự viết (không thêm phụ thuộc) · (2) Tách dịch vụ (web/worker/connector) ngay · (3) Thêm dependency-cruiser/import-linter làm công cụ kiểm
+- Chọn: Modular monolith một deployable, ranh giới kiểm bằng test tự viết (không thêm phụ thuộc)
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: một nơi triển khai/sao lưu, giao dịch chung dữ liệu+job; ranh giới có máy canh mà không thêm phụ thuộc dev chưa xác minh; ORM trong service là đánh đổi chấp nhận có điều kiện đọc lại
+- Đường lùi: Viết ADR mới thay ADR-0007: đổi test sang dependency-cruiser hoặc tách deployable kèm mục Bằng chứng tách

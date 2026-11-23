@@ -1,10 +1,7 @@
 import { handleError } from "@/src/http/errors";
 import { MAX_WEBHOOK_BYTES } from "@/src/inbox/webhook";
 import { defaultLogger } from "@/src/log/process";
-import {
-  SIGNATURE_HEADER,
-  TIMESTAMP_HEADER,
-} from "@/src/providers/socialapi/webhook";
+import { SIGNATURE_HEADER, TIMESTAMP_HEADER } from "@/src/providers/socialapi";
 import { getContainer } from "@/src/server/runtime";
 
 /**

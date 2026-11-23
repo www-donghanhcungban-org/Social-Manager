@@ -1,6 +1,6 @@
 import { ConflictError, ForbiddenError, NotFoundError } from "../auth/errors";
 import type { Logger } from "../log/logger";
-import { SocialApiError } from "../providers/socialapi/client";
+import { SocialApiError } from "../providers/socialapi";
 import { UnsupportedError, ValidationError } from "../providers/types";
 
 export interface ErrorBody {

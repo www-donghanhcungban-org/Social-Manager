@@ -43,6 +43,24 @@ jobs:
           if [[ "$TITLE" == fix* ]] && ! git diff --name-only "$BASE" "$HEAD" | grep -Eq '(^|/)(tests?|e2e)/|\.(test|spec)\.[tj]sx?$'; then
             echo "::warning::PR sửa lỗi (fix) nhưng không đổi file test nào — sửa lỗi cần test tái hiện (đỏ trước, xanh sau)."
           fi
+      - name: ADR đã chấp nhận không bị sửa nội dung (ARC-ADR-004) — chỉ đổi dòng trạng thái hoặc liên kết thay thế
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bad=0
+          for f in $(git diff --name-only --diff-filter=M "$BASE" "$HEAD" -- 'docs/adr/*.md'); do
+            git show "$BASE:$f" | grep -qE '^status: accepted' || continue
+            extra=$(git diff -U0 "$BASE" "$HEAD" -- "$f" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' \
+              | grep -vE '^[+-](status|implementation-status|superseded-by|superseded_by):' \
+              | grep -viE 'superseded|đã thay thế|thay thế bởi' || true)
+            if [[ -n "$extra" ]]; then
+              echo "::error file=$f::ADR đã chấp nhận (status: accepted) bị sửa nội dung; viết ADR mới thay thế (chỉ được đổi status/liên kết):"
+              printf '%s\n' "$extra" | head -10
+              bad=1
+            fi
+          done
+          exit "$bad"
       - name: Phụ thuộc mới (BASE-DEP-006) — lockfile thêm gói thì mục "Phụ thuộc mới" của PR phải điền
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
