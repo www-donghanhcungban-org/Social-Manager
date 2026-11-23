@@ -38,3 +38,11 @@ gửi và theo dõi trạng thái (kể cả `blocked`, `send_unknown`). Gửi t
 ### Lát 1 — Đọc hội thoại
 
 - [ ] `T-411` Dịch vụ đọc hội thoại: danh sách theo `last_message_at` mới nhất trước (khoá phân trang, cô lập workspace) và một cuộc trò chuyện (tin theo thời gian, nháp, hành động của các nháp). Ca biên: id lạ/workspace khác, hội thoại rỗng, `last_message_at` null, con trỏ hỏng, thành viên ngoài (files: src/conversations/threads.ts, tests/conversations/threads.test.ts) — Gate: `npx vitest run tests/conversations/threads.test.ts`
+
+### Lát 2 — Lời nhắn cho người dùng
+
+- [ ] `T-412` Nhãn tiếng Việt cho trạng thái hành động, lý do bị chặn và lỗi dịch vụ (`describeActionError`: Forbidden, NotFound, Validation, Conflict theo `reason`; lỗi lạ ném lại, không lộ chi tiết). Ca biên: mọi `ACTION_STATES` và `BLOCK_REASONS` đều có nhãn (test chống lệch), `reason` Conflict lạ có lời nhắn chung (sau: T-411; files: src/actions/labels.ts, tests/actions/labels.test.ts) — Gate: `npx vitest run tests/actions/labels.test.ts`
+
+### Lát 3 — Trang hội thoại
+
+- [ ] `T-413` Trang `/app/[workspaceId]/conversations` (danh sách) và `/[conversationId]` (tin, soạn nháp, gửi, trạng thái, huỷ, quyết định `send_unknown`) bằng Server Action; khoá lũy đẳng sinh khi dựng form (bấm đúp không gửi hai lần); trang nói rõ khi gửi đang tắt; thêm liên kết từ điều hướng (sau: T-412; files: app/app/[workspaceId]/conversations/, tests/e2e) — Gate: `npx tsc --noEmit -p . && npx vitest run tests/actions tests/conversations`
