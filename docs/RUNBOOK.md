@@ -79,6 +79,13 @@ docker compose exec -T db psql -U social -d social < drizzle/0004_login_throttle
 docker compose exec -T db pg_dump -U social -d social -Fc > backup-$(date +%F).dump
 ```
 
+Nội dung kho bằng chứng nằm ở volume `blobdata` (`BLOB_DIR=/data/blobs`), **không** nằm trong dump Postgres: sao lưu cả hai
+cùng lúc. Mất volume là mất nội dung dù metadata còn (đọc lại sẽ báo không tìm thấy). Sao lưu volume:
+
+```bash
+docker compose run --rm --no-deps -v "$PWD":/backup --entrypoint tar app czf /backup/blobs-$(date +%F).tgz -C /data blobs
+```
+
 Khôi phục vào CSDL trống rồi kiểm (`/api/health`, đăng nhập thử):
 
 ```bash

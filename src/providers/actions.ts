@@ -5,6 +5,8 @@ import {
   type Capability,
   type PostStatusQuery,
   type RemotePostStatus,
+  type SendMessageInput,
+  type SendMessageResult,
   type ConversationQuery,
   type ConversationSummary,
   type InboxItem,
@@ -84,6 +86,33 @@ export async function listMessages(
   if (query.conversationId === "")
     throw new ValidationError("Thiếu id hội thoại");
   return provider.listMessages(query);
+}
+
+/** Provider gửi được tin trả lời không (khai `dm` và cài `sendMessage`). */
+export function supportsSend(provider: SocialProvider, platform: Platform) {
+  return (
+    Object.hasOwn(provider.support, platform) &&
+    provider.support[platform]!.includes("dm") &&
+    typeof provider.sendMessage === "function"
+  );
+}
+
+/**
+ * Gửi một tin. KHÔNG tự thử lại và không nuốt lỗi: `SendRejectedError` = từ chối chắc chắn, mọi lỗi khác = không chắc
+ * (người gọi ghi `send_unknown`). Kiểm đầu vào trước khi chạm mạng.
+ */
+export async function sendMessage(
+  provider: SocialProvider,
+  input: SendMessageInput,
+): Promise<SendMessageResult> {
+  requireSupport(provider, input.platform, "dm");
+  if (!provider.sendMessage)
+    throw new UnsupportedError(input.platform, "dm", "not_implemented");
+  if (input.conversationId === "" || input.accountId === "")
+    throw new ValidationError("Thiếu hội thoại hoặc tài khoản");
+  if (input.text.trim() === "")
+    throw new ValidationError("Nội dung tin không được rỗng");
+  return provider.sendMessage(input);
 }
 
 /** Đọc lại trạng thái bài đã gửi; provider không cài thì `not_implemented` (bài giữ `submitted` tới hạn). */

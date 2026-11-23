@@ -51,6 +51,11 @@ export function createDemoProvider(
         nextCursor: null,
       };
     },
+    /** Demo "gửi" thành công không đi đâu cả: chỉ trả id giả để chạy thử luồng; KHÔNG gửi tới người thật. */
+    async sendMessage() {
+      seq += 1;
+      return { messageIds: [`demo-sent-${seq}`] };
+    },
     async listMessages({ platform, cursor }) {
       if (cursor !== undefined) return { items: [], nextCursor: null };
       const at = now().getTime();

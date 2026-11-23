@@ -33,7 +33,7 @@
     "@electric-sql/pglite": "0.5.17",
     "@playwright/test": "1.65.1",
     "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -44,7 +44,7 @@
     "prettier": "3.10.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.12"
+    "vitest": "5.1.0"
   },
   "engines": {
     "node": ">=22 <25"

@@ -33,6 +33,16 @@ services:
       NODE_ENV: production
       CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
       SOCIALAPI_BASE_URL: ${SOCIALAPI_BASE_URL:-}
+      BLOB_DIR: /data/blobs
+      # AI và gửi tin thật đều TẮT khi bỏ trống/false. Phải liệt kê ở đây thì giá trị trong file env mới tới được container.
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      OUTBOUND_LIVE: ${OUTBOUND_LIVE:-false}
+    volumes:
+      # Nội dung kho bằng chứng: phải bền và được sao lưu cùng dbdata — mất volume là mất nội dung dù metadata còn.
+      - blobdata:/data/blobs
 
 volumes:
   dbdata:
+  blobdata:

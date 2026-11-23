@@ -25,7 +25,16 @@ export class ConflictError extends Error {
       | "duplicate_label"
       | "idempotency_conflict"
       | "workspace_limit"
-      | "duplicate_account",
+      | "duplicate_account"
+      | "project_limit"
+      | "name_taken"
+      | "alias_limit"
+      | "alias_taken"
+      | "decision_not_active"
+      | "version_conflict"
+      | "draft_closed"
+      | "action_not_cancellable"
+      | "action_not_unknown",
     message: string,
   ) {
     super(message);

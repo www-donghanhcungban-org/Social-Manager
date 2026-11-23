@@ -17,7 +17,7 @@ const text = () =>
     z.string(),
   );
 
-const schema = z.object({
+const baseSchema = z.object({
   DATABASE_URL: text().refine(
     (v) => URL.canParse(v) && /^postgres(ql)?:\/\//.test(v),
     "phải là URL postgres://",
@@ -51,6 +51,36 @@ const schema = z.object({
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     z.enum(["true", "false"]).default("true"),
   ),
+  /** Thư mục volume chứa nội dung kho bằng chứng (ADR-0004); phải bền và được sao lưu cùng Postgres. */
+  BLOB_DIR: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.string().min(1).max(500).default("./.data/blobs"),
+  ),
+  /**
+   * Khoá hệ thống cho GỬI TIN THẬT (H3, `outbound_messages live=false`): mặc định `false`. Gửi thật còn cần owner bật
+   * `outbound_enabled` của workspace — hai khoá độc lập. Tắt là mọi hành động đã xếp hàng giữ nguyên, không gửi gì.
+   */
+  OUTBOUND_LIVE: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.enum(["true", "false"]).default("false"),
+  ),
+  /**
+   * AI (H6, H7): TẮT khi `AI_BASE_URL` trống. Điểm cuối tương thích OpenAI (`/chat/completions`): Ollama/vLLM cục bộ hoặc
+   * dịch vụ đám mây. Điểm cuối không phải máy cục bộ chỉ được dùng khi owner bật `ai_cloud_enabled` của workspace.
+   */
+  AI_BASE_URL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.url({ protocol: /^https?$/ }).optional(),
+  ),
+  AI_MODEL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.string().min(1).max(200).optional(),
+  ),
+  /** Khoá API của điểm cuối AI (bí mật); bỏ trống với điểm cuối cục bộ không cần khoá. */
+  AI_API_KEY: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.string().min(1).max(500).optional(),
+  ),
   SOCIALAPI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     // Chỉ https: khoá API không bao giờ được gửi qua kênh không mã hoá (BASE-SEC-004).
@@ -58,14 +88,21 @@ const schema = z.object({
   ),
 });
 
-export type Env = z.infer<typeof schema>;
-export const ENV_KEYS = Object.keys(schema.shape) as (keyof Env)[];
+/** Có điểm cuối AI thì phải có mô hình (không đoán mô hình mặc định). */
+const schema = baseSchema.refine(
+  (e) => e.AI_BASE_URL === undefined || e.AI_MODEL !== undefined,
+  { message: "AI_MODEL bắt buộc khi đặt AI_BASE_URL", path: ["AI_MODEL"] },
+);
+
+export type Env = z.infer<typeof baseSchema>;
+export const ENV_KEYS = Object.keys(baseSchema.shape) as (keyof Env)[];
 
 /** Biến bí mật: bị che khi in/dump. DATABASE_URL tính là bí mật vì chứa mật khẩu. */
 export const SECRET_KEYS = [
   "DATABASE_URL",
   "BETTER_AUTH_SECRET",
   "APP_SECRET_KEY",
+  "AI_API_KEY",
 ] as const satisfies readonly (keyof Env)[];
 
 /** Chỉ mang TÊN biến sai, không mang giá trị: thông báo của nó an toàn để in/log. */

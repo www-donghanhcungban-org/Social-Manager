@@ -85,3 +85,31 @@
 - Chọn: X-Workspace cho cả sản phẩm, repo, package, log service; giữ nguyên bản ghi lịch sử (docx gốc, ADR-0001, nhật ký quyết định, PLAN đợt 0) kèm ghi chú
 - Lý do (tiêu chí chất lượng cuối): Chủ dự án chọn qua câu hỏi trong phiên; một tên thống nhất tránh lệch giữa repo, giao diện và tài liệu; bản ghi lịch sử không viết lại (ADR append-only)
 - Đường lùi: Một commit đổi tên riêng: git revert commit đó; GitHub vẫn chuyển hướng URL cũ
+
+### D-013 · 2026-11-22T15:39:58+00:00 · Phạm vi và thứ tự đợt xw-2 (kho bằng chứng) của X-Workspace
+
+- Phương án: (1) Kho bản gốc theo hash trước, rồi dự án/liên kết, dòng thời gian/bao phủ/xoá-xuất, connector GitHub bằng cổng fetch tiêm được; tài liệu nhập là văn bản/Markdown, PDF-Docling để đợt sau · (2) Làm đủ PDF/Docling và connector GitHub thật ngay trong xw-2
+- Chọn: Kho bản gốc theo hash trước, rồi dự án/liên kết, dòng thời gian/bao phủ/xoá-xuất, connector GitHub bằng cổng fetch tiêm được; tài liệu nhập là văn bản/Markdown, PDF-Docling để đợt sau
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: lớp dẫn xuất (tri thức, AI) chỉ đáng tin khi bằng chứng gốc có hash và xoá xuyên lớp được. Docling cần runtime Python riêng và quota tài nguyên; token GitHub thật là khoá chỉ chủ dự án có (mặc định tự host, kiểm bằng fixture, token thật defer T-209)
+- Đường lùi: PLAN-xw-2 chỉ là tài liệu; mỗi task một commit có migration down, revert theo commit
+
+### D-014 · 2026-11-22T23:33:09+00:00 · Phạm vi lớp AI và tìm kiếm của đợt xw-3
+
+- Phương án: (1) Tìm kiếm toàn văn dựng sẵn của Postgres trên văn bản đã bỏ dấu bằng hàm riêng; cổng ModelPort với adapter OpenAI-tương-thích bằng fetch, AI tắt mặc định, đám mây bật theo workspace kèm nhật ký; bộ 50 câu đo truy xuất; chưa thêm phụ thuộc AI SDK và pg_trgm · (2) Thêm AI SDK 7 và extension pg_trgm ngay trong xw-3
+- Chọn: Tìm kiếm toàn văn dựng sẵn của Postgres trên văn bản đã bỏ dấu bằng hàm riêng; cổng ModelPort với adapter OpenAI-tương-thích bằng fetch, AI tắt mặc định, đám mây bật theo workspace kèm nhật ký; bộ 50 câu đo truy xuất; chưa thêm phụ thuộc AI SDK và pg_trgm
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: bộ truy xuất đúng và kiểm được trên PGlite trong Gate; dữ liệu khách không rời máy khi chưa được phép (H6). Không thêm phụ thuộc/extension khi chưa có phép thử và khoảng thiếu cụ thể (working.md §2 H7, source-plan mục 14). Cổng ModelPort giữ đường nâng AI SDK sau
+- Đường lùi: Mỗi task một commit có migration down; ModelPort tách adapter nên đổi adapter không chạm dịch vụ
+
+### D-015 · 2026-11-23T01:24:40+00:00 · Phạm vi và an toàn của đợt xw-4 (gửi trả lời từ hộp thư) khi chủ dự án giao toàn quyền tự quyết
+
+- Phương án: (1) Dựng đủ nháp, chính sách, sổ hành động, send_unknown, đối soát, job; kiểm bằng nhà cung cấp giả; gửi thật mặc định TẮT bằng hai cờ (OUTBOUND_LIVE của hệ thống, outbound_enabled do owner bật), tác tử không bật · (2) Bật gửi thật ngay khi xong
+- Chọn: Dựng đủ nháp, chính sách, sổ hành động, send_unknown, đối soát, job; kiểm bằng nhà cung cấp giả; gửi thật mặc định TẮT bằng hai cờ (OUTBOUND_LIVE của hệ thống, outbound_enabled do owner bật), tác tử không bật
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: gửi tin là hành động không đảo ngược tới người thật, SocialAPI không có idempotency; ủy quyền production ghi outbound_messages live=false. Toàn quyền tự quyết áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật của chủ dự án
+- Đường lùi: Mỗi task một commit có migration down; cờ OUTBOUND_LIVE tắt là dừng mọi đường gửi
+
+### D-016 · 2026-11-23T03:00:24+00:00 · Đợt tiếp theo sau xw-4: làm gì trong phiên khi chủ dự án giao toàn quyền?
+
+- Phương án: (1) Giao diện hội thoại và trả lời (đọc, nháp, yêu cầu gửi, trạng thái) trên dịch vụ xw-4, gửi thật vẫn tắt · (2) Bắt đầu xw-5 thiết bị Windows
+- Chọn: Giao diện hội thoại và trả lời (đọc, nháp, yêu cầu gửi, trạng thái) trên dịch vụ xw-4, gửi thật vẫn tắt
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dịch vụ xw-4 chưa có giao diện nên chưa dùng được; xw-5 cần máy Windows và ghép cặp thiết bị thật, không kiểm được trong phiên. Toàn quyền áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật
+- Đường lùi: Mỗi task một commit; giao diện không đổi dữ liệu, gỡ trang là đủ

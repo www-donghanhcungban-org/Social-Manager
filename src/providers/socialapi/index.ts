@@ -5,6 +5,7 @@ import {
   type Capability,
   type InboxItem,
   type Platform,
+  SendRejectedError,
   type RemotePostStatus,
   type SocialProvider,
 } from "../types";
@@ -104,6 +105,21 @@ const MessagePage = z.object({
   ...Pagination,
 });
 
+/**
+ * Phản hồi gửi tin (guides/direct-messages.md, đọc 2026-11-22): `success` + `message_ids[]` (Zalo trả chuỗi rỗng). BẮT BUỘC
+ * có `success`: thiếu nó là phản hồi không xác nhận được → client.invalid_response → hành động `send_unknown`.
+ */
+const SendResponse = z.object({
+  success: z.boolean(),
+  message_ids: z.array(z.string()).nullish(),
+});
+
+/** Lỗi 4xx (trừ 408) = nhà cung cấp từ chối trước khi xử lý: chắc chắn chưa gửi. */
+const isDefiniteRejection = (e: SocialApiError) =>
+  e.status >= 400 && e.status < 500 && e.status !== 408;
+/** (chưa xác minh) tên mã khi hết cửa sổ nhắn tin; nhận theo từ khoá để không phụ thuộc đúng một chuỗi. */
+const isWindowClosed = (code: string) => /window|expired|24/i.test(code);
+
 const MAX_PAGE = 100;
 
 /**
@@ -195,6 +211,33 @@ export function createSocialApiProvider(
         );
       }
       return { status };
+    },
+
+    async sendMessage({ accountId, conversationId, text }) {
+      try {
+        const res = await client.post(
+          `/inbox/conversations/${encodeURIComponent(conversationId)}/messages`,
+          { account_id: accountId, text },
+          SendResponse,
+        );
+        if (!res.success)
+          throw new SendRejectedError("provider_declined", "rejected");
+        return {
+          messageIds: (res.message_ids ?? []).filter((id) => id !== ""),
+        };
+      } catch (e) {
+        if (e instanceof SocialApiError && isDefiniteRejection(e)) {
+          const safe = /^[A-Za-z0-9_.-]{1,64}$/.test(e.code)
+            ? e.code
+            : `http.${e.status}`;
+          throw new SendRejectedError(
+            safe,
+            isWindowClosed(e.code) ? "window_closed" : "rejected",
+          );
+        }
+        // Hết giờ, mất kết nối, 5xx, phản hồi sai hình dạng: KHÔNG CHẮC — ném nguyên để tầng hành động ghi send_unknown.
+        throw e;
+      }
     },
 
     async listConversations({ platform, accountId, cursor }) {
