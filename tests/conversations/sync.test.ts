@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createConversationSync, SYNC_LIMITS } from "@/src/conversations/sync";
+import { createMemoryBlobStore } from "@/src/evidence/blob-store";
+import { createEvidenceService } from "@/src/evidence/service";
 import {
   conversations,
+  evidenceItems,
   inboxItems,
   messages,
   providerConnections,
@@ -349,5 +352,61 @@ describe("đồng bộ DM theo hội thoại + tin nhắn", () => {
     const r = await sync(provider);
     expect(r.messages).toBe(1);
     expect(await inbox()).toEqual([]);
+  });
+
+  it("có dịch vụ bằng chứng: tin có chữ vào kho một lần, đồng bộ lại không nhân đôi", async () => {
+    const evidence = createEvidenceService({
+      db: t.db,
+      store: createMemoryBlobStore(),
+    });
+    const { provider } = fakeProvider([
+      {
+        id: "c1",
+        participantId: "p",
+        participantName: "Lan",
+        msgs: [m("a", 1), m("b", 2, "outgoing", "")],
+      },
+    ]);
+    const run = () =>
+      createConversationSync({
+        db: t.db,
+        errorCode: () => "x",
+        evidence,
+      }).syncAccount(ws, account, provider);
+    await run();
+    await run();
+    const items = await t.db.select().from(evidenceItems);
+    expect(items).toHaveLength(1); // tin gửi đi không có chữ: không vào kho
+    expect(items[0]).toMatchObject({ source: "message" });
+  });
+
+  it("bằng chứng lỗi không làm mất tin đã lưu; chỉ báo mã an toàn và bù ở lượt sau", async () => {
+    let fail = true;
+    const evidence = {
+      backfillMessages: async () => {
+        if (fail) throw new Error("postgres://u:pw@h/db");
+        return { ingested: 0, failed: 0, more: false };
+      },
+    };
+    const { provider } = fakeProvider([
+      {
+        id: "c1",
+        participantId: "p",
+        participantName: "Lan",
+        msgs: [m("a", 1)],
+      },
+    ]);
+    const r = await createConversationSync({
+      db: t.db,
+      errorCode: () => "internal",
+      evidence,
+    }).syncAccount(ws, account, provider);
+    expect(r.messages).toBe(1);
+    expect(r.failed).toEqual([
+      { conversationId: "evidence", code: "internal" },
+    ]);
+    expect(JSON.stringify(r)).not.toMatch(/pw@/);
+    fail = false;
+    expect(await msgIds()).toEqual(["a"]);
   });
 });

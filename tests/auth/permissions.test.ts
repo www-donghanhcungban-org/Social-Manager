@@ -6,9 +6,15 @@ const allowed = (role: "owner" | "admin" | "member" | null) =>
   ACTIONS.filter((a) => can(role, a)).sort();
 
 describe("can", () => {
-  it("member chỉ đọc/trả lời hộp thư và đăng bài", () => {
+  it("member chỉ đọc/trả lời hộp thư, đăng bài và đọc kho bằng chứng", () => {
     expect(allowed("member")).toEqual(
-      ["inbox.read", "inbox.reply", "posts.publish"].sort(),
+      [
+        "inbox.read",
+        "inbox.reply",
+        "posts.publish",
+        "evidence.read",
+        "projects.read",
+      ].sort(),
     );
   });
 
@@ -18,6 +24,12 @@ describe("can", () => {
         "inbox.read",
         "inbox.reply",
         "posts.publish",
+        "evidence.read",
+        "evidence.write",
+        "projects.read",
+        "projects.write",
+        "data.export",
+        "actions.resolve",
         "connections.manage",
         "members.invite",
         "members.remove",
@@ -31,6 +43,7 @@ describe("can", () => {
       "members.changeRole",
       "workspace.delete",
       "workspace.settings",
+      "data.erase",
     ] as Action[]) {
       expect(can("admin", a)).toBe(false);
       expect(can("member", a)).toBe(false);

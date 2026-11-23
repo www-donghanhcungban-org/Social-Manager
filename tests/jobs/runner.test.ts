@@ -57,11 +57,24 @@ function setup() {
       inboxItems: 2,
       messages: 0,
       conversations: 0,
+      evidenceBlobs: 0,
       sessions: 1,
       verifications: 0,
       loginThrottle: 0,
       more: false,
     })),
+  };
+  const actions = {
+    dispatchDue: vi.fn<
+      (i: { limit: number }) => Promise<Record<string, number>>
+    >(async () => ({ sent: 1, blocked: 0 })),
+    reconcileDue: vi.fn<
+      (i: {
+        limit: number;
+        minAgeMs: number;
+        maxAgeMs: number;
+      }) => Promise<Record<string, number>>
+    >(async () => ({ confirmed: 1, not_found: 2 })),
   };
   const log = createLogger({
     service: "t",
@@ -72,6 +85,7 @@ function setup() {
   const runner = createJobRunner({
     queue: q,
     posts,
+    actions,
     inbox,
     retention,
     listAccounts: async () => [
@@ -80,7 +94,7 @@ function setup() {
     ],
     log,
   });
-  return { q, posts, inbox, retention, runner, lines };
+  return { q, posts, actions, inbox, retention, runner, lines };
 }
 
 describe("createJobRunner", () => {
@@ -94,6 +108,8 @@ describe("createJobRunner", () => {
       [QUEUES.confirmSubmitted]: "*/2 * * * *",
       [QUEUES.syncAll]: "*/5 * * * *",
       [QUEUES.purgeExpired]: "17 3 * * *",
+      [QUEUES.actionsDispatch]: "* * * * *",
+      [QUEUES.actionsReconcile]: "*/2 * * * *",
     });
   });
 
@@ -104,6 +120,7 @@ describe("createJobRunner", () => {
         inboxItems: 5000,
         messages: 0,
         conversations: 0,
+        evidenceBlobs: 0,
         sessions: 1,
         verifications: 0,
         loginThrottle: 0,
@@ -113,6 +130,7 @@ describe("createJobRunner", () => {
         inboxItems: 7,
         messages: 0,
         conversations: 0,
+        evidenceBlobs: 0,
         sessions: 0,
         verifications: 2,
         loginThrottle: 1,
@@ -138,6 +156,7 @@ describe("createJobRunner", () => {
       inboxItems: 1,
       messages: 0,
       conversations: 0,
+      evidenceBlobs: 0,
       sessions: 0,
       verifications: 0,
       loginThrottle: 0,
@@ -173,6 +192,35 @@ describe("createJobRunner", () => {
       published: 1,
       pending: 2,
     });
+  });
+
+  it("job actionsDispatch gửi theo lô có trần và ghi log kết quả", async () => {
+    const { q, runner, actions, lines } = setup();
+    await runner.start();
+    await q.run(QUEUES.actionsDispatch);
+    expect(actions.dispatchDue).toHaveBeenCalledWith({ limit: 20 });
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({
+      job: QUEUES.actionsDispatch,
+      sent: 1,
+    });
+  });
+
+  it("job actionsReconcile đối soát send_unknown đủ 2 phút, bỏ khi quá 24 giờ", async () => {
+    const { q, runner, actions } = setup();
+    await runner.start();
+    await q.run(QUEUES.actionsReconcile);
+    expect(actions.reconcileDue).toHaveBeenCalledWith({
+      limit: 20,
+      minAgeMs: 120_000,
+      maxAgeMs: 24 * 3_600_000,
+    });
+  });
+
+  it("job gửi lỗi thì ném lại để hàng đợi thử lại, không nuốt lỗi", async () => {
+    const { q, runner, actions } = setup();
+    actions.dispatchDue.mockRejectedValueOnce(new Error("db down"));
+    await runner.start();
+    await expect(q.run(QUEUES.actionsDispatch)).rejects.toThrow("db down");
   });
 
   it("job recoverStuck dùng ngưỡng 15 phút", async () => {

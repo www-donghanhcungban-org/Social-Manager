@@ -6,7 +6,9 @@ import {
   listMessages,
   parseIsoWithOffset,
   publishPost,
+  sendMessage,
   supportsConversations,
+  supportsSend,
 } from "@/src/providers/actions";
 import { createDemoProvider } from "@/src/providers/demo";
 import { createSocialApiProvider } from "@/src/providers/socialapi";
@@ -39,6 +41,12 @@ function fakeSocialApiFetch() {
             status: body.scheduled_at ? "scheduled" : "publishing",
           },
         }),
+        { status: 200 },
+      );
+    }
+    if (init?.method === "POST" && u.includes("/messages")) {
+      return new Response(
+        JSON.stringify({ success: true, message_ids: ["sent-1"] }),
         { status: 200 },
       );
     }
@@ -204,6 +212,22 @@ describe.each(providersUnderContract)(
         }
       }
       expect(seen).toBeGreaterThan(0);
+    });
+
+    it("provider gửi được tin trả lời thì trả danh sách id (có thể rỗng), không ném khi nhà cung cấp chấp nhận", async () => {
+      const p = make();
+      const platforms = PLATFORMS.filter((pl) => supportsSend(p, pl));
+      expect(platforms.length).toBeGreaterThan(0);
+      for (const platform of platforms) {
+        const r = await sendMessage(p, {
+          platform,
+          accountId: "acc1",
+          conversationId: "conv-1",
+          text: "Dạ còn ạ",
+        });
+        expect(Array.isArray(r.messageIds)).toBe(true);
+        for (const id of r.messageIds) expect(id).not.toBe("");
+      }
     });
 
     it("publishPost không hẹn giờ trả id và published, hoặc submitted kèm cách xác nhận lại", async () => {

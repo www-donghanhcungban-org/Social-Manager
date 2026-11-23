@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -9,7 +11,7 @@ import {
   workspaces,
 } from "@/src/db/schema";
 
-import { createTestDb, readDownSql, tableNames } from "./helpers";
+import { createTestDb, MIGRATIONS, readDownSql, tableNames } from "./helpers";
 
 const UNIQUE_VIOLATION = "23505";
 const CHECK_VIOLATION = "23514";
@@ -138,7 +140,14 @@ describe("bảng conversations và messages (migration 0006)", () => {
   });
 
   it("down migration gỡ sạch hai bảng và giữ inbox_items", async () => {
-    await t.client.exec(readDownSql("0006_conversations"));
+    // Lùi đúng thứ tự từ bản mới nhất tới 0006: các bản sau (vd bằng chứng trỏ vào messages) phải lùi trước.
+    const tags = (
+      JSON.parse(readFileSync(`${MIGRATIONS}/meta/_journal.json`, "utf8")) as {
+        entries: { tag: string }[];
+      }
+    ).entries.map((e) => e.tag);
+    for (const tag of tags.slice(tags.indexOf("0006_conversations")).reverse())
+      await t.client.exec(readDownSql(tag));
     const names = await tableNames(t.client);
     expect(names).not.toContain("conversations");
     expect(names).not.toContain("messages");

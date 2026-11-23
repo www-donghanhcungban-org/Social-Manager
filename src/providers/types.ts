@@ -120,6 +120,37 @@ export const REMOTE_POST_STATUSES = [
 ] as const;
 export type RemotePostStatus = (typeof REMOTE_POST_STATUSES)[number];
 
+/** Gửi một tin trả lời vào hội thoại có sẵn. Người nhận do hội thoại quyết định — không có trường "người nhận" tự do. */
+export interface SendMessageInput {
+  platform: Platform;
+  /** Id tài khoản bên nhà cung cấp (`social_accounts.external_id`). */
+  accountId: string;
+  /** Id hội thoại bên nhà cung cấp (`conversations.external_id`). */
+  conversationId: string;
+  text: string;
+}
+
+export interface SendMessageResult {
+  /** Id tin do nhà cung cấp cấp; có thể rỗng (Zalo trả chuỗi rỗng). */
+  messageIds: string[];
+}
+
+/**
+ * Nhà cung cấp TỪ CHỐI gửi một cách chắc chắn (vd 4xx, hết cửa sổ nhắn tin): tin chưa được gửi, hành động là `failed` hoặc
+ * `blocked`. Mọi lỗi KHÁC khi gửi (hết giờ, mất kết nối, 5xx, phản hồi đọc không được) là KHÔNG CHẮC — tin có thể đã
+ * đi — và phải thành `send_unknown`, không bao giờ thử lại mù (H3).
+ */
+export class SendRejectedError extends Error {
+  readonly name = "SendRejectedError";
+  constructor(
+    /** Mã ngắn an toàn (không chứa nội dung phía nhà cung cấp). */
+    readonly code: string,
+    readonly reason: "window_closed" | "rejected",
+  ) {
+    super(`Nhà cung cấp từ chối gửi (${code})`);
+  }
+}
+
 export interface PostStatusQuery {
   platform: Platform;
   accountId: string;
@@ -146,6 +177,8 @@ export interface SocialProvider {
   /** Tin nhắn của một hội thoại, mới nhất trước. Cài cùng `listConversations`. */
   listMessages?(query: MessageQuery): Promise<Page<ProviderMessage>>;
   publishPost?(input: PublishInput): Promise<PublishResult>;
+  /** Gửi tin trả lời vào hội thoại. Không có idempotency phía nhà cung cấp: gọi lại có thể tạo tin trùng. */
+  sendMessage?(input: SendMessageInput): Promise<SendMessageResult>;
   /** Đọc lại trạng thái bài đã gửi. Provider có thể trả `submitted` thì phải cài hàm này. */
   getPostStatus?(query: PostStatusQuery): Promise<{ status: RemotePostStatus }>;
 }

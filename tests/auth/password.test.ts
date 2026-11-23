@@ -12,12 +12,31 @@ describe("không băm mật khẩu bằng hàm băm nhanh (BE-AUTH-001)", () => 
     })
       .split("\n")
       .filter((f) => f.endsWith(".ts"));
-    const hits = files.filter((f) =>
-      /createHash\(\s*["'](md5|sha-?1|sha-?256)["']/i.test(
-        readFileSync(f, "utf-8"),
-      ),
+    const FAST_HASH = /createHash\(\s*["'](md5|sha-?1|sha-?256)["']/i;
+    // Miễn hẹp có lý do: kho bằng chứng định địa chỉ NỘI DUNG bằng sha256 (ADR-0004) và băm nội dung tin để đối soát
+    // (ADR-0006) — không phải băm mật khẩu/khoá.
+    const CONTENT_ADDRESSING = /^src\/(evidence\/|actions\/text-hash\.ts$)/;
+    const hits = files.filter(
+      (f) =>
+        !CONTENT_ADDRESSING.test(f) && FAST_HASH.test(readFileSync(f, "utf-8")),
     );
     expect(hits).toEqual([]);
+  });
+
+  it("miễn của kho bằng chứng chỉ cho sha256 và không chạm mật khẩu/bí mật", () => {
+    const files = execFileSync(
+      "git",
+      ["ls-files", "src/evidence", "src/actions/text-hash.ts"],
+      { encoding: "utf-8" },
+    )
+      .split("\n")
+      .filter((f) => f.endsWith(".ts"));
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) {
+      const code = readFileSync(f, "utf-8");
+      expect(code, f).not.toMatch(/createHash\(\s*["'](md5|sha-?1)["']/i);
+      expect(code, f).not.toMatch(/password|passwd|secret|credential|token/i);
+    }
   });
 });
 

@@ -18,10 +18,20 @@ describe("createContainer", () => {
     const c = createContainer(env());
     expect(Object.keys(c.services).sort()).toEqual([
       "accounts",
+      "actions",
+      "ai",
+      "answers",
       "connections",
+      "coverage",
+      "drafts",
+      "erasure",
+      "evidence",
       "inbox",
+      "knowledge",
       "posts",
       "retention",
+      "search",
+      "threads",
       "webhooks",
       "workspaces",
     ]);

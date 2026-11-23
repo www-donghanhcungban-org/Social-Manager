@@ -1,0 +1,555 @@
+{
+  "version": 1,
+  "description": "Bộ đánh giá truy xuất 50 câu (tiếng Việt có dấu và không dấu) trên kho giả cố định. Đổi nội dung phải cập nhật qa-v1.lock kèm lý do.",
+  "thresholds": {
+    "answerable_recall_at_5": 0.9,
+    "unanswerable_empty": 1.0,
+    "scoped_precision": 1.0
+  },
+  "corpus": [
+    {
+      "id": "h1",
+      "project": "hoa",
+      "content": "Báo giá hoa hồng: bó 12 bông giá 200.000 đồng, giao trong ngày tại nội thành."
+    },
+    {
+      "id": "h2",
+      "project": "hoa",
+      "content": "Chính sách đổi trả hoa: hoa héo trong 24 giờ được đổi bó mới miễn phí."
+    },
+    {
+      "id": "h3",
+      "project": "hoa",
+      "content": "Nhà cung cấp hoa lan Đà Lạt giao hàng vào thứ Ba và thứ Sáu hằng tuần."
+    },
+    {
+      "id": "h4",
+      "project": "hoa",
+      "content": "Dịp 20/10 cửa hàng nhận đặt hoa trước 15/10, giảm 10% cho đơn từ 5 bó."
+    },
+    {
+      "id": "h5",
+      "project": "hoa",
+      "content": "Địa chỉ cửa hàng hoa: 25 Nguyễn Trãi, quận 5, mở cửa từ 7 giờ đến 21 giờ."
+    },
+    {
+      "id": "h6",
+      "project": "hoa",
+      "content": "Hoa cưới: gói bó hoa cô dâu kèm hoa cài áo giá 1.500.000 đồng."
+    },
+    {
+      "id": "h7",
+      "project": "hoa",
+      "content": "Quy trình bảo quản hoa tươi: cắt cành chéo, thay nước mỗi ngày, tránh ánh nắng."
+    },
+    {
+      "id": "h8",
+      "project": "hoa",
+      "content": "Khách Lan đặt 30 bó hoa cúc cho hội nghị ngày 12/12, đã cọc 50 phần trăm."
+    },
+    {
+      "id": "x1",
+      "project": "xe",
+      "content": "Xe đạp điện Model Z bảo hành pin 24 tháng, bảo hành khung 36 tháng."
+    },
+    {
+      "id": "x2",
+      "project": "xe",
+      "content": "Giá xe đạp điện Model Z là 12.900.000 đồng, trả góp 0% trong 6 tháng."
+    },
+    {
+      "id": "x3",
+      "project": "xe",
+      "content": "Sạc đầy pin xe đạp điện mất khoảng 5 giờ, đi được 60 km mỗi lần sạc."
+    },
+    {
+      "id": "x4",
+      "project": "xe",
+      "content": "Lịch giao xe: đơn đặt trước 14 giờ được giao trong ngày tại thành phố Hồ Chí Minh."
+    },
+    {
+      "id": "x5",
+      "project": "xe",
+      "content": "Lỗi thường gặp: xe không lên điện do tuột giắc nguồn, kiểm tra giắc pin trước."
+    },
+    {
+      "id": "x6",
+      "project": "xe",
+      "content": "Phụ kiện xe: mũ bảo hiểm, giỏ trước và khoá chống trộm bán kèm giá 450.000 đồng."
+    },
+    {
+      "id": "x7",
+      "project": "xe",
+      "content": "Đại lý ở Cần Thơ nhập 20 xe Model Z tháng 11, đang chờ hoá đơn."
+    },
+    {
+      "id": "x8",
+      "project": "xe",
+      "content": "Chính sách đổi trả xe: đổi trong 7 ngày nếu lỗi nhà sản xuất, giữ nguyên tem."
+    },
+    {
+      "id": "c1",
+      "project": null,
+      "content": "Biên bản họp tuần: chốt tăng giá 5 phần trăm từ tháng sau cho mọi sản phẩm."
+    },
+    {
+      "id": "c2",
+      "project": null,
+      "content": "Hướng dẫn xuất hoá đơn điện tử: vào mục kế toán, chọn đơn hàng, bấm phát hành."
+    },
+    {
+      "id": "c3",
+      "project": null,
+      "content": "Danh sách nhân viên trực cuối tuần: Minh thứ Bảy, Hà Chủ nhật."
+    },
+    {
+      "id": "c4",
+      "project": null,
+      "content": "Số điện thoại hỗ trợ khách hàng 1900 1234, giờ làm việc 8 đến 18 giờ."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Giá một bó hoa hồng 12 bông là bao nhiêu?",
+      "expect": [
+        "h1"
+      ]
+    },
+    {
+      "id": "q02",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Hoa bị héo thì được đổi trả thế nào?",
+      "expect": [
+        "h2"
+      ]
+    },
+    {
+      "id": "q03",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Hoa lan Đà Lạt được giao vào những ngày nào?",
+      "expect": [
+        "h3"
+      ]
+    },
+    {
+      "id": "q04",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Dịp 20/10 đặt hoa trước ngày nào thì được giảm giá?",
+      "expect": [
+        "h4"
+      ]
+    },
+    {
+      "id": "q05",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Cửa hàng hoa ở địa chỉ nào và mở cửa lúc mấy giờ?",
+      "expect": [
+        "h5"
+      ]
+    },
+    {
+      "id": "q06",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Gói hoa cưới cho cô dâu giá bao nhiêu?",
+      "expect": [
+        "h6"
+      ]
+    },
+    {
+      "id": "q07",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Làm sao để bảo quản hoa tươi lâu?",
+      "expect": [
+        "h7"
+      ]
+    },
+    {
+      "id": "q08",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Khách Lan đã cọc bao nhiêu cho đơn hoa cúc hội nghị?",
+      "expect": [
+        "h8"
+      ]
+    },
+    {
+      "id": "q09",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Xe đạp điện Model Z bảo hành pin bao lâu?",
+      "expect": [
+        "x1"
+      ]
+    },
+    {
+      "id": "q10",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Xe đạp điện Model Z giá bao nhiêu và có trả góp không?",
+      "expect": [
+        "x2"
+      ]
+    },
+    {
+      "id": "q11",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Sạc pin xe đạp điện mất bao lâu và đi được bao xa?",
+      "expect": [
+        "x3"
+      ]
+    },
+    {
+      "id": "q12",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Đặt xe trước mấy giờ thì được giao trong ngày?",
+      "expect": [
+        "x4"
+      ]
+    },
+    {
+      "id": "q13",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Xe không lên điện thì kiểm tra gì trước?",
+      "expect": [
+        "x5"
+      ]
+    },
+    {
+      "id": "q14",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Phụ kiện mũ bảo hiểm và khoá chống trộm giá bao nhiêu?",
+      "expect": [
+        "x6"
+      ]
+    },
+    {
+      "id": "q15",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Đại lý Cần Thơ nhập bao nhiêu xe tháng 11?",
+      "expect": [
+        "x7"
+      ]
+    },
+    {
+      "id": "q16",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Xe lỗi nhà sản xuất thì đổi trong mấy ngày?",
+      "expect": [
+        "x8"
+      ]
+    },
+    {
+      "id": "q17",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Biên bản họp tuần chốt tăng giá bao nhiêu phần trăm?",
+      "expect": [
+        "c1"
+      ]
+    },
+    {
+      "id": "q18",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Hướng dẫn xuất hoá đơn điện tử ở mục nào?",
+      "expect": [
+        "c2"
+      ]
+    },
+    {
+      "id": "q19",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Ai trực thứ Bảy cuối tuần?",
+      "expect": [
+        "c3"
+      ]
+    },
+    {
+      "id": "q20",
+      "kind": "answerable",
+      "diacritics": true,
+      "question": "Số điện thoại hỗ trợ khách hàng là gì?",
+      "expect": [
+        "c4"
+      ]
+    },
+    {
+      "id": "q21",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "bao nhieu tien mot bo hoa hong",
+      "expect": [
+        "h1"
+      ]
+    },
+    {
+      "id": "q22",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "hoa heo co duoc doi tra mien phi khong",
+      "expect": [
+        "h2"
+      ]
+    },
+    {
+      "id": "q23",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "nha cung cap hoa lan da lat giao thu may",
+      "expect": [
+        "h3"
+      ]
+    },
+    {
+      "id": "q24",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "giam gia 10% dip 20/10 cho don tu may bo",
+      "expect": [
+        "h4"
+      ]
+    },
+    {
+      "id": "q25",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "cua hang hoa o quan 5 mo cua luc nao",
+      "expect": [
+        "h5"
+      ]
+    },
+    {
+      "id": "q26",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "hoa cai ao cho co dau gia bao nhieu",
+      "expect": [
+        "h6"
+      ]
+    },
+    {
+      "id": "q27",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "cach thay nuoc va cat canh de bao quan hoa tuoi",
+      "expect": [
+        "h7"
+      ]
+    },
+    {
+      "id": "q28",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "hoi nghi ngay 12/12 khach dat bao nhieu bo hoa cuc",
+      "expect": [
+        "h8"
+      ]
+    },
+    {
+      "id": "q29",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "bao hanh khung xe dap dien model z may thang",
+      "expect": [
+        "x1"
+      ]
+    },
+    {
+      "id": "q30",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "tra gop 0% xe dap dien model z trong may thang",
+      "expect": [
+        "x2"
+      ]
+    },
+    {
+      "id": "q31",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "xe dap dien di duoc bao nhieu km moi lan sac",
+      "expect": [
+        "x3"
+      ]
+    },
+    {
+      "id": "q32",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "don dat truoc 14 gio giao xe o thanh pho nao",
+      "expect": [
+        "x4"
+      ]
+    },
+    {
+      "id": "q33",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "tuot giac nguon xe khong len dien",
+      "expect": [
+        "x5"
+      ]
+    },
+    {
+      "id": "q34",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "gia phu kien mu bao hiem gio truoc",
+      "expect": [
+        "x6"
+      ]
+    },
+    {
+      "id": "q35",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "20 xe model z o can tho dang cho hoa don",
+      "expect": [
+        "x7"
+      ]
+    },
+    {
+      "id": "q36",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "doi tra xe trong 7 ngay giu nguyen tem",
+      "expect": [
+        "x8"
+      ]
+    },
+    {
+      "id": "q37",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "tang gia 5 phan tram tu thang sau",
+      "expect": [
+        "c1"
+      ]
+    },
+    {
+      "id": "q38",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "phat hanh hoa don dien tu o muc ke toan",
+      "expect": [
+        "c2"
+      ]
+    },
+    {
+      "id": "q39",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "nhan vien truc chu nhat la ai",
+      "expect": [
+        "c3"
+      ]
+    },
+    {
+      "id": "q40",
+      "kind": "answerable",
+      "diacritics": false,
+      "question": "goi 1900 1234 gio lam viec may gio",
+      "expect": [
+        "c4"
+      ]
+    },
+    {
+      "id": "q41",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "quantum computing",
+      "expect": []
+    },
+    {
+      "id": "q42",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "kubernetes deployment yaml",
+      "expect": []
+    },
+    {
+      "id": "q43",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "blockchain bitcoin ethereum",
+      "expect": []
+    },
+    {
+      "id": "q44",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "photosynthesis chlorophyll",
+      "expect": []
+    },
+    {
+      "id": "q45",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "tensorflow pytorch gpu",
+      "expect": []
+    },
+    {
+      "id": "q46",
+      "kind": "unanswerable",
+      "diacritics": false,
+      "question": "mitochondria ribosome",
+      "expect": []
+    },
+    {
+      "id": "q47",
+      "kind": "scoped",
+      "diacritics": true,
+      "question": "chính sách đổi trả",
+      "project": "hoa",
+      "expect": [
+        "h2"
+      ]
+    },
+    {
+      "id": "q48",
+      "kind": "scoped",
+      "diacritics": false,
+      "question": "chinh sach doi tra",
+      "project": "xe",
+      "expect": [
+        "x8"
+      ]
+    },
+    {
+      "id": "q49",
+      "kind": "scoped",
+      "diacritics": true,
+      "question": "giá bán",
+      "project": "xe",
+      "expect": [
+        "x2"
+      ]
+    },
+    {
+      "id": "q50",
+      "kind": "scoped",
+      "diacritics": false,
+      "question": "gia ban",
+      "project": "hoa",
+      "expect": [
+        "h1"
+      ]
+    }
+  ]
+}
