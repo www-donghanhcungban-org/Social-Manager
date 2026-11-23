@@ -61,4 +61,16 @@ test("nhập tài liệu → nhập lại không trùng → tìm thấy; tạo d
   await expect(
     page.getByRole("list", { name: "Danh sách dự án" }),
   ).toContainText("Cửa hàng Hoa");
+
+  await page.getByLabel("Bí danh cho Cửa hàng Hoa").fill("Hoa Sài Gòn");
+  await page.getByRole("button", { name: "Thêm bí danh" }).click();
+  const aliases = page.getByRole("list", { name: "Bí danh của Cửa hàng Hoa" });
+  await expect(aliases).toContainText("Hoa Sài Gòn");
+  await page.getByLabel("Bí danh cho Cửa hàng Hoa").fill("hoa sài gòn");
+  await page.getByRole("button", { name: "Thêm bí danh" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Bí danh" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Xoá bí danh Hoa Sài Gòn" }).click();
+  await expect(aliases).toHaveCount(0);
 });
