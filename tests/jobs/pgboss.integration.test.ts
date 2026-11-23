@@ -8,9 +8,8 @@ import { createJobRunner, QUEUES } from "@/src/jobs/runner";
 import { createLogger } from "@/src/log/logger";
 
 // Cần Postgres thật: đặt TEST_DATABASE_URL (kết nối tới một server, test tự tạo/xoá DB riêng).
-// Không đặt thì bỏ qua.
-// DEBT: CI chưa có service Postgres nên test này chưa chạy trong CI | trần: tích hợp pg-boss chỉ được kiểm
-// khi người chạy cục bộ đặt biến | xem lại khi: thêm service Postgres ghim digest vào ci.yml (BASE-DEP-008)
+// Không đặt thì bỏ qua cục bộ. Ở CI, job `gate` cấp service Postgres và biến này
+// (tests/config/ci-postgres.test.ts giữ điều đó), nên test không bị skip ngầm.
 const ADMIN_URL = process.env.TEST_DATABASE_URL;
 const d = ADMIN_URL ? describe : describe.skip;
 const noActions = {

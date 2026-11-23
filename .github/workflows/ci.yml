@@ -42,6 +42,22 @@ jobs:
     name: gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Postgres thật cho test tích hợp (race khoá workspace, pg-boss) — trước đây thiếu biến này nên chúng tự `describe.skip`
+    # mà CI vẫn xanh (AUD-HAR-005, QA-INT-001). Test tự tạo/xoá DB riêng trên server này. Image ghim digest (BASE-DEP-008);
+    # mật khẩu chỉ dùng cho container dùng một lần trong job, không phải bí mật.
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test-ci-only
+          POSTGRES_DB: xw_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test -d xw_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://test:test-ci-only@localhost:5432/xw_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
