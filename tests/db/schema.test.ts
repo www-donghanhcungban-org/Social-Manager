@@ -97,6 +97,9 @@ describe("migration", () => {
     "project_links",
     "source_checkpoints",
     "connector_cursors",
+    "search_documents",
+    "decisions",
+    "ai_disclosures",
   ];
 
   // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,

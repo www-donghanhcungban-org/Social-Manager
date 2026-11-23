@@ -92,3 +92,10 @@
 - Chọn: Kho bản gốc theo hash trước, rồi dự án/liên kết, dòng thời gian/bao phủ/xoá-xuất, connector GitHub bằng cổng fetch tiêm được; tài liệu nhập là văn bản/Markdown, PDF-Docling để đợt sau
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: lớp dẫn xuất (tri thức, AI) chỉ đáng tin khi bằng chứng gốc có hash và xoá xuyên lớp được. Docling cần runtime Python riêng và quota tài nguyên; token GitHub thật là khoá chỉ chủ dự án có (mặc định tự host, kiểm bằng fixture, token thật defer T-209)
 - Đường lùi: PLAN-xw-2 chỉ là tài liệu; mỗi task một commit có migration down, revert theo commit
+
+### D-014 · 2026-11-22T23:33:09+00:00 · Phạm vi lớp AI và tìm kiếm của đợt xw-3
+
+- Phương án: (1) Tìm kiếm toàn văn dựng sẵn của Postgres trên văn bản đã bỏ dấu bằng hàm riêng; cổng ModelPort với adapter OpenAI-tương-thích bằng fetch, AI tắt mặc định, đám mây bật theo workspace kèm nhật ký; bộ 50 câu đo truy xuất; chưa thêm phụ thuộc AI SDK và pg_trgm · (2) Thêm AI SDK 7 và extension pg_trgm ngay trong xw-3
+- Chọn: Tìm kiếm toàn văn dựng sẵn của Postgres trên văn bản đã bỏ dấu bằng hàm riêng; cổng ModelPort với adapter OpenAI-tương-thích bằng fetch, AI tắt mặc định, đám mây bật theo workspace kèm nhật ký; bộ 50 câu đo truy xuất; chưa thêm phụ thuộc AI SDK và pg_trgm
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: bộ truy xuất đúng và kiểm được trên PGlite trong Gate; dữ liệu khách không rời máy khi chưa được phép (H6). Không thêm phụ thuộc/extension khi chưa có phép thử và khoảng thiếu cụ thể (working.md §2 H7, source-plan mục 14). Cổng ModelPort giữ đường nâng AI SDK sau
+- Đường lùi: Mỗi task một commit có migration down; ModelPort tách adapter nên đổi adapter không chạm dịch vụ

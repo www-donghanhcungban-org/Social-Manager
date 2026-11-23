@@ -7,6 +7,9 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createAnswerService } from "../ai/answer";
+import { createAiGateway } from "../ai/gateway";
+import { createOpenAiCompatModel } from "../ai/openai-compat";
 import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
 import { createEvidenceService } from "../evidence/service";
@@ -14,6 +17,7 @@ import { createInboxService } from "../inbox/service";
 import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
+import { createSearchService } from "../search/service";
 import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
@@ -36,6 +40,14 @@ export function createContainer(cfg: Env) {
   const blobStore = createFsBlobStore(cfg.BLOB_DIR);
   const evidence = createEvidenceService({ db, store: blobStore });
   const coverage = createCoverageService({ db });
+  // AI tắt khi AI_BASE_URL trống (schema env đã bắt buộc có AI_MODEL khi đặt AI_BASE_URL).
+  const model = cfg.AI_BASE_URL
+    ? createOpenAiCompatModel({
+        baseUrl: cfg.AI_BASE_URL,
+        model: cfg.AI_MODEL!,
+        apiKey: cfg.AI_API_KEY,
+      })
+    : null;
 
   /** Provider theo kết nối: khoá nằm trong provider, nên dựng mới cho mỗi lần dùng. */
   function buildProvider(
@@ -60,6 +72,9 @@ export function createContainer(cfg: Env) {
   registry.register(buildProvider("demo", "")!);
   registry.register(buildProvider("socialapi", "-")!);
 
+  const search = createSearchService({ db, evidence });
+  const ai = createAiGateway({ db, model });
+
   const services = {
     workspaces: createWorkspaceService({ db }),
     accounts: createAccountService({ db, registry }),
@@ -76,6 +91,9 @@ export function createContainer(cfg: Env) {
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,
+    ai,
+    answers: createAnswerService({ search, ai }),
+    search,
     knowledge: createKnowledgeService({ db, evidence }),
     webhooks: createWebhookIngest({ db, box, evidence }),
   };

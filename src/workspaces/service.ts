@@ -127,6 +127,43 @@ export function createWorkspaceService({ db }: { db: Db }) {
       return toRetention(row.days, row.forever);
     },
 
+    /** Cờ cho phép gửi dữ liệu tới AI đám mây (H6). Thành viên xem được để biết dữ liệu có thể rời máy hay không. */
+    async getAiCloud(input: {
+      actorId: string;
+      workspaceId: string;
+    }): Promise<{ enabled: boolean }> {
+      await requireAction(db, input.actorId, input.workspaceId, "inbox.read");
+      const [row] = await db
+        .select({ on: workspaces.aiCloudEnabled })
+        .from(workspaces)
+        .where(eq(workspaces.id, input.workspaceId));
+      if (!row) throw new NotFoundError();
+      return { enabled: row.on };
+    },
+
+    /** Chỉ owner bật/tắt: bật nghĩa là trích đoạn tin của khách có thể được gửi ra ngoài máy chủ (cần căn cứ pháp lý). */
+    async setAiCloud(input: {
+      actorId: string;
+      workspaceId: string;
+      enabled: boolean;
+    }): Promise<{ enabled: boolean }> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "workspace.settings",
+      );
+      if (typeof input.enabled !== "boolean")
+        throw new ValidationError("Giá trị không hợp lệ");
+      const [row] = await db
+        .update(workspaces)
+        .set({ aiCloudEnabled: input.enabled })
+        .where(eq(workspaces.id, input.workspaceId))
+        .returning({ on: workspaces.aiCloudEnabled });
+      if (!row) throw new NotFoundError();
+      return { enabled: row.on };
+    },
+
     async listForUser(userId: string): Promise<WorkspaceView[]> {
       return db
         .select({

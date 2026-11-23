@@ -40,6 +40,11 @@ export const workspaces = pgTable(
     retainInboxForever: boolean("retain_inbox_forever")
       .notNull()
       .default(false),
+    /**
+     * Cho phép gửi trích đoạn tới AI ở điểm cuối KHÔNG phải máy cục bộ (chuyển dữ liệu ra ngoài, H6). Mặc định tắt; chỉ
+     * owner bật. AI cục bộ không cần cờ này.
+     */
+    aiCloudEnabled: boolean("ai_cloud_enabled").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [
@@ -499,6 +504,132 @@ export const projectLinks = pgTable(
     index("project_links_workspace_idx").on(t.workspaceId),
     index("project_links_conversation_idx").on(t.conversationId),
     index("project_links_evidence_idx").on(t.evidenceItemId),
+  ],
+);
+
+/**
+ * Chỉ mục tìm kiếm toàn văn của một bằng chứng (H8): nội dung đã bỏ dấu bằng `src/search/fold.ts`, tìm bằng
+ * `to_tsvector('simple', …)` (chỉ mục GIN). Ghi cùng giao dịch với lần nhập; xoá bằng chứng xoá theo tầng.
+ */
+export const searchDocuments = pgTable(
+  "search_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    evidenceItemId: uuid("evidence_item_id")
+      .notNull()
+      .references(() => evidenceItems.id, { onDelete: "cascade" }),
+    textFolded: text("text_folded").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("search_documents_item").on(t.evidenceItemId),
+    index("search_documents_fts_idx").using(
+      "gin",
+      sql`to_tsvector('simple', ${t.textFolded})`,
+    ),
+    index("search_documents_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+export const DECISION_STATUSES = ["active", "superseded"] as const;
+export type DecisionStatus = (typeof DECISION_STATUSES)[number];
+
+/**
+ * Sổ quyết định của dự án: mỗi quyết định dẫn MỘT bằng chứng làm nguồn. Quyết định mới có thể thay quyết định cũ (cái cũ
+ * thành `superseded`, không xoá). Xoá bằng chứng nguồn không xoá quyết định: khoá ngoại `SET NULL` và `source_label`
+ * giữ lại tên nguồn để biết đã mất nguồn nào.
+ */
+export const decisions = pgTable(
+  "decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    status: text("status", { enum: DECISION_STATUSES })
+      .notNull()
+      .default("active"),
+    /** Lúc quyết định được đưa ra (không phải lúc ghi sổ). */
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull(),
+    sourceEvidenceItemId: uuid("source_evidence_item_id").references(
+      () => evidenceItems.id,
+      { onDelete: "set null" },
+    ),
+    /** `id ngoài` của nguồn lúc ghi sổ, để còn dấu vết khi bằng chứng bị xoá. */
+    sourceLabel: text("source_label").notNull(),
+    supersededById: uuid("superseded_by_id"),
+    /** Người ghi sổ (`user.id` của Better Auth). */
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "decisions_status_check",
+      sql`${t.status} in (${inList(DECISION_STATUSES)})`,
+    ),
+    check(
+      "decisions_text_check",
+      sql`length(btrim(${t.text})) between 1 and 2000`,
+    ),
+    index("decisions_project_idx").on(t.projectId, t.decidedAt),
+    index("decisions_workspace_idx").on(t.workspaceId),
+    index("decisions_source_idx").on(t.sourceEvidenceItemId),
+  ],
+);
+
+export const AI_DISCLOSURE_STATUSES = [
+  "sent",
+  "ok",
+  "error",
+  "blocked",
+] as const;
+export type AiDisclosureStatus = (typeof AI_DISCLOSURE_STATUSES)[number];
+
+/**
+ * Nhật ký dữ liệu gửi tới AI (H6, H11): mỗi lượt gọi một dòng — điểm cuối, mô hình, số mục và số byte đã gửi. KHÔNG lưu
+ * nội dung đã gửi hay câu trả lời. Ghi TRƯỚC khi gửi (không ghi được thì không gửi).
+ */
+export const aiDisclosures = pgTable(
+  "ai_disclosures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Người dùng gây ra lượt gọi (`user.id` của Better Auth). */
+    actorId: text("actor_id").notNull(),
+    purpose: text("purpose").notNull(),
+    endpointHost: text("endpoint_host").notNull(),
+    model: text("model").notNull(),
+    local: boolean("local").notNull(),
+    itemCount: integer("item_count").notNull(),
+    bytesSent: integer("bytes_sent").notNull(),
+    status: text("status", { enum: AI_DISCLOSURE_STATUSES }).notNull(),
+    /** Mã ngắn, không chứa nội dung. */
+    errorCode: text("error_code"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "ai_disclosures_status_check",
+      sql`${t.status} in (${inList(AI_DISCLOSURE_STATUSES)})`,
+    ),
+    check(
+      "ai_disclosures_counts_check",
+      sql`${t.itemCount} >= 0 and ${t.bytesSent} >= 0`,
+    ),
+    check(
+      "ai_disclosures_code_check",
+      sql`${t.errorCode} is null or ${t.errorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
+    ),
+    index("ai_disclosures_ws_created_idx").on(t.workspaceId, t.createdAt),
   ],
 );
 
