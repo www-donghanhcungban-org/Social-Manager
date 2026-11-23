@@ -48,6 +48,20 @@ describe("tệp cộng đồng và phát hành", () => {
     expect(read("SECURITY.md")).toMatch(/Report a vulnerability/);
   });
 
+  it("SECURITY.md chỉ nêu đường dẫn có thật và không khai RLS (AUD-DOC-001)", () => {
+    const text = read("SECURITY.md");
+    const paths = [...text.matchAll(/`([^`\s]+)`/g)]
+      .map((m) => m[1])
+      .filter(
+        (p) =>
+          /^[\w.-]+(\/[\w.-]+)+$/.test(p) ||
+          /^[\w.-]+\.(ya?ml|json|ts|md|mjs|py|sh)$/.test(p),
+      );
+    expect(paths.length).toBeGreaterThan(5);
+    expect(paths.filter((p) => !existsSync(p))).toEqual([]);
+    expect(text).not.toMatch(/RLS bật/);
+  });
+
   it("`.gitattributes` có `* text=auto` (BASE-REPO-003)", () => {
     expect(read(".gitattributes")).toMatch(/^\* text=auto$/m);
   });
