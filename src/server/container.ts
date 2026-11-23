@@ -12,6 +12,7 @@ import { createActionService } from "../actions/ledger";
 import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
+import { createThreadService } from "../conversations/threads";
 import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
 import { createEvidenceService } from "../evidence/service";
@@ -90,6 +91,7 @@ export function createContainer(cfg: Env) {
       coverage,
     }),
     coverage,
+    threads: createThreadService({ db }),
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,

@@ -105,7 +105,14 @@ export function createThreadService({ db }: { db: Db }) {
       const page = rows.slice(0, limit);
       const last = page.at(-1);
       return {
-        items: page.map(({ sortAt: _s, ...r }) => r),
+        items: page.map((r) => ({
+          id: r.id,
+          accountId: r.accountId,
+          accountName: r.accountName,
+          platform: r.platform,
+          participantName: r.participantName,
+          lastMessageAt: r.lastMessageAt,
+        })),
         nextCursor:
           rows.length > limit && last
             ? `${new Date(last.sortAt).getTime()}.${last.id}`
