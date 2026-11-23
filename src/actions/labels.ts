@@ -31,6 +31,8 @@ const ERROR_LABEL: Record<string, string> = {
   confirmed_not_sent: "Người quản trị xác nhận tin chưa được gửi.",
   provider_declined: "Nhà cung cấp từ chối gửi tin.",
   window_closed: "Đã quá cửa sổ nhắn tin của nền tảng.",
+  precheck_failed:
+    "Lỗi hệ thống khi kiểm tra trước khi gửi; tin chưa được gửi. Có thể yêu cầu gửi lại.",
 };
 
 export const blockLabel = (reason: string | null): string =>
@@ -48,6 +50,8 @@ const CONFLICT_LABEL: Partial<Record<ConflictError["reason"], string>> = {
   alias_limit: "Dự án đã đạt số lượng bí danh tối đa.",
   version_conflict: "Nháp vừa được người khác sửa. Tải lại rồi sửa tiếp.",
   draft_closed: "Nháp này đã đóng (đã gửi hoặc đã bỏ).",
+  draft_send_pending:
+    "Nháp đang được gửi hoặc chưa rõ đã gửi hay chưa nên chưa bỏ được. Chờ kết quả hoặc nhờ quản trị xác nhận.",
   action_not_cancellable: "Hành động này không còn huỷ được.",
   action_not_unknown: "Hành động này không ở trạng thái chưa rõ.",
   idempotency_conflict:

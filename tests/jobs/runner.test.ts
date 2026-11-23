@@ -75,6 +75,9 @@ function setup() {
         maxAgeMs: number;
       }) => Promise<Record<string, number>>
     >(async () => ({ confirmed: 1, not_found: 2 })),
+    recoverStuck: vi.fn<(i: { olderThanMs: number }) => Promise<number>>(
+      async () => 2,
+    ),
   };
   const log = createLogger({
     service: "t",
@@ -110,6 +113,7 @@ describe("createJobRunner", () => {
       [QUEUES.purgeExpired]: "17 3 * * *",
       [QUEUES.actionsDispatch]: "* * * * *",
       [QUEUES.actionsReconcile]: "*/2 * * * *",
+      [QUEUES.actionsRecoverStuck]: "*/5 * * * *",
     });
   });
 
@@ -221,6 +225,21 @@ describe("createJobRunner", () => {
     actions.dispatchDue.mockRejectedValueOnce(new Error("db down"));
     await runner.start();
     await expect(q.run(QUEUES.actionsDispatch)).rejects.toThrow("db down");
+  });
+
+  it("job actionsRecoverStuck gỡ hành động kẹt quá 10 phút và ghi log số dòng", async () => {
+    const { q, runner, actions, lines } = setup();
+    await runner.start();
+    await q.run(QUEUES.actionsRecoverStuck);
+    expect(QUEUES.actionsRecoverStuck).toBe("actions.recover-stuck");
+    expect(actions.recoverStuck).toHaveBeenCalledWith({
+      olderThanMs: 10 * 60_000,
+    });
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({
+      level: "info",
+      job: QUEUES.actionsRecoverStuck,
+      recovered: 2,
+    });
   });
 
   it("job recoverStuck dùng ngưỡng 15 phút", async () => {

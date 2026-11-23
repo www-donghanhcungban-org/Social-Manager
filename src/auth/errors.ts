@@ -33,6 +33,7 @@ export class ConflictError extends Error {
       | "decision_not_active"
       | "version_conflict"
       | "draft_closed"
+      | "draft_send_pending"
       | "action_not_cancellable"
       | "action_not_unknown",
     message: string,

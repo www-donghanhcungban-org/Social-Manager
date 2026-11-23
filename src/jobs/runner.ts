@@ -10,6 +10,7 @@ export const QUEUES = {
   purgeExpired: "maintenance.purge-expired",
   actionsDispatch: "actions.dispatch",
   actionsReconcile: "actions.reconcile",
+  actionsRecoverStuck: "actions.recover-stuck",
 } as const;
 
 /** Dọn dữ liệu quá hạn lưu mỗi ngày lúc 03:17 UTC (giờ ít người dùng, lệch khỏi phút tròn). */
@@ -26,6 +27,12 @@ const RECONCILE_LIMIT = 20;
 /** Đối soát send_unknown: chờ ít nhất chừng này kể từ lúc gửi/lần trước; quá hạn thì để người quyết. */
 export const RECONCILE_MIN_AGE_MS = 2 * 60_000;
 export const RECONCILE_MAX_AGE_MS = 24 * 3_600_000;
+/**
+ * Hành động gửi kẹt `dispatching`/`cancel_requested` quá chừng này → send_unknown. 10 phút ≫ hạn chờ HTTP của nhà cung cấp
+ * (15 giây) nên không đụng việc đang gửi thật; đủ ngắn để nháp không bị khoá lâu, và nằm trong cửa sổ đối soát
+ * [RECONCILE_MIN_AGE_MS, RECONCILE_MAX_AGE_MS] để đối soát tự động chạy tiếp được.
+ */
+export const ACTION_STUCK_AFTER_MS = 10 * 60_000;
 /** Bài gửi quá chừng này mà nhà cung cấp chưa báo kết quả cuối → send_unknown. */
 export const CONFIRM_DEADLINE_MS = 24 * 3_600_000;
 
@@ -60,6 +67,7 @@ export interface JobRunnerDeps {
       minAgeMs: number;
       maxAgeMs: number;
     }): Promise<Record<string, number>>;
+    recoverStuck(i: { olderThanMs: number }): Promise<number>;
   };
   inbox: {
     syncAsSystem(i: {
@@ -215,10 +223,20 @@ export function createJobRunner({
           }),
         ),
       );
+      // Gỡ hành động kẹt thành send_unknown (không gửi lại); đối soát/người quyết xử lý tiếp.
+      await queue.work(
+        QUEUES.actionsRecoverStuck,
+        guarded(QUEUES.actionsRecoverStuck, async () => ({
+          recovered: await actions.recoverStuck({
+            olderThanMs: ACTION_STUCK_AFTER_MS,
+          }),
+        })),
+      );
 
       await queue.schedule(QUEUES.purgeExpired, PURGE_CRON);
       await queue.schedule(QUEUES.actionsDispatch, "* * * * *");
       await queue.schedule(QUEUES.actionsReconcile, "*/2 * * * *");
+      await queue.schedule(QUEUES.actionsRecoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.runDue, "* * * * *");
       await queue.schedule(QUEUES.recoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.confirmSubmitted, "*/2 * * * *");

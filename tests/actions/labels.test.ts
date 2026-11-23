@@ -51,6 +51,29 @@ describe("describeActionError", () => {
     );
   });
 
+  it("mọi lý do xung đột của nháp/sổ gửi tin có nhãn riêng, không rơi về lời chung", () => {
+    const generic = describeActionError(new ConflictError("last_owner", "x"));
+    for (const reason of [
+      "version_conflict",
+      "draft_closed",
+      "draft_send_pending",
+      "action_not_cancellable",
+      "action_not_unknown",
+      "idempotency_conflict",
+    ] as const) {
+      const label = describeActionError(new ConflictError(reason, "x"));
+      expect(label, reason).toBeTruthy();
+      expect(label, reason).not.toBe(generic);
+    }
+    expect(
+      describeActionError(new ConflictError("draft_send_pending", "x")),
+    ).toMatch(/đang được gửi|chưa rõ/);
+  });
+
+  it("lỗi hệ thống trước khi gửi có nhãn nói rõ tin chưa đi", () => {
+    expect(errorLabel("precheck_failed")).toMatch(/chưa được gửi/);
+  });
+
   it("lỗi lạ được ném lại, không biến thành lời nhắn", () => {
     expect(() => describeActionError(new Error("db down"))).toThrow("db down");
   });

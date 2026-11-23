@@ -15,6 +15,7 @@ const d = ADMIN_URL ? describe : describe.skip;
 const noActions = {
   dispatchDue: async () => ({}),
   reconcileDue: async () => ({}),
+  recoverStuck: async () => 0,
 };
 const noRetention = {
   purgeExpired: async () => ({
@@ -91,7 +92,7 @@ d("pg-boss trên Postgres thật", () => {
     }
   }, 30_000);
 
-  it("lịch được đăng ký trong DB cho cả bảy việc định kỳ", async () => {
+  it("lịch được đăng ký trong DB cho cả tám việc định kỳ", async () => {
     const boss = await startBoss(url);
     try {
       const runner = createJobRunner({
@@ -123,6 +124,7 @@ d("pg-boss trên Postgres thật", () => {
           QUEUES.purgeExpired,
           QUEUES.actionsDispatch,
           QUEUES.actionsReconcile,
+          QUEUES.actionsRecoverStuck,
         ].sort(),
       );
     } finally {
