@@ -70,3 +70,45 @@ export async function createProjectAction(
     return { message: describeActionError(e), error: true, runs };
   }
 }
+
+export async function addAliasAction(
+  workspaceId: string,
+  projectId: string,
+  prev: DocState,
+  formData: FormData,
+): Promise<DocState> {
+  const { user } = await requireWorkspace(workspaceId);
+  const runs = prev.runs + 1;
+  try {
+    await getContainer().services.knowledge.addAlias({
+      actorId: user.id,
+      workspaceId,
+      projectId,
+      alias: field(formData, "alias"),
+    });
+    revalidatePath(`/app/${workspaceId}/documents`);
+    return { message: "Đã thêm bí danh.", error: false, runs };
+  } catch (e) {
+    return { message: describeActionError(e), error: true, runs };
+  }
+}
+
+export async function removeAliasAction(
+  workspaceId: string,
+  aliasId: string,
+  prev: DocState,
+): Promise<DocState> {
+  const { user } = await requireWorkspace(workspaceId);
+  const runs = prev.runs + 1;
+  try {
+    await getContainer().services.knowledge.removeAlias({
+      actorId: user.id,
+      workspaceId,
+      aliasId,
+    });
+    revalidatePath(`/app/${workspaceId}/documents`);
+    return { message: "Đã xoá bí danh.", error: false, runs };
+  } catch (e) {
+    return { message: describeActionError(e), error: true, runs };
+  }
+}

@@ -44,6 +44,8 @@ export const errorLabel = (code: string | null): string =>
     : "Gửi không thành công.";
 
 const CONFLICT_LABEL: Partial<Record<ConflictError["reason"], string>> = {
+  alias_taken: "Bí danh đã trùng với tên hoặc bí danh trong workspace.",
+  alias_limit: "Dự án đã đạt số lượng bí danh tối đa.",
   version_conflict: "Nháp vừa được người khác sửa. Tải lại rồi sửa tiếp.",
   draft_closed: "Nháp này đã đóng (đã gửi hoặc đã bỏ).",
   action_not_cancellable: "Hành động này không còn huỷ được.",
