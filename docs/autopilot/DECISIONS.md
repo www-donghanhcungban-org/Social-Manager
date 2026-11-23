@@ -134,3 +134,10 @@
 - Chọn: Chấp nhận có hạn 2026-12-14, làm trọn ở T-529 cùng data-inventory và quyền chủ thể
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: xoá tài khoản cần thiết kế quyền chủ thể đầy đủ (CMP-PRIV-005), làm vội dễ xoá nhầm dữ liệu; đã có task T-529 nhận việc, không phải lỗi hồi quy
 - Đường lùi: Không đổi mã; mở lại hàng sổ nếu T-529 trượt hạn
+
+### D-020 · 2026-11-23T21:02:39+00:00 · T-510: 31 MUST của blueprint không áp dụng cho X-Workspace — miễn bằng [~] Không áp dụng hay làm?
+
+- Phương án: (1) Làm đủ 31 mục (tiền, WebSocket, OAuth server, MCP, cache ngoài, analytics, IaC...) dù sản phẩm không có tính năng đó · (2) Đánh [~] Không áp dụng kèm điều kiện kiểm được bằng test (tests/config/baseline-floor.test.ts) đỏ khi sản phẩm thêm đúng thứ bị loại
+- Chọn: Đánh [~] Không áp dụng kèm điều kiện kiểm được bằng test (tests/config/baseline-floor.test.ts) đỏ khi sản phẩm thêm đúng thứ bị loại
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: làm cho tính năng không tồn tại là code chết, tăng bề mặt tấn công; điều kiện kiểm bằng máy nên miễn trừ không im lặng hết hạn; giữ đường lùi bằng cách bỏ [~] khi thêm tính năng
+- Đường lùi: Bỏ [~] và dòng Không áp dụng của mục tương ứng, làm MUST; test điều kiện sẽ đỏ trước
