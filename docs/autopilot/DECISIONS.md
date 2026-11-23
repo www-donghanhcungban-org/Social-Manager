@@ -106,3 +106,10 @@
 - Chọn: Dựng đủ nháp, chính sách, sổ hành động, send_unknown, đối soát, job; kiểm bằng nhà cung cấp giả; gửi thật mặc định TẮT bằng hai cờ (OUTBOUND_LIVE của hệ thống, outbound_enabled do owner bật), tác tử không bật
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: gửi tin là hành động không đảo ngược tới người thật, SocialAPI không có idempotency; ủy quyền production ghi outbound_messages live=false. Toàn quyền tự quyết áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật của chủ dự án
 - Đường lùi: Mỗi task một commit có migration down; cờ OUTBOUND_LIVE tắt là dừng mọi đường gửi
+
+### D-016 · 2026-11-23T03:00:24+00:00 · Đợt tiếp theo sau xw-4: làm gì trong phiên khi chủ dự án giao toàn quyền?
+
+- Phương án: (1) Giao diện hội thoại và trả lời (đọc, nháp, yêu cầu gửi, trạng thái) trên dịch vụ xw-4, gửi thật vẫn tắt · (2) Bắt đầu xw-5 thiết bị Windows
+- Chọn: Giao diện hội thoại và trả lời (đọc, nháp, yêu cầu gửi, trạng thái) trên dịch vụ xw-4, gửi thật vẫn tắt
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dịch vụ xw-4 chưa có giao diện nên chưa dùng được; xw-5 cần máy Windows và ghép cặp thiết bị thật, không kiểm được trong phiên. Toàn quyền áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật
+- Đường lùi: Mỗi task một commit; giao diện không đổi dữ liệu, gỡ trang là đủ

@@ -31,6 +31,7 @@ describe("createContainer", () => {
       "posts",
       "retention",
       "search",
+      "threads",
       "webhooks",
       "workspaces",
     ]);
