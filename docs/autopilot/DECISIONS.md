@@ -155,3 +155,10 @@
 - Chọn: Giữ skipLibCheck=true: chỉ bỏ qua .d.ts của gói bên thứ ba, mã dự án vẫn strict + noUncheckedIndexedAccess
 - Lý do (tiêu chí chất lượng cuối): Đo được: tsc --skipLibCheck false báo lỗi ở 4+ gói bên thứ ba (pglite, drizzle, next) không thuộc dự án và không sửa được; skipLibCheck không che lỗi mã dự án. Đúng và đơn giản; test khoá strict
 - Đường lùi: Đặt lại skipLibCheck=false khi gói bên thứ ba sạch kiểu
+
+### D-023 · 2026-11-23T22:08:43+00:00 · T-515: license copyleft yếu (MPL-2.0, LGPL-3.0, CC-BY-4.0) trong cây phụ thuộc — chấp nhận hay thay thế?
+
+- Phương án: (1) Thay thế/loại bỏ các gói đó · (2) Cho phép qua ngoại lệ có hạn 2027-06-30 trong license-policy.json (dùng nguyên bản, không sửa), ghi công ở THIRD_PARTY_NOTICES.md
+- Chọn: Cho phép qua ngoại lệ có hạn 2027-06-30 trong license-policy.json (dùng nguyên bản, không sửa), ghi công ở THIRD_PARTY_NOTICES.md
+- Lý do (tiêu chí chất lượng cuối): Đo được: 14 gói LGPL là nhị phân native tuỳ chọn của sharp, MPL là lightningcss/axe-core (bộ công cụ build/dev), CC-BY là dữ liệu caniuse; không thay được vì thuộc Next/Tailwind; dùng nguyên bản thì tuân thủ; ngoại lệ có hạn, test đỏ khi hết hạn hoặc thêm gói mới ngoài danh sách
+- Đường lùi: Xoá ngoại lệ tương ứng; test license đỏ cho tới khi gỡ gói

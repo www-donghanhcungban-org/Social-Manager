@@ -43,6 +43,20 @@ jobs:
           if [[ "$TITLE" == fix* ]] && ! git diff --name-only "$BASE" "$HEAD" | grep -Eq '(^|/)(tests?|e2e)/|\.(test|spec)\.[tj]sx?$'; then
             echo "::warning::PR sửa lỗi (fix) nhưng không đổi file test nào — sửa lỗi cần test tái hiện (đỏ trước, xanh sau)."
           fi
+      - name: Phụ thuộc mới (BASE-DEP-006) — lockfile thêm gói thì mục "Phụ thuộc mới" của PR phải điền
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [[ "$AUTHOR" == *"[bot]" ]]; then echo "Bỏ qua PR của bot."; exit 0; fi
+          added=$(git diff "$BASE" "$HEAD" -- package-lock.json | grep -E '^\+\s+"node_modules/' | sed -E 's/^\+\s+"node_modules\/(.*)": \{/\1/' || true)
+          if [[ -z "$added" ]]; then exit 0; fi
+          section=$(printf '%s\n' "$BODY" | awk '/^## Phụ thuộc mới/{f=1;next} /^## /{f=0} f' | grep -v '^<!--' | tr -d '[:space:]')
+          if [[ -z "$section" || "$section" =~ ^[Kk]hôngcó\.?$ ]]; then
+            echo "::error::Lockfile thêm gói mới nhưng mục 'Phụ thuộc mới' trống hoặc ghi 'không có':"; printf '%s\n' "$added"; exit 1
+          fi
       - name: Mô tả PR có đủ Mục tiêu, Bằng chứng, Rủi ro và đường lùi
         env:
           BODY: ${{ github.event.pull_request.body }}

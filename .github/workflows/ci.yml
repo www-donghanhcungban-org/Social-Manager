@@ -82,6 +82,18 @@ jobs:
         uses: ./.github/actions/xt-ci-tools
       - name: setup — khoá `setup:` của xt.yaml (vắng = bỏ qua)
         run: bash .xtemplates/scripts/dev-task.sh setup
+      # SEC-SUPPLY-003: cài khoá đúng lockfile (`npm ci`); lockfile đổi sau cài = đỏ.
+      - name: Lockfile không đổi sau cài
+        run: git diff --exit-code -- package-lock.json
+      # CMP-LIC-003: SBOM CycloneDX mỗi build, từ lockfile (không cần cây cài hợp lệ); lưu cùng artifact.
+      - name: SBOM CycloneDX (sbom.cdx.json)
+        run: npm sbom --sbom-format cyclonedx --package-lock-only --omit dev > sbom.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
       - name: gate-par — typecheck ∥ lint ∥ build → test (kèm ngưỡng coverage của `test`) đúng lệnh trong xt.yaml
         id: gate-checks
         run: |
