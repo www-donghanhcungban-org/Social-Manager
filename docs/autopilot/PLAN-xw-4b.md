@@ -51,3 +51,7 @@ gửi và theo dõi trạng thái (kể cả `blocked`, `send_unknown`). Gửi t
 
 - [ ] `T-421` Lời nhắn cho lỗi hỏi đáp (`describeAskError`: AI tắt, workspace chưa cho AI đám mây, mô hình lỗi, câu hỏi sai; lỗi lạ ném lại) và nhãn kết quả không trả lời được (`no_evidence`, `insufficient`, `invalid_output`) và nguồn bằng chứng. Ca biên: mọi lý do/nguồn có nhãn (chống lệch), lỗi lạ không bị in ra (files: src/ai/labels.ts, tests/ai/labels.test.ts) — Gate: `npx vitest run tests/ai/labels.test.ts`
 - [ ] `T-422` Trang `/app/[workspaceId]/search`: tìm kiếm (GET, `q`, chế độ `all`/`any`) và hỏi đáp có trích dẫn (Server Action POST) hiển thị câu trả lời kèm nguồn; không gọi AI khi AI tắt và nói rõ; nội dung nguồn render như văn bản thuần (sau: T-421; files: app/app/[workspaceId]/search/, e2e/search.spec.ts) — Gate: `npx tsc --noEmit -p . && npx vitest run tests/ai tests/search`
+
+### Lát 5 — Tài liệu và dự án
+
+- [ ] `T-431` Trang `/app/[workspaceId]/documents`: nhập tài liệu văn bản (admin/owner; tiêu đề làm id ngoài, nhập lại cùng nội dung báo "đã có", cùng id khác nội dung là phiên bản mới) và tạo/xem dự án (tên, bí danh); thành viên thường chỉ xem. Kết quả tìm được ở `/search` ngay sau khi nhập (sau: T-422; files: app/app/[workspaceId]/documents/, e2e/documents.spec.ts) — Gate: `npx tsc --noEmit -p . && npx vitest run tests/evidence tests/knowledge`
