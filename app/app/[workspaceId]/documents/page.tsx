@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { can } from "@/src/auth/permissions";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
@@ -46,7 +48,12 @@ export default async function DocumentsPage({
           <ul className="flex flex-col gap-2" aria-label="Danh sách dự án">
             {projects.map((p) => (
               <li key={p.id} className="rounded border border-border p-3">
-                <span className="font-medium">{p.name}</span>
+                <Link
+                  href={`/app/${workspaceId}/projects/${p.id}`}
+                  className="font-medium text-primary underline"
+                >
+                  {p.name}
+                </Link>
                 {p.aliases.length > 0 && (
                   <ul
                     className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground"
