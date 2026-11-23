@@ -83,8 +83,8 @@ mọi MUST tự làm được đã `[x] — Kiểm:` hoặc `[~] — Không áp 
 ### Lát A — Sổ audit: 🔴 rồi 🟠 (a)
 
 - [x] `T-501` Chạy `/audit full` 13 nhóm (ARCH, SEC, CODE, TEST, PERF, A11Y, DEP, CI, DOC, DATA, CFG, XFEAT, HAR) trên 422 file → sổ `docs/ops/AUDIT-STATUS.md` + báo cáo; xác minh đối kháng mọi 🔴/🟠; công cụ thiếu ghi rõ trong sổ; nạp sẵn phát hiện đã biết: `harness-check` đỏ (`permissions.ask` có 3 mục force-push, `coordinator.md` có tool ghi/Agent), `xt.py checks` đỏ ở license-check (thiếu `license-allow.json`, công cụ cho Python — dự án Node) (H-001; topo: audit; files: docs/ops/AUDIT-STATUS.md, docs/ops/) — Gate: `python3 .xtemplates/scripts/xt.py audit check docs/ops/AUDIT-STATUS.md`
-- [ ] `T-502` Sửa mọi 🔴 của sổ: mỗi lỗi một test tái hiện đỏ trước khi sửa, cập nhật trạng thái trong sổ; sổ > ~15 việc → lập PLAN-harden kế thay vì nhồi vào đây (H-002; sau: T-501; topo: review; exec: deep; files: theo sổ, docs/ops/AUDIT-STATUS.md) — Gate: `.xtemplates/scripts/dev-task.sh gate && python3 .xtemplates/scripts/xt.py audit check docs/ops/AUDIT-STATUS.md`
-- [ ] `T-503` Sửa 🟠 và nợ review mở; mục không sửa trong đợt → `chấp nhận` có hạn + D-NNN, không để mở (H-003; sau: T-502; files: theo sổ, docs/ops/AUDIT-STATUS.md) — Gate: `python3 .xtemplates/scripts/xt.py audit check --strict docs/ops/AUDIT-STATUS.md`
+- [x] `T-502` Sửa mọi 🔴 của sổ: mỗi lỗi một test tái hiện đỏ trước khi sửa, cập nhật trạng thái trong sổ; sổ > ~15 việc → lập PLAN-harden kế thay vì nhồi vào đây (H-002; sau: T-501; topo: review; exec: deep; files: theo sổ, docs/ops/AUDIT-STATUS.md) — Gate: `.xtemplates/scripts/dev-task.sh gate && python3 .xtemplates/scripts/xt.py audit check docs/ops/AUDIT-STATUS.md`
+- [x] `T-503` Sửa 🟠 và nợ review mở; mục không sửa trong đợt → `chấp nhận` có hạn + D-NNN, không để mở (H-003; sau: T-502; files: theo sổ, docs/ops/AUDIT-STATUS.md) — Gate: `python3 .xtemplates/scripts/xt.py audit check --strict docs/ops/AUDIT-STATUS.md`
 
 ### Lát B — MUST blueprint còn mở (b)
 

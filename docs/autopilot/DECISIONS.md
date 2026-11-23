@@ -127,3 +127,10 @@
 - Chọn: Sửa theo đợt: đường gửi tin trước (AUD-CODE-001, AUD-CODE-002), rồi CI Postgres, tài liệu, xoá/xuất dữ liệu, harness; hạ các lệch tài liệu và cấu hình không có hành vi sai xuống 🟢 nợ có chủ
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: hai lỗi trên đường gửi tin là hành động ra ngoài không đảo ngược nên sửa đầu tiên với test đỏ trước; các lệch tài liệu không có đường tái hiện dẫn tới hành vi sai nên xử lý theo task PLAN-harden đã có, không nới cổng, không hạ mức để biến mất phát hiện (mọi dòng vẫn giữ trong sổ)
 - Đường lùi: Kế hoạch chỉ là tài liệu: sửa AUDIT-STATUS.md và AUDIT-REPORT-2026-11-23.md rồi lập lại thứ tự đợt
+
+### D-019 · 2026-11-23T15:57:39+00:00 · AUD-DATA-001 (xoá/xuất dữ liệu người dùng): sửa trong đợt này hay chấp nhận có hạn?
+
+- Phương án: (1) Làm ngay trong T-503 · (2) Chấp nhận có hạn 2026-12-14, làm trọn ở T-529 cùng data-inventory và quyền chủ thể
+- Chọn: Chấp nhận có hạn 2026-12-14, làm trọn ở T-529 cùng data-inventory và quyền chủ thể
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: xoá tài khoản cần thiết kế quyền chủ thể đầy đủ (CMP-PRIV-005), làm vội dễ xoá nhầm dữ liệu; đã có task T-529 nhận việc, không phải lỗi hồi quy
+- Đường lùi: Không đổi mã; mở lại hàng sổ nếu T-529 trượt hạn

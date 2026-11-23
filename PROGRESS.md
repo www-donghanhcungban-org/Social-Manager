@@ -4,20 +4,20 @@
 
 ## Đang làm
 
-- Vòng harden bật (một phiên, trần 320 vòng, hạn 2026-12-14): `docs/autopilot/PLAN-harden-2026-11-23.md` (40 task, D-017, merge PR #35). Đang ở T-501 `/audit full`: ba cụm quét xong (SEC/CFG/DEP/CI, ARCH/CODE/TEST/PERF, A11Y/DATA), còn cụm DOC/HAR/XFEAT và xác minh đối kháng ba 🟠. Sổ nháp ở `docs/ops/AUDIT-STATUS.md`
-- 🟠 đang chờ xác minh: AUD-CODE-001 (hành động gửi kẹt ở `dispatching`), AUD-CODE-002 (bỏ nháp sau khi xếp hàng vẫn gửi), AUD-DATA-001 (chưa có đường người dùng tự xoá/xuất dữ liệu)
+- Vòng harden bật (một phiên, trần 320 vòng, hạn 2026-12-14): `docs/autopilot/PLAN-harden-2026-11-23.md` (40 task, D-017). T-501 (audit full) và T-502, T-503 xong: sổ `docs/ops/AUDIT-STATUS.md` `--strict` xanh
+- 🟠 đã xử lý: AUD-CODE-001/002 (đường gửi tin: gỡ hành động kẹt, bỏ nháp huỷ hành động đã xếp hàng), AUD-HAR-005 (CI có Postgres), AUD-DOC-001 (SECURITY.md); AUD-DATA-001 `chấp nhận` đến 2026-12-14 (D-019, làm ở T-529)
 - Trang dự án xw-4e đã merge (PR #32, #33): hồ sơ, bí danh, sổ quyết định, dòng thời gian bằng chứng. Gửi thật CHƯA bật (`OUTBOUND_LIVE=false`)
 
 ## Tiếp theo
 
-1. Hoàn tất T-501 (sổ + báo cáo + `audit check` exit 0), rồi T-580/T-581/T-582 khai `migration_check`, `rollback`, `attack` trong `xt.yaml`
-2. Sửa 🟠 theo thứ tự: AUD-CODE-001, AUD-CODE-002 (test đỏ trước), rồi AUD-DATA-001 (UI xoá/xuất)
+1. T-580/T-581/T-582 khai `migration_check`, `rollback`, `attack` trong `xt.yaml`
+2. Nợ 🟢 trong sổ (55, gồm AUD-CI-002 changelog-check đỏ, AUD-CI-003 license-allow.json) theo T-550 và các nhóm MUST
 3. Nhóm MUST blueprint còn mở (439, `xt.py blueprint-status BLUEPRINT.md --strict --json`) theo T-510..T-531; đầu tiên BASE-CFG-003 cần `.env.example` (T-009, cần người)
 4. Cuối vòng: `release-check` GO + `GO-NO-GO.md` (§5 người ký; hàng `perf` đề xuất ký "không áp dụng")
 
 ## Quyết định
 
-- D-001..D-017 ở `docs/autopilot/DECISIONS.md`; mới: D-017 duyệt PLAN-harden (không nới cổng)
+- D-001..D-019 ở `docs/autopilot/DECISIONS.md`; mới: D-018 kế hoạch sửa sau audit, D-019 chấp nhận AUD-DATA-001 có hạn
 - ADR-0002..0006 (định hướng, công cụ thuộc dự án, kho bản gốc theo hash, cổng AI, sổ hành động gửi tin)
 - Nợ kỹ thuật chấp nhận: esbuild moderate qua drizzle-kit (hạn 2027-02-22) — audit phát hiện ghi chú ngoại lệ nêu sai (drizzle-kit vẫn vào image runtime qua peer của better-auth), xem AUD-DEP-001
 - Chưa xác minh: SocialAPI và GitHub với khoá thật; Dockerfile/compose (volume `blobdata`) chưa build thật vì môi trường không có Docker
