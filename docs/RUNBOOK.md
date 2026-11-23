@@ -99,6 +99,21 @@ docker compose exec -T db pg_restore -U social -d social --clean --if-exists < b
 - `APP_SECRET_KEY`: **chưa có cơ chế xoay.** Đổi khoá làm mọi khoá nhà cung cấp đã lưu không giải mã được; phải nhập lại từng kết nối. Chỉ đổi khi nghi lộ khoá.
 - Khoá nhà cung cấp (SocialAPI…): xoá kết nối cũ, tạo kết nối mới ở màn hình Kết nối.
 
+### Lộ bí mật
+
+Khi phát hiện (gitleaks đỏ, người báo, bí mật xuất hiện trong log/commit/ảnh chụp): **thu hồi trước, dọn sau** — xoá commit không đủ vì bản sao đã tải về vẫn còn. Làm theo thứ tự:
+
+1. Thu hồi và xoay ngay theo loại khoá (lệnh/bước ở mục "Xoay bí mật" phía trên):
+   - Mật khẩu CSDL: `docker compose exec -T db psql -U social -d social -c "ALTER USER social PASSWORD '<mới>'"`, đổi `POSTGRES_PASSWORD`, `docker compose up -d`.
+   - `BETTER_AUTH_SECRET`: đổi giá trị, `docker compose up -d` (mọi phiên đăng nhập mất hiệu lực — đúng ý muốn).
+   - `APP_SECRET_KEY`: đổi khoá rồi nhập lại từng kết nối nhà cung cấp (chưa có cơ chế xoay).
+   - Khoá nhà cung cấp (SocialAPI, GitHub, AI): thu hồi tại trang quản lý của nhà cung cấp trước, rồi tạo kết nối/khoá mới.
+   - Token GitHub: thu hồi ở Settings → Developer settings; tạo token mới quyền tối thiểu.
+2. Rà log và truy cập của khoảng thời gian từ lúc khoá có thể bị lộ đến lúc thu hồi (`docker compose logs --since <thời điểm> app`; trang quản lý nhà cung cấp xem lịch sử gọi) tìm dùng trái phép.
+3. Ghi sự cố theo `docs/ops/incident-response.md` (mức, dòng thời gian, phạm vi); mọi vụ lộ đều có post-mortem, kể cả khi không thấy lạm dụng.
+4. Dọn nguồn lộ sau cùng: sửa/gỡ nội dung, và chỉ viết lại lịch sử khi chủ dự án quyết (không force-push trong phiên tự động). Bản sao đã lộ coi như đã bị thu thập.
+5. Thêm hàng rào chống lặp lại (luật gitleaks, test, bước kiểm) trong cùng PR sửa.
+
 ### Tắt worker nền / chạy tách
 
 Đặt `RUN_WORKERS=false` cho container `app` để chỉ phục vụ web (ví dụ khi cần dừng đăng bài tạm thời), rồi `docker compose up -d`.

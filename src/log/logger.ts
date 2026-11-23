@@ -38,6 +38,9 @@ const REDACTED = "[REDACTED]";
 const SENSITIVE_KEY =
   /pass(word|wd)?|token|authorization|cookie|secret|key|credential|session/i;
 const CONNECTION_PASSWORD = /([a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:)[^\s@/]+(@)/gi;
+// Giá trị trong query string của URL với tham số mang bí mật (SEC-SECRET-007).
+const QUERY_SECRET =
+  /([?&](?:[a-z0-9_.-]*(?:token|key|secret|pass(?:word|wd)?|signature|sig|auth|credential)[a-z0-9_.-]*)=)[^&\s#]+/gi;
 const MAX_DEPTH = 8;
 const CORE = new Set([
   "timestamp",
@@ -53,6 +56,7 @@ const CORE = new Set([
 function escapeString(s: string): string {
   return s
     .replace(CONNECTION_PASSWORD, `$1${REDACTED}$2`)
+    .replace(QUERY_SECRET, `$1${REDACTED}`)
     .replace(/[\u0000-\u001f\u007f]/g, (c) => {
       if (c === "\n") return "\\n";
       if (c === "\r") return "\\r";

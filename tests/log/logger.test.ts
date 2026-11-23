@@ -88,6 +88,21 @@ describe("che bí mật (BASE-ERR-007)", () => {
     expect(lines[0]).toContain("postgres://app:[REDACTED]@db:5432/x");
   });
 
+  it("SEC-SECRET-007: che giá trị bí mật trong query string của URL và object chứa password/token", () => {
+    const { log, lines } = setup();
+    log.error(
+      "gọi https://api.example.com/v1/x?id=7&api_key=abc123&token=tok456 lỗi",
+    );
+    expect(lines[0]).not.toContain("abc123");
+    expect(lines[0]).not.toContain("tok456");
+    expect(lines[0]).toContain("id=7");
+    expect(lines[0]).toContain("api_key=[REDACTED]");
+    log.info("đăng nhập", { password: "hunter2", token: "t0k", user: "a" });
+    expect(lines[1]).not.toContain("hunter2");
+    expect(lines[1]).not.toContain("t0k");
+    expect(lines[1]).toContain("[REDACTED]");
+  });
+
   it("chịu được tham chiếu vòng và cây quá sâu mà không ném", () => {
     const { log, last } = setup();
     const a: Record<string, unknown> = { name: "a" };
