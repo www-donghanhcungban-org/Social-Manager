@@ -94,6 +94,14 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
     );
   });
 
+  it("compose chuyển cấu hình AI và gửi tin vào container, mặc định TẮT (không có thì giá trị trong file env không tới được app)", () => {
+    const compose = read("docker-compose.yml");
+    expect(compose).toMatch(/AI_BASE_URL:\s*\$\{AI_BASE_URL:-\}/);
+    expect(compose).toMatch(/AI_MODEL:\s*\$\{AI_MODEL:-\}/);
+    expect(compose).toMatch(/AI_API_KEY:\s*\$\{AI_API_KEY:-\}/);
+    expect(compose).toMatch(/OUTBOUND_LIVE:\s*\$\{OUTBOUND_LIVE:-false\}/);
+  });
+
   it("compose bắt buộc đặt bí mật: thiếu là dừng, không có giá trị mặc định", () => {
     const compose = read("docker-compose.yml");
     for (const v of [
