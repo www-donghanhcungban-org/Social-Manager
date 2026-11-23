@@ -69,8 +69,13 @@ Xác minh ngày 2026-11-22 (chi tiết và lý do: `docs/adr/0001-stack.md`).
 - CSDL: PostgreSQL 16 + Drizzle ORM 0.45.4 (migration có đường lùi) · pg 8.23.1.
 - Hàng đợi: pg-boss 12.39.0 (trên Postgres, không cần Redis).
 - Đăng nhập: Better Auth 1.7.27 · băm mật khẩu Argon2id bằng hash-wasm 4.13.0 (D-007).
-- Kiểm dữ liệu: Zod 4.6.7. Test: Vitest 4, Playwright 1.65, PGlite cho test CSDL.
+- Kiểm dữ liệu: Zod 4.6.7. Test: Vitest 5, Playwright 1.65, PGlite cho test CSDL.
 - Triển khai: Docker (tầng cuối chạy không root) + Compose.
+
+### Dữ liệu test và môi trường test (QA-DATA-001, QA-INT-001/002)
+
+- **Cấm** đưa dump/export dữ liệu production vào repo, CI, staging hay máy dev; fixture là dữ liệu tổng hợp (email dùng `@example.com`, không SĐT/CCCD/địa chỉ thật). Chính sách chi tiết: `docs/compliance/test-data-policy.md`. Không dùng bản sao ẩn danh hoá dữ liệu thật.
+- **Hai tầng CSDL test, cùng chuỗi migration thật** (thư mục `drizzle/`, chạy từ rỗng; không có `schema.sql` dựng tay): (1) test đơn vị/tích hợp chạy trên **PGlite** (Postgres biên dịch WASM, cùng họ 16 — khác biệt về khoá/đồng thời được bù ở tầng 2); (2) job CI `gate` và `e2e` chạy trên **Postgres 16 thật** (service `postgres:16-alpine` ghim digest) — cùng major với production (`docker-compose.yml`: `postgres:16`). Test cần ngữ nghĩa Postgres thật (khoá dòng, đồng thời) viết ở `*.pg.test.ts` và chạy khi có `TEST_DATABASE_URL`.
 
 ## 5. Thiết kế dữ liệu
 

@@ -23,7 +23,7 @@ const out = (
   at: Date,
   over: Partial<ProviderMessage> = {},
 ): ProviderMessage => ({
-  id: `mid-${Math.random().toString(36).slice(2, 8)}`,
+  id: `mid-${crypto.randomUUID().slice(0, 8)}`,
   identityWeak: false,
   providerMessageId: "u",
   direction: "outgoing",
@@ -42,7 +42,7 @@ async function unknown(text = "Dạ còn ạ") {
   const a = await e.actions.requestSend({
     ...M(),
     draftId,
-    idempotencyKey: `k-${Math.random()}`,
+    idempotencyKey: `k-${crypto.randomUUID()}`,
   });
   await e.actions.dispatch({ actionId: a.id });
   return { a, draftId };

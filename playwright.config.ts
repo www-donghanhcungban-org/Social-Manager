@@ -7,6 +7,9 @@ export default defineConfig({
   testDir: "e2e",
   // QA-STRAT-008: `test.only` lọt vào nhánh chính làm CI chạy một phần mà vẫn xanh.
   forbidOnly: !!process.env.CI,
+  // QA-E2E-005: thử lại tối đa 2 lần ở CI (bắt flake, không che lỗi thật), vết chỉ khi thử lại, số worker cố định.
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 4 : undefined,
   // UX-RESP-008: luồng chính chạy trên cả desktop và thiết bị di động giả lập (cùng Chromium).
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
@@ -33,6 +36,10 @@ export default defineConfig({
   },
   use: {
     baseURL: "http://localhost:3100",
+    trace: "on-first-retry",
+    // FE-TEST-003: múi giờ/locale cố định cho trình duyệt.
+    timezoneId: "UTC",
+    locale: "vi-VN",
     launchOptions: executablePath
       ? { executablePath, args: ["--no-sandbox"] }
       : {},

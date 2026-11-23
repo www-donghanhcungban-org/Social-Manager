@@ -141,7 +141,7 @@ export async function setup(
         workspaceId: ws,
         conversationId: cv!.id,
         socialAccountId: a!.id,
-        externalId: `m-${Math.random()}`,
+        externalId: `m-${crypto.randomUUID()}`,
         direction: "incoming",
         author: "Lan",
         text: "Còn hàng không?",

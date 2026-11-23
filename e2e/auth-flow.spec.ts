@@ -19,7 +19,7 @@ async function signUp(page: Page, email: string, password = PASSWORD) {
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
 }
 
-test("đăng ký → tạo workspace → đăng xuất → chặn truy cập → đăng nhập lại", async ({
+test("đăng ký → tạo workspace → đăng xuất → chặn truy cập → đăng nhập lại @smoke", async ({
   page,
 }) => {
   const email = `${unique()}@example.com`;

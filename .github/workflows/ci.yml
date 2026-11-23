@@ -82,6 +82,14 @@ jobs:
         uses: ./.github/actions/xt-ci-tools
       - name: setup — khoá `setup:` của xt.yaml (vắng = bỏ qua)
         run: bash .xtemplates/scripts/dev-task.sh setup
+      # QA-COV-001: báo cáo coverage (kèm nhánh) lưu artifact kể cả khi cổng đỏ để xem chỗ hụt.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 30
       # SEC-SUPPLY-003: cài khoá đúng lockfile (`npm ci`); lockfile đổi sau cài = đỏ.
       - name: Lockfile không đổi sau cài
         run: git diff --exit-code -- package-lock.json

@@ -43,7 +43,7 @@ async function addTo(
     workspaceId: e.ws,
     conversationId,
     socialAccountId: e.account,
-    externalId: `e-${Math.random()}`,
+    externalId: `e-${crypto.randomUUID()}`,
     direction: "incoming",
     author: "Lan",
     text: "x",
