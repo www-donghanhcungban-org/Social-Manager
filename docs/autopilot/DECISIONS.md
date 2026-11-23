@@ -141,3 +141,10 @@
 - Chọn: Đánh [~] Không áp dụng kèm điều kiện kiểm được bằng test (tests/config/baseline-floor.test.ts) đỏ khi sản phẩm thêm đúng thứ bị loại
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: làm cho tính năng không tồn tại là code chết, tăng bề mặt tấn công; điều kiện kiểm bằng máy nên miễn trừ không im lặng hết hạn; giữ đường lùi bằng cách bỏ [~] khi thêm tính năng
 - Đường lùi: Bỏ [~] và dòng Không áp dụng của mục tương ứng, làm MUST; test điều kiện sẽ đỏ trước
+
+### D-021 · 2026-11-23T21:14:43+00:00 · T-511: LOOP-OPT-* và các mục vướng di sản T-108 xử lý thế nào?
+
+- Phương án: (1) Tick/miễn hết dù chưa có bằng chứng · (2) LOOP-OPT-001/002/003/005 = Không áp dụng có điều kiện kiểm bằng test (chưa có task tối ưu); LOOP-ORCH-001/003, LOOP-STOP-001/002 (harness-check đỏ do di sản T-108) và LOOP-STOP-005 (nhãn risk PR) = loop defer cho người, giữ [ ]
+- Chọn: LOOP-OPT-001/002/003/005 = Không áp dụng có điều kiện kiểm bằng test (chưa có task tối ưu); LOOP-ORCH-001/003, LOOP-STOP-001/002 (harness-check đỏ do di sản T-108) và LOOP-STOP-005 (nhãn risk PR) = loop defer cho người, giữ [ ]
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: không khai xanh khi harness-check đỏ thật; gỡ cấu hình ask/agent coordinator là hạ hàng rào, guard cấm agent tự làm; OPT chỉ áp khi mở task tối ưu
+- Đường lùi: Bỏ [~] của OPT khi thêm perf/trial.json; hết defer khi người gỡ di sản T-108
