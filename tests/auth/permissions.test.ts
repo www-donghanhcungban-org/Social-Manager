@@ -29,6 +29,7 @@ describe("can", () => {
         "projects.read",
         "projects.write",
         "data.export",
+        "actions.resolve",
         "connections.manage",
         "members.invite",
         "members.remove",

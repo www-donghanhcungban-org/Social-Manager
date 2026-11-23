@@ -164,6 +164,65 @@ export function createWorkspaceService({ db }: { db: Db }) {
       return { enabled: row.on };
     },
 
+    /** Chính sách gửi tin của workspace (thành viên xem được để biết vì sao một yêu cầu gửi bị chặn). */
+    async getOutbound(input: {
+      actorId: string;
+      workspaceId: string;
+    }): Promise<{ enabled: boolean; maxPerHour: number }> {
+      await requireAction(db, input.actorId, input.workspaceId, "inbox.read");
+      const [row] = await db
+        .select({
+          on: workspaces.outboundEnabled,
+          max: workspaces.outboundMaxPerHour,
+        })
+        .from(workspaces)
+        .where(eq(workspaces.id, input.workspaceId));
+      if (!row) throw new NotFoundError();
+      return { enabled: row.on, maxPerHour: row.max };
+    },
+
+    /**
+     * Owner bật/tắt gửi tin và đặt hạn mức giờ. Bật chỉ là MỘT trong hai khoá: gửi thật còn cần cờ hệ thống `OUTBOUND_LIVE`.
+     * Mặc định tắt, hạn mức 10/giờ.
+     */
+    async setOutbound(input: {
+      actorId: string;
+      workspaceId: string;
+      enabled: boolean;
+      maxPerHour?: number;
+    }): Promise<{ enabled: boolean; maxPerHour: number }> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "workspace.settings",
+      );
+      if (typeof input.enabled !== "boolean")
+        throw new ValidationError("Giá trị không hợp lệ");
+      if (
+        input.maxPerHour !== undefined &&
+        (!Number.isInteger(input.maxPerHour) ||
+          input.maxPerHour < 0 ||
+          input.maxPerHour > 1000)
+      )
+        throw new ValidationError("Hạn mức giờ phải là số nguyên 0-1000");
+      const [row] = await db
+        .update(workspaces)
+        .set({
+          outboundEnabled: input.enabled,
+          ...(input.maxPerHour === undefined
+            ? {}
+            : { outboundMaxPerHour: input.maxPerHour }),
+        })
+        .where(eq(workspaces.id, input.workspaceId))
+        .returning({
+          on: workspaces.outboundEnabled,
+          max: workspaces.outboundMaxPerHour,
+        });
+      if (!row) throw new NotFoundError();
+      return { enabled: row.on, maxPerHour: row.max };
+    },
+
     async listForUser(userId: string): Promise<WorkspaceView[]> {
       return db
         .select({

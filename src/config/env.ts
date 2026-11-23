@@ -57,6 +57,14 @@ const baseSchema = z.object({
     z.string().min(1).max(500).default("./.data/blobs"),
   ),
   /**
+   * Khoá hệ thống cho GỬI TIN THẬT (H3, `outbound_messages live=false`): mặc định `false`. Gửi thật còn cần owner bật
+   * `outbound_enabled` của workspace — hai khoá độc lập. Tắt là mọi hành động đã xếp hàng giữ nguyên, không gửi gì.
+   */
+  OUTBOUND_LIVE: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
+    z.enum(["true", "false"]).default("false"),
+  ),
+  /**
    * AI (H6, H7): TẮT khi `AI_BASE_URL` trống. Điểm cuối tương thích OpenAI (`/chat/completions`): Ollama/vLLM cục bộ hoặc
    * dịch vụ đám mây. Điểm cuối không phải máy cục bộ chỉ được dùng khi owner bật `ai_cloud_enabled` của workspace.
    */

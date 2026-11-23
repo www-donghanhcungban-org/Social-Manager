@@ -13,6 +13,10 @@ import { createLogger } from "@/src/log/logger";
 // khi người chạy cục bộ đặt biến | xem lại khi: thêm service Postgres ghim digest vào ci.yml (BASE-DEP-008)
 const ADMIN_URL = process.env.TEST_DATABASE_URL;
 const d = ADMIN_URL ? describe : describe.skip;
+const noActions = {
+  dispatchDue: async () => ({}),
+  reconcileDue: async () => ({}),
+};
 const noRetention = {
   purgeExpired: async () => ({
     inboxItems: 0,
@@ -58,6 +62,7 @@ d("pg-boss trên Postgres thật", () => {
           recoverStuck: async () => 0,
           confirmSubmitted: async () => ({}),
         },
+        actions: noActions,
         inbox: { syncAsSystem },
         retention: noRetention,
         listAccounts: async () => [],
@@ -87,7 +92,7 @@ d("pg-boss trên Postgres thật", () => {
     }
   }, 30_000);
 
-  it("lịch được đăng ký trong DB cho cả năm việc định kỳ", async () => {
+  it("lịch được đăng ký trong DB cho cả bảy việc định kỳ", async () => {
     const boss = await startBoss(url);
     try {
       const runner = createJobRunner({
@@ -97,6 +102,7 @@ d("pg-boss trên Postgres thật", () => {
           recoverStuck: async () => 0,
           confirmSubmitted: async () => ({}),
         },
+        actions: noActions,
         inbox: { syncAsSystem: async () => ({ inserted: 0 }) },
         retention: noRetention,
         listAccounts: async () => [],
@@ -116,6 +122,8 @@ d("pg-boss trên Postgres thật", () => {
           QUEUES.confirmSubmitted,
           QUEUES.syncAll,
           QUEUES.purgeExpired,
+          QUEUES.actionsDispatch,
+          QUEUES.actionsReconcile,
         ].sort(),
       );
     } finally {

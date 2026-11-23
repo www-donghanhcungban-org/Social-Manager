@@ -20,6 +20,8 @@ export const ACTIONS = [
   /** Xoá dữ liệu theo yêu cầu (không đảo ngược): chỉ owner. Xuất dữ liệu: admin/owner. */
   "data.erase",
   "data.export",
+  /** Quyết định số phận một hành động gửi `send_unknown` (đã gửi hay chưa): admin/owner. */
+  "actions.resolve",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -35,6 +37,7 @@ const ADMIN: readonly Action[] = [
   "evidence.write",
   "projects.write",
   "data.export",
+  "actions.resolve",
   "connections.manage",
   "members.invite",
   "members.remove",
