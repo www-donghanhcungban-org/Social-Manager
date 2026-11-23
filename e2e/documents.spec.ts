@@ -37,7 +37,11 @@ test("nhập tài liệu → nhập lại không trùng → tìm thấy; tạo d
     page.getByRole("status").filter({ hasText: "Đã nhập tài liệu" }),
   ).toBeVisible();
 
-  // nhập lại đúng nội dung: báo đã có, không thêm
+  // nhập lại đúng nội dung: báo đã có, không thêm. React 19 xoá trường form sau mỗi lần gửi nên phải điền lại.
+  await page.getByLabel("Tiêu đề").fill("Chính sách đổi trả");
+  await page
+    .getByLabel("Nội dung")
+    .fill("Khách được đổi trả trong vòng bảy ngày kể từ khi nhận hàng.");
   await page.getByRole("button", { name: "Nhập tài liệu" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "đã có" }),
