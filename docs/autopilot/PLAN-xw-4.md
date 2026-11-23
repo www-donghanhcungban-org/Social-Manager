@@ -65,7 +65,7 @@ lại tin gửi đi. Chỉ số: các ca trong Gate xanh trên nhà cung cấp g
 
 ### Lát 5 — Chạy nền và cấu hình (M11)
 
-- [ ] `T-405` Job nền `actions.dispatch` và `actions.reconcile`, cờ `OUTBOUND_LIVE` (mặc định tắt), nối container; khi cờ tắt việc đã xếp hàng giữ nguyên, không gửi. Ca biên: job lỗi không mất hành động, cờ tắt giữa chừng, trần lô, đăng ký lịch (sau: T-404; files: src/jobs/, src/config/env.ts, src/server/container.ts, tests/jobs/, tests/config/) — Gate: `npx vitest run tests/jobs tests/config tests/server`
+- [x] `T-405` Job nền `actions.dispatch` và `actions.reconcile`, cờ `OUTBOUND_LIVE` (mặc định tắt), nối container; khi cờ tắt việc đã xếp hàng giữ nguyên, không gửi. Ca biên: job lỗi không mất hành động, cờ tắt giữa chừng, trần lô, đăng ký lịch (sau: T-404; files: src/jobs/, src/config/env.ts, src/server/container.ts, tests/jobs/, tests/config/) — Gate: `npx vitest run tests/jobs tests/config tests/server`
 
 ### Việc cần người
 

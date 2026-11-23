@@ -71,6 +71,20 @@ describe("loadEnv", () => {
       ).toThrow(ConfigError);
   });
 
+  it("OUTBOUND_LIVE mặc định tắt; chỉ nhận true/false; rỗng coi như tắt", () => {
+    expect(loadEnv(valid()).OUTBOUND_LIVE).toBe("false");
+    expect(loadEnv({ ...valid(), OUTBOUND_LIVE: "  " }).OUTBOUND_LIVE).toBe(
+      "false",
+    );
+    expect(loadEnv({ ...valid(), OUTBOUND_LIVE: "true" }).OUTBOUND_LIVE).toBe(
+      "true",
+    );
+    for (const bad of ["1", "yes", "TRUE"])
+      expect(() => loadEnv({ ...valid(), OUTBOUND_LIVE: bad })).toThrow(
+        ConfigError,
+      );
+  });
+
   it("giá trị rỗng hoặc chỉ khoảng trắng coi như thiếu", () => {
     for (const v of ["", "   "]) {
       expect(() => loadEnv({ ...valid(), BETTER_AUTH_URL: v })).toThrow(

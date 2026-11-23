@@ -8,6 +8,7 @@ import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
 import { createDraftService } from "../actions/drafts";
+import { createActionService } from "../actions/ledger";
 import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
@@ -93,6 +94,14 @@ export function createContainer(cfg: Env) {
     erasure: createErasureService({ db, evidence }),
     evidence,
     drafts: createDraftService({ db }),
+    // `live` đọc mỗi lần gọi: cờ OUTBOUND_LIVE là khoá hệ thống, mặc định tắt.
+    actions: createActionService({
+      db,
+      box,
+      resolveProvider: buildProvider,
+      live: () => cfg.OUTBOUND_LIVE === "true",
+      now: () => new Date(),
+    }),
     ai,
     answers: createAnswerService({ search, ai }),
     search,

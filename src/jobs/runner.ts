@@ -8,6 +8,8 @@ export const QUEUES = {
   syncAll: "inbox.sync-all",
   syncAccount: "inbox.sync-account",
   purgeExpired: "maintenance.purge-expired",
+  actionsDispatch: "actions.dispatch",
+  actionsReconcile: "actions.reconcile",
 } as const;
 
 /** Dọn dữ liệu quá hạn lưu mỗi ngày lúc 03:17 UTC (giờ ít người dùng, lệch khỏi phút tròn). */
@@ -18,6 +20,12 @@ const MAX_PURGE_BATCHES = 20;
 const RUN_DUE_LIMIT = 20;
 const STUCK_AFTER_MS = 15 * 60_000;
 const CONFIRM_LIMIT = 50;
+/** Trần lô gửi tin mỗi lần chạy: phần còn lại để lần sau, không dồn một lượt. */
+export const DISPATCH_LIMIT = 20;
+const RECONCILE_LIMIT = 20;
+/** Đối soát send_unknown: chờ ít nhất chừng này kể từ lúc gửi/lần trước; quá hạn thì để người quyết. */
+export const RECONCILE_MIN_AGE_MS = 2 * 60_000;
+export const RECONCILE_MAX_AGE_MS = 24 * 3_600_000;
 /** Bài gửi quá chừng này mà nhà cung cấp chưa báo kết quả cuối → send_unknown. */
 export const CONFIRM_DEADLINE_MS = 24 * 3_600_000;
 
@@ -43,6 +51,14 @@ export interface JobRunnerDeps {
     confirmSubmitted(i: {
       limit: number;
       deadlineMs: number;
+    }): Promise<Record<string, number>>;
+  };
+  actions: {
+    dispatchDue(i: { limit: number }): Promise<Record<string, number>>;
+    reconcileDue(i: {
+      limit: number;
+      minAgeMs: number;
+      maxAgeMs: number;
     }): Promise<Record<string, number>>;
   };
   inbox: {
@@ -86,6 +102,7 @@ function parseSyncData(data: unknown): {
 export function createJobRunner({
   queue,
   posts,
+  actions,
   inbox,
   retention,
   listAccounts,
@@ -180,7 +197,28 @@ export function createJobRunner({
         }),
       );
 
+      // Cờ OUTBOUND_LIVE tắt: dispatchDue không đụng hành động nào (việc đã xếp hàng giữ nguyên). Lỗi ném lại để thử lại;
+      // sổ hành động tự chống gửi trùng nên chạy lại an toàn.
+      await queue.work(
+        QUEUES.actionsDispatch,
+        guarded(QUEUES.actionsDispatch, () =>
+          actions.dispatchDue({ limit: DISPATCH_LIMIT }),
+        ),
+      );
+      await queue.work(
+        QUEUES.actionsReconcile,
+        guarded(QUEUES.actionsReconcile, () =>
+          actions.reconcileDue({
+            limit: RECONCILE_LIMIT,
+            minAgeMs: RECONCILE_MIN_AGE_MS,
+            maxAgeMs: RECONCILE_MAX_AGE_MS,
+          }),
+        ),
+      );
+
       await queue.schedule(QUEUES.purgeExpired, PURGE_CRON);
+      await queue.schedule(QUEUES.actionsDispatch, "* * * * *");
+      await queue.schedule(QUEUES.actionsReconcile, "*/2 * * * *");
       await queue.schedule(QUEUES.runDue, "* * * * *");
       await queue.schedule(QUEUES.recoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.confirmSubmitted, "*/2 * * * *");
