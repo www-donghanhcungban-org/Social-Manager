@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -45,9 +46,20 @@ export const workspaces = pgTable(
      * owner bật. AI cục bộ không cần cờ này.
      */
     aiCloudEnabled: boolean("ai_cloud_enabled").notNull().default(false),
+    /**
+     * Cho phép gửi tin trả lời từ hộp thư (chính sách hành động, M09). Mặc định TẮT; chỉ owner bật. Gửi thật còn cần cờ hệ
+     * thống `OUTBOUND_LIVE` (hai khoá độc lập).
+     */
+    outboundEnabled: boolean("outbound_enabled").notNull().default(false),
+    /** Hạn mức hành động gửi mỗi giờ của workspace (0 = chặn hết). */
+    outboundMaxPerHour: integer("outbound_max_per_hour").notNull().default(10),
     createdAt: createdAt(),
   },
   (t) => [
+    check(
+      "workspaces_outbound_max_check",
+      sql`${t.outboundMaxPerHour} between 0 and 1000`,
+    ),
     check(
       "workspaces_retention_days_check",
       sql`${t.inboxRetentionDays} is null or ${t.inboxRetentionDays} between 1 and ${sql.raw(String(MAX_RETENTION_DAYS))}`,
@@ -701,6 +713,98 @@ export const draftVersions = pgTable(
       sql`length(btrim(${t.text})) between 1 and 4000`,
     ),
     index("draft_versions_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+export const ACTION_KINDS = ["send_message"] as const;
+export const ACTION_STATES = [
+  "queued",
+  "dispatching",
+  "confirmed",
+  "send_unknown",
+  "blocked",
+  "failed",
+  "cancel_requested",
+  "cancelled",
+] as const;
+export type ActionState = (typeof ACTION_STATES)[number];
+
+/**
+ * Sổ hành động (H3, H14): mỗi lần hệ thống định gửi một tin ra ngoài là một dòng, bền, KHÔNG phụ thuộc vào job. Job chỉ mang
+ * `action_id`. Không lưu nội dung tin (chỉ băm); nội dung nằm ở phiên bản nháp bất biến mà hành động trỏ tới.
+ */
+export const actionLedger = pgTable(
+  "action_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ACTION_KINDS })
+      .notNull()
+      .default("send_message"),
+    state: text("state", { enum: ACTION_STATES }).notNull(),
+    draftId: uuid("draft_id").references(() => drafts.id, {
+      onDelete: "set null",
+    }),
+    draftVersion: integer("draft_version").notNull(),
+    /** Hội thoại đích; null khi hội thoại đã bị xoá (sổ vẫn giữ để đối soát). */
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    /** Id hội thoại bên nhà cung cấp, ghi lúc yêu cầu để còn dấu vết khi hội thoại bị xoá. */
+    recipientRef: text("recipient_ref").notNull(),
+    /** sha256 của nội dung (NFC, đã trim) — đối soát không cần giữ nội dung. */
+    textHash: text("text_hash").notNull(),
+    textBytes: integer("text_bytes").notNull(),
+    /** Khoá lũy đẳng do người gọi cấp: gửi lại cùng khoá không tạo hành động thứ hai. */
+    idempotencyKey: text("idempotency_key").notNull(),
+    blockedReason: text("blocked_reason"),
+    /** Mã ngắn an toàn của lỗi/kết quả đối soát. */
+    errorCode: text("error_code"),
+    providerMessageIds: text("provider_message_ids").array(),
+    /** Số lần NHẬN VIỆC để gửi; luôn 0 hoặc 1 (CHECK) — không bao giờ gửi lại. */
+    attempts: integer("attempts").notNull().default(0),
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** Lần đối soát gần nhất của `send_unknown` và kết quả (`found`/`not_found`/`error`). */
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+    reconcileResult: text("reconcile_result"),
+    /** Người quyết định cho `send_unknown` (`resolveUnknown`). */
+    resolvedBy: text("resolved_by"),
+  },
+  (t) => [
+    unique("action_ledger_ws_key").on(t.workspaceId, t.idempotencyKey),
+    check(
+      "action_ledger_state_check",
+      sql`${t.state} in (${inList(ACTION_STATES)})`,
+    ),
+    check(
+      "action_ledger_kind_check",
+      sql`${t.kind} in (${inList(ACTION_KINDS)})`,
+    ),
+    check("action_ledger_attempts_check", sql`${t.attempts} between 0 and 1`),
+    check("action_ledger_hash_check", sql`${t.textHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "action_ledger_code_check",
+      sql`(${t.errorCode} is null or ${t.errorCode} ~ '^[A-Za-z0-9_.-]{1,64}$')
+        and (${t.blockedReason} is null or ${t.blockedReason} ~ '^[a-z_]{1,64}$')`,
+    ),
+    check(
+      "action_ledger_blocked_check",
+      sql`(${t.state} = 'blocked') = (${t.blockedReason} is not null)`,
+    ),
+    // Một nháp chỉ có MỘT hành động còn hiệu lực/đã gửi/chưa rõ: chặn hai khoá lũy đẳng khác nhau cùng gửi một nháp.
+    uniqueIndex("action_ledger_draft_active")
+      .on(t.draftId)
+      .where(
+        sql`${t.state} in ('queued', 'dispatching', 'cancel_requested', 'send_unknown', 'confirmed')`,
+      ),
+    index("action_ledger_state_idx").on(t.state, t.createdAt),
+    index("action_ledger_ws_created_idx").on(t.workspaceId, t.createdAt),
+    index("action_ledger_conversation_idx").on(t.conversationId),
   ],
 );
 

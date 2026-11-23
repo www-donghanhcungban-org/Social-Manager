@@ -32,7 +32,9 @@ export class ConflictError extends Error {
       | "alias_taken"
       | "decision_not_active"
       | "version_conflict"
-      | "draft_closed",
+      | "draft_closed"
+      | "action_not_cancellable"
+      | "action_not_unknown",
     message: string,
   ) {
     super(message);

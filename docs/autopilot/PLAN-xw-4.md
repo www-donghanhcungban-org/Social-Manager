@@ -53,7 +53,7 @@ lại tin gửi đi. Chỉ số: các ca trong Gate xanh trên nhà cung cấp g
 
 ### Lát 2 — Hợp đồng gửi (M09, H3)
 
-- [ ] `T-402` Hợp đồng `sendMessage` của nhà cung cấp: `SocialProvider.sendMessage`, wrapper kiểm hỗ trợ `dm`; SocialAPI theo `POST /inbox/conversations/{id}/messages` (`account_id`, `text`), phản hồi `message_ids` (Zalo trả rỗng); phân loại lỗi: 4xx từ chối chắc chắn, 5xx/timeout/mạng/phản hồi sai là KHÔNG CHẮC; nhà cung cấp giả. Ca biên: phản hồi `success` không có id, `window_closed`, khoá lộ trong lỗi, mã lỗi lạ (files: src/providers/, tests/providers/) — Gate: `npx vitest run tests/providers`
+- [x] `T-402` Hợp đồng `sendMessage` của nhà cung cấp: `SocialProvider.sendMessage`, wrapper kiểm hỗ trợ `dm`; SocialAPI theo `POST /inbox/conversations/{id}/messages` (`account_id`, `text`), phản hồi `message_ids` (Zalo trả rỗng); phân loại lỗi: 4xx từ chối chắc chắn, 5xx/timeout/mạng/phản hồi sai là KHÔNG CHẮC; nhà cung cấp giả. Ca biên: phản hồi `success` không có id, `window_closed`, khoá lộ trong lỗi, mã lỗi lạ (files: src/providers/, tests/providers/) — Gate: `npx vitest run tests/providers`
 
 ### Lát 3 — Chính sách và sổ hành động (M09, H3, H12, H13, H14)
 
