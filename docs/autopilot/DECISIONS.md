@@ -113,3 +113,10 @@
 - Chọn: Giao diện hội thoại và trả lời (đọc, nháp, yêu cầu gửi, trạng thái) trên dịch vụ xw-4, gửi thật vẫn tắt
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dịch vụ xw-4 chưa có giao diện nên chưa dùng được; xw-5 cần máy Windows và ghép cặp thiết bị thật, không kiểm được trong phiên. Toàn quyền áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật
 - Đường lùi: Mỗi task một commit; giao diện không đổi dữ liệu, gỡ trang là đủ
+
+### D-017 · 2026-11-23T12:32:17+00:00 · Duyệt PLAN-harden-2026-11-23 (pha harden đợt 1): đường nào đưa release-check khỏi NO-GO?
+
+- Phương án: (1) Duyệt PLAN 40 task do Opus soạn: audit full trước, khai lệnh migration_check/rollback/attack/acceptance sớm, rồi 22 nhóm MUST theo tiền tố, chờ người ở T-009/T-108/T-540/T-541/T-542 · (2) Chỉ khai 5 lệnh còn N/A của release-check, hoãn audit và MUST sang đợt sau
+- Chọn: Duyệt PLAN 40 task do Opus soạn: audit full trước, khai lệnh migration_check/rollback/attack/acceptance sớm, rồi 22 nhóm MUST theo tiền tố, chờ người ở T-009/T-108/T-540/T-541/T-542
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: hàng audit và blueprint là BLOCKER nên không thể bỏ; thứ tự chạy đề nghị bỏ BLOCKER rẻ trước. Việc cần quyền hoặc khoá của chủ dự án nằm ngoài đường chính (loop defer). Gửi thật giữ TẮT. Cờ cổng không bị nới.
+- Đường lùi: PLAN chỉ là tài liệu; mỗi task một commit/PR, revert theo PR; chưa chạy loop init
