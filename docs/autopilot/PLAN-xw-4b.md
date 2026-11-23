@@ -46,3 +46,8 @@ gửi và theo dõi trạng thái (kể cả `blocked`, `send_unknown`). Gửi t
 ### Lát 3 — Trang hội thoại
 
 - [ ] `T-413` Trang `/app/[workspaceId]/conversations` (danh sách) và `/[conversationId]` (tin, soạn nháp, gửi, trạng thái, huỷ, quyết định `send_unknown`) bằng Server Action; khoá lũy đẳng sinh khi dựng form (bấm đúp không gửi hai lần); trang nói rõ khi gửi đang tắt; thêm liên kết từ điều hướng (sau: T-412; files: app/app/[workspaceId]/conversations/, tests/e2e) — Gate: `npx tsc --noEmit -p . && npx vitest run tests/actions tests/conversations`
+
+### Lát 4 — Tìm kiếm và hỏi đáp
+
+- [ ] `T-421` Lời nhắn cho lỗi hỏi đáp (`describeAskError`: AI tắt, workspace chưa cho AI đám mây, mô hình lỗi, câu hỏi sai; lỗi lạ ném lại) và nhãn kết quả không trả lời được (`no_evidence`, `insufficient`, `invalid_output`) và nguồn bằng chứng. Ca biên: mọi lý do/nguồn có nhãn (chống lệch), lỗi lạ không bị in ra (files: src/ai/labels.ts, tests/ai/labels.test.ts) — Gate: `npx vitest run tests/ai/labels.test.ts`
+- [ ] `T-422` Trang `/app/[workspaceId]/search`: tìm kiếm (GET, `q`, chế độ `all`/`any`) và hỏi đáp có trích dẫn (Server Action POST) hiển thị câu trả lời kèm nguồn; không gọi AI khi AI tắt và nói rõ; nội dung nguồn render như văn bản thuần (sau: T-421; files: app/app/[workspaceId]/search/, e2e/search.spec.ts) — Gate: `npx tsc --noEmit -p . && npx vitest run tests/ai tests/search`
