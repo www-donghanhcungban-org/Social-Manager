@@ -12,7 +12,11 @@ import {
   socialAccounts,
   workspaces,
 } from "@/src/db/schema";
-import type { SocialProvider } from "@/src/providers/types";
+import type {
+  Page,
+  ProviderMessage,
+  SocialProvider,
+} from "@/src/providers/types";
 import { createSecretBox } from "@/src/security/secret-box";
 
 import { createTestDb } from "../db/helpers";
@@ -21,6 +25,7 @@ export const NOW = new Date("2026-11-22T12:00:00Z");
 export const H = 3_600_000;
 
 type Handler = NonNullable<SocialProvider["sendMessage"]>;
+type Lister = NonNullable<SocialProvider["listMessages"]>;
 
 export interface Env {
   t: Awaited<ReturnType<typeof createTestDb>>;
@@ -28,7 +33,9 @@ export interface Env {
   conv: string;
   account: string;
   state: { live: boolean; now: Date; provider: SocialProvider | undefined };
-  send: ReturnType<typeof vi.fn>;
+  send: ReturnType<typeof vi.fn<Handler>>;
+  /** Đọc lại tin của hội thoại (đối soát): mặc định không có tin nào. */
+  list: ReturnType<typeof vi.fn<Lister>>;
   actions: ReturnType<typeof createActionService>;
   drafts: ReturnType<typeof createDraftService>;
   /** Tạo nháp mới ở hội thoại chính và trả id. */
@@ -82,6 +89,10 @@ export async function setup(
     .returning();
 
   const send = vi.fn<Handler>(async () => ({ messageIds: ["sapi-1"] }));
+  const list = vi.fn<Lister>(async (): Promise<Page<ProviderMessage>> => ({
+    items: [],
+    nextCursor: null,
+  }));
   const state = {
     live: true,
     now: NOW,
@@ -90,6 +101,8 @@ export async function setup(
       label: "Fake",
       support: { [opts.platform ?? "facebook"]: ["dm"] },
       sendMessage: send as Handler,
+      listConversations: async () => ({ items: [], nextCursor: null }),
+      listMessages: list as Lister,
     } as SocialProvider | undefined,
   };
   const actions = createActionService({
@@ -107,6 +120,7 @@ export async function setup(
     account: a!.id,
     state,
     send,
+    list,
     actions,
     drafts,
     async draft(text = "Dạ còn ạ") {

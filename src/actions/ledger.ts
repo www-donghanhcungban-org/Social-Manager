@@ -1,6 +1,20 @@
 import { createHash } from "node:crypto";
 
-import { and, asc, count, desc, eq, gt, inArray, max, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  max,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { requireAction, UUID } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
@@ -16,7 +30,14 @@ import {
   workspaces,
   type ActionState,
 } from "../db/schema";
-import { sendMessage } from "../providers/actions";
+import { getRole } from "../auth/members";
+import { can } from "../auth/permissions";
+import {
+  listMessages,
+  parseIsoWithOffset,
+  sendMessage,
+  supportsConversations,
+} from "../providers/actions";
 import {
   SendRejectedError,
   UnsupportedError,
@@ -193,7 +214,7 @@ export function createActionService(deps: ActionServiceDeps) {
       .where(and(eq(drafts.id, draftId), eq(drafts.status, "open")));
   }
 
-  return {
+  const api = {
     /**
      * Yêu cầu gửi phiên bản hiện tại của một nháp. Lũy đẳng theo `idempotencyKey`: cùng khoá → cùng hành động (kể cả sau
      * khi đã gửi xong). Bị chính sách chặn thì VẪN ghi một dòng `blocked` kèm lý do (dấu vết). Chưa gọi nhà cung cấp:
@@ -428,6 +449,252 @@ export function createActionService(deps: ActionServiceDeps) {
       }
     },
 
+    /**
+     * Đối soát một hành động `send_unknown` bằng cách ĐỌC LẠI tin gửi đi của hội thoại: có tin ĐI cùng băm nội dung, gửi
+     * không sớm hơn lúc ta bắt đầu gửi (trừ độ lệch đồng hồ) thì xác nhận `confirmed`. Không thấy thì GIỮ `send_unknown` kèm
+     * kết quả `not_found` — không có gì chứng minh là chưa gửi. KHÔNG BAO GIỜ gọi `sendMessage`.
+     */
+    async reconcile(input: {
+      actionId: string;
+    }): Promise<{ status: "confirmed" | "not_found" | "error" | "skipped" }> {
+      const [a] = await db
+        .select()
+        .from(actionLedger)
+        .where(
+          and(
+            eq(actionLedger.id, input.actionId),
+            eq(actionLedger.state, "send_unknown"),
+          ),
+        );
+      if (!a) return { status: "skipped" };
+      const record = async (result: string) => {
+        await db
+          .update(actionLedger)
+          .set({ reconciledAt: now(), reconcileResult: result })
+          .where(
+            and(
+              eq(actionLedger.id, a.id),
+              eq(actionLedger.state, "send_unknown"),
+            ),
+          );
+      };
+      if (a.conversationId === null || a.dispatchedAt === null) {
+        await record("error");
+        return { status: "error" };
+      }
+      const tgt = await target(a.conversationId);
+      let provider: SocialProvider | undefined;
+      try {
+        provider = tgt
+          ? resolveProvider(tgt.provider, box.decrypt(tgt.credentialsEnc))
+          : undefined;
+      } catch {
+        provider = undefined;
+      }
+      if (
+        !tgt ||
+        !provider ||
+        !supportsConversations(provider, tgt.platform as Platform)
+      ) {
+        await record("error");
+        return { status: "error" };
+      }
+      // Tin gửi đi do ta gửi nằm sau lúc bắt đầu gửi; trừ 60 giây cho lệch đồng hồ giữa hai bên.
+      const threshold = a.dispatchedAt.getTime() - 60_000;
+      try {
+        let cursor: string | undefined;
+        for (let page = 0; page < 3; page++) {
+          const res = await listMessages(provider, {
+            platform: tgt.platform as Platform,
+            accountId: tgt.accountRef,
+            conversationId: tgt.conversationRef,
+            cursor,
+          });
+          let older = false;
+          for (const m of res.items) {
+            const ms = parseIsoWithOffset(m.sentAt);
+            if (ms === undefined) continue;
+            if (ms < threshold) {
+              older = true; // mới nhất trước: từ đây trở đi đều cũ hơn lúc gửi
+              continue;
+            }
+            if (
+              m.direction === "outgoing" &&
+              textHashOf(m.text) === a.textHash
+            ) {
+              const done = await finish(a.id, ["send_unknown"], "confirmed", {
+                providerMessageIds: m.id ? [m.id] : [],
+                reconcileResult: "found",
+                reconciledAt: now(),
+              });
+              if (done) await markDraftSent(a.draftId);
+              return { status: "confirmed" };
+            }
+          }
+          if (older || res.nextCursor === null) break;
+          cursor = res.nextCursor;
+        }
+      } catch {
+        // Không đọc được: không kết luận gì; giữ send_unknown và thử lại lượt sau. Không ghi nội dung lỗi.
+        await record("error");
+        return { status: "error" };
+      }
+      await record("not_found");
+      return { status: "not_found" };
+    },
+
+    /**
+     * Admin/owner quyết định số phận một `send_unknown` sau khi tự kiểm trên nền tảng: `sent` → confirmed; `not_sent` →
+     * failed (`confirmed_not_sent`), mở đường cho một yêu cầu MỚI. Hệ thống không tự quyết thay người.
+     */
+    async resolveUnknown(input: {
+      actorId: string;
+      workspaceId: string;
+      actionId: string;
+      outcome: "sent" | "not_sent";
+    }): Promise<ActionView> {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "actions.resolve",
+      );
+      if (input.outcome !== "sent" && input.outcome !== "not_sent")
+        throw new ValidationError("Kết quả phải là sent hoặc not_sent");
+      if (!UUID.test(input.actionId)) throw new NotFoundError();
+      const [a] = await db
+        .select()
+        .from(actionLedger)
+        .where(
+          and(
+            eq(actionLedger.id, input.actionId),
+            eq(actionLedger.workspaceId, input.workspaceId),
+          ),
+        );
+      if (!a) throw new NotFoundError();
+      const done = await finish(
+        a.id,
+        ["send_unknown"],
+        input.outcome === "sent" ? "confirmed" : "failed",
+        input.outcome === "sent"
+          ? { resolvedBy: input.actorId }
+          : { resolvedBy: input.actorId, errorCode: "confirmed_not_sent" },
+      );
+      if (!done)
+        throw new ConflictError(
+          "action_not_unknown",
+          "Hành động không ở trạng thái chưa rõ kết quả",
+        );
+      if (input.outcome === "sent") await markDraftSent(done.draftId);
+      return view(done);
+    },
+
+    /**
+     * Huỷ: `queued` → `cancelled` (chưa gửi gì); `dispatching` → `cancel_requested` (không rút lại được việc đang gửi; kết
+     * quả thật vẫn được ghi). Đã xong hoặc đang `send_unknown` thì không huỷ. Người tạo hoặc admin/owner.
+     */
+    async cancel(input: {
+      actorId: string;
+      workspaceId: string;
+      actionId: string;
+    }): Promise<ActionView> {
+      await requireAction(db, input.actorId, input.workspaceId, "inbox.reply");
+      if (!UUID.test(input.actionId)) throw new NotFoundError();
+      const [a] = await db
+        .select()
+        .from(actionLedger)
+        .where(
+          and(
+            eq(actionLedger.id, input.actionId),
+            eq(actionLedger.workspaceId, input.workspaceId),
+          ),
+        );
+      if (!a) throw new NotFoundError();
+      if (
+        a.createdBy !== input.actorId &&
+        !can(
+          await getRole(db, input.workspaceId, input.actorId),
+          "actions.resolve",
+        )
+      )
+        throw new ConflictError(
+          "action_not_cancellable",
+          "Chỉ người tạo hoặc admin được huỷ",
+        );
+      const cancelled = await finish(a.id, ["queued"], "cancelled");
+      if (cancelled) return view(cancelled);
+      const [requested] = await db
+        .update(actionLedger)
+        .set({ state: "cancel_requested" })
+        .where(
+          and(eq(actionLedger.id, a.id), eq(actionLedger.state, "dispatching")),
+        )
+        .returning();
+      if (requested) return view(requested);
+      throw new ConflictError(
+        "action_not_cancellable",
+        "Hành động không còn huỷ được",
+      );
+    },
+
+    /** Việc nền: nhận và gửi các hành động `queued` cũ nhất. Trả số lượng theo kết quả. */
+    async dispatchDue(input: {
+      limit: number;
+    }): Promise<Record<DispatchStatus, number>> {
+      const out: Record<DispatchStatus, number> = {
+        sent: 0,
+        blocked: 0,
+        failed: 0,
+        send_unknown: 0,
+        skipped: 0,
+        deferred: 0,
+      };
+      if (!live()) return out;
+      const due = await db
+        .select({ id: actionLedger.id })
+        .from(actionLedger)
+        .where(eq(actionLedger.state, "queued"))
+        .orderBy(asc(actionLedger.createdAt), asc(actionLedger.id))
+        .limit(input.limit);
+      for (const r of due)
+        out[(await api.dispatch({ actionId: r.id })).status]++;
+      return out;
+    },
+
+    /**
+     * Việc nền: đối soát các `send_unknown` đủ tuổi (`minAgeMs` kể từ lúc gửi/lần đối soát trước, để nhà cung cấp kịp ghi tin)
+     * và chưa quá `maxAgeMs`; quá hạn thì để người quyết (`resolveUnknown`).
+     */
+    async reconcileDue(input: {
+      limit: number;
+      minAgeMs: number;
+      maxAgeMs: number;
+    }): Promise<
+      Record<"confirmed" | "not_found" | "error" | "skipped", number>
+    > {
+      const out = { confirmed: 0, not_found: 0, error: 0, skipped: 0 };
+      const t = now().getTime();
+      const due = await db
+        .select({ id: actionLedger.id })
+        .from(actionLedger)
+        .where(
+          and(
+            eq(actionLedger.state, "send_unknown"),
+            lte(actionLedger.dispatchedAt, new Date(t - input.minAgeMs)),
+            gte(actionLedger.dispatchedAt, new Date(t - input.maxAgeMs)),
+            or(
+              isNull(actionLedger.reconciledAt),
+              lte(actionLedger.reconciledAt, new Date(t - input.minAgeMs)),
+            ),
+          ),
+        )
+        .orderBy(asc(actionLedger.dispatchedAt))
+        .limit(input.limit);
+      for (const r of due)
+        out[(await api.reconcile({ actionId: r.id })).status]++;
+      return out;
+    },
+
     async get(input: {
       actorId: string;
       workspaceId: string;
@@ -473,6 +740,7 @@ export function createActionService(deps: ActionServiceDeps) {
       return rows.map(view);
     },
   };
+  return api;
 }
 
 export type ActionService = ReturnType<typeof createActionService>;
