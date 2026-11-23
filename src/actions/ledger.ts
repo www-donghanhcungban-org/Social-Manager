@@ -76,7 +76,7 @@ export interface ActionView {
   reconcileResult: string | null;
 }
 
-const view = (r: typeof actionLedger.$inferSelect): ActionView => ({
+export const view = (r: typeof actionLedger.$inferSelect): ActionView => ({
   id: r.id,
   state: r.state,
   blockedReason: r.blockedReason,
