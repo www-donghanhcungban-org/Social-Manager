@@ -7,6 +7,7 @@ import { poolConfig } from "../db/client";
 import * as schema from "../db/schema";
 import { socialAccounts, providerConnections } from "../db/schema";
 import { createConnectionService } from "../connections/service";
+import { createDraftService } from "../actions/drafts";
 import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
@@ -91,6 +92,7 @@ export function createContainer(cfg: Env) {
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
     evidence,
+    drafts: createDraftService({ db }),
     ai,
     answers: createAnswerService({ search, ai }),
     search,

@@ -633,6 +633,77 @@ export const aiDisclosures = pgTable(
   ],
 );
 
+export const DRAFT_STATUSES = ["open", "sent", "discarded"] as const;
+export type DraftStatus = (typeof DRAFT_STATUSES)[number];
+export const DRAFT_SOURCES = ["human", "ai"] as const;
+export type DraftSource = (typeof DRAFT_SOURCES)[number];
+
+/**
+ * Bản nháp trả lời một hội thoại (M09). Nội dung nằm ở `draft_versions` (mỗi lần sửa một phiên bản, không ghi đè);
+ * `current_version` là khoá lạc quan: sửa phải nêu phiên bản đang dựa vào. Xoá hội thoại xoá luôn nháp.
+ */
+export const drafts = pgTable(
+  "drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    status: text("status", { enum: DRAFT_STATUSES }).notNull().default("open"),
+    currentVersion: integer("current_version").notNull().default(1),
+    /** Người tạo (`user.id` của Better Auth). */
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "drafts_status_check",
+      sql`${t.status} in (${inList(DRAFT_STATUSES)})`,
+    ),
+    check("drafts_version_check", sql`${t.currentVersion} >= 1`),
+    index("drafts_conversation_idx").on(t.conversationId, t.updatedAt),
+    index("drafts_workspace_idx").on(t.workspaceId),
+  ],
+);
+
+export const draftVersions = pgTable(
+  "draft_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => drafts.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    text: text("text").notNull(),
+    /** `ai`: do mô hình gợi ý (người vẫn phải duyệt trước khi gửi); `human`: người gõ. */
+    source: text("source", { enum: DRAFT_SOURCES }).notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("draft_versions_draft_version").on(t.draftId, t.version),
+    check("draft_versions_version_check", sql`${t.version} >= 1`),
+    check(
+      "draft_versions_source_check",
+      sql`${t.source} in (${inList(DRAFT_SOURCES)})`,
+    ),
+    check(
+      "draft_versions_text_check",
+      sql`length(btrim(${t.text})) between 1 and 4000`,
+    ),
+    index("draft_versions_workspace_idx").on(t.workspaceId),
+  ],
+);
+
 export const POST_STATUSES = [
   "scheduled",
   "publishing",

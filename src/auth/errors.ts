@@ -30,7 +30,9 @@ export class ConflictError extends Error {
       | "name_taken"
       | "alias_limit"
       | "alias_taken"
-      | "decision_not_active",
+      | "decision_not_active"
+      | "version_conflict"
+      | "draft_closed",
     message: string,
   ) {
     super(message);

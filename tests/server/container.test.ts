@@ -22,6 +22,7 @@ describe("createContainer", () => {
       "answers",
       "connections",
       "coverage",
+      "drafts",
       "erasure",
       "evidence",
       "inbox",

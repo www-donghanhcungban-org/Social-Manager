@@ -99,3 +99,10 @@
 - Chọn: Tìm kiếm toàn văn dựng sẵn của Postgres trên văn bản đã bỏ dấu bằng hàm riêng; cổng ModelPort với adapter OpenAI-tương-thích bằng fetch, AI tắt mặc định, đám mây bật theo workspace kèm nhật ký; bộ 50 câu đo truy xuất; chưa thêm phụ thuộc AI SDK và pg_trgm
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: bộ truy xuất đúng và kiểm được trên PGlite trong Gate; dữ liệu khách không rời máy khi chưa được phép (H6). Không thêm phụ thuộc/extension khi chưa có phép thử và khoảng thiếu cụ thể (working.md §2 H7, source-plan mục 14). Cổng ModelPort giữ đường nâng AI SDK sau
 - Đường lùi: Mỗi task một commit có migration down; ModelPort tách adapter nên đổi adapter không chạm dịch vụ
+
+### D-015 · 2026-11-23T01:24:40+00:00 · Phạm vi và an toàn của đợt xw-4 (gửi trả lời từ hộp thư) khi chủ dự án giao toàn quyền tự quyết
+
+- Phương án: (1) Dựng đủ nháp, chính sách, sổ hành động, send_unknown, đối soát, job; kiểm bằng nhà cung cấp giả; gửi thật mặc định TẮT bằng hai cờ (OUTBOUND_LIVE của hệ thống, outbound_enabled do owner bật), tác tử không bật · (2) Bật gửi thật ngay khi xong
+- Chọn: Dựng đủ nháp, chính sách, sổ hành động, send_unknown, đối soát, job; kiểm bằng nhà cung cấp giả; gửi thật mặc định TẮT bằng hai cờ (OUTBOUND_LIVE của hệ thống, outbound_enabled do owner bật), tác tử không bật
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: gửi tin là hành động không đảo ngược tới người thật, SocialAPI không có idempotency; ủy quyền production ghi outbound_messages live=false. Toàn quyền tự quyết áp dụng cho thiết kế và thi công, không thay cho khoá thật và quyết định bật gửi thật của chủ dự án
+- Đường lùi: Mỗi task một commit có migration down; cờ OUTBOUND_LIVE tắt là dừng mọi đường gửi

@@ -100,6 +100,8 @@ describe("migration", () => {
     "search_documents",
     "decisions",
     "ai_disclosures",
+    "drafts",
+    "draft_versions",
   ];
 
   // Với mỗi migration: lùi từ bản mới nhất xuống tới nó (đúng thứ tự), sổ drizzle phải khớp,
