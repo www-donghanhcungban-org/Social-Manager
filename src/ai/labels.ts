@@ -11,11 +11,17 @@ export const UNANSWERED_LABEL = {
     "Mô hình trả về kết quả không hợp lệ nên bị loại, không hiển thị câu trả lời.",
   refused: "Mô hình từ chối trả lời câu hỏi này.",
   blocked_input:
-    "Câu hỏi có nội dung không được xử lý tự động (ví dụ yêu cầu đổi luật hoặc lộ lời nhắc); hãy diễn đạt lại.",
+    "Câu hỏi có nội dung không được xử lý tự động (ví dụ yêu cầu đổi luật, lộ lời nhắc hoặc hành vi bị cấm như thao túng, chấm điểm xã hội, giả làm người); hãy diễn đạt lại.",
   human_required:
     "Câu hỏi thuộc nhóm nhạy cảm (y tế, pháp lý, tài chính cá nhân, trẻ em, an toàn cá nhân): cần người xem xét, hệ thống không trả lời tự động.",
 } as const;
 export type UnansweredReason = keyof typeof UNANSWERED_LABEL;
+
+/** Thông báo đang dùng AI (UX-AI-001, CMP-AI-003): chữ nhìn thấy, hiện trước khi người dùng hỏi. */
+export const AI_DISCLOSURE =
+  "Phần hỏi đáp do AI (mô hình ngôn ngữ) trả lời, không phải người. AI có thể sai; hãy kiểm tra các nguồn trích dẫn trước khi dựa vào. AI chỉ đọc kho bằng chứng và không tự gửi hay sửa gì.";
+/** Nhãn gắn với mỗi câu trả lời do AI tạo (UX-AI-002). */
+export const AI_ANSWER_LABEL = "Do AI tạo";
 
 export const SOURCE_LABEL: Record<EvidenceSource, string> = {
   message: "Tin nhắn",

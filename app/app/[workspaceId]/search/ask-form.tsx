@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { askAction, type AskState } from "./actions";
+import { AnswerView } from "./answer-view";
 
 const initial: AskState = {
   answer: null,
@@ -10,12 +11,6 @@ const initial: AskState = {
   error: false,
   citations: [],
   runs: 0,
-};
-
-const SOURCE: Record<string, string> = {
-  message: "Tin nhắn",
-  document: "Tài liệu",
-  github: "GitHub",
 };
 
 export function AskForm({ workspaceId }: { workspaceId: string }) {
@@ -54,26 +49,7 @@ export function AskForm({ workspaceId }: { workspaceId: string }) {
           </p>
         )}
         {state.answer !== null && (
-          <section aria-label="Câu trả lời" className="flex flex-col gap-2">
-            {/* Đầu ra mô hình: văn bản thuần (React tự escape), không render HTML. */}
-            <p className="whitespace-pre-wrap break-words">{state.answer}</p>
-            <ol
-              className="flex flex-col gap-1 text-sm"
-              aria-label="Nguồn trích dẫn"
-            >
-              {state.citations.map((c) => (
-                <li key={c.n}>
-                  [{c.n}] {SOURCE[c.source] ?? c.source} · {c.externalId}
-                  {c.snippet && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      — {c.snippet}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </section>
+          <AnswerView answer={state.answer} citations={state.citations} />
         )}
       </div>
     </div>

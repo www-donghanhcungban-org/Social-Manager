@@ -30,6 +30,8 @@ export interface Citation {
 export type AnswerResult =
   | {
       answered: true;
+      /** Siêu dữ liệu máy đọc được (UX-AI-002): nội dung này do AI tạo. */
+      generatedBy: "ai";
       answer: string;
       citations: Citation[];
       disclosureId: string;
@@ -171,6 +173,7 @@ export function createAnswerService({
         return { answered: false, reason: "invalid_output", disclosureId };
       return {
         answered: true,
+        generatedBy: "ai",
         answer,
         disclosureId,
         citations: unique.map((n) => {

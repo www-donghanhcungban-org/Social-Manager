@@ -197,3 +197,10 @@
 - Chọn: Khoá băm sha256 + chỉ số truy xuất tất định tự viết; GIN trên biểu thức to_tsvector('simple', text_folded)
 - Lý do (tiêu chí chất lượng cuối): CI không được gọi model thật (AI-EVAL-002) nên ragas/deepeval (cần model judge) không chạy được; dataset 50 mẫu nằm trong git, khoá băm đủ để phát hiện lệch; chỉ mục biểu thức cho cùng EXPLAIN (Bitmap Index Scan) mà không thêm cột phải đồng bộ
 - Đường lùi: Thêm DVC/ragas khi có model judge hiệu chuẩn; thêm cột search_vector bằng migration expand/contract nếu bảng lớn
+
+### D-029 · 2026-11-24T02:03:28+00:00 · T-528: sản phẩm chưa có tác tử AI — làm đủ hạ tầng tác tử (registry tool, HITL, ngân sách 5 chiều, agent con) hay miễn có điều kiện kiểm được?
+
+- Phương án: (1) Miễn 11 mục tác tử kèm test ranh giới đỏ khi thêm tool-calling hoặc agent; làm thật phần đang có (minh bạch, nhãn AI, escape đầu ra, hành vi bị cấm, sổ hành động) · (2) Dựng khung tác tử đầy đủ trước khi có nhu cầu
+- Chọn: Miễn 11 mục tác tử kèm test ranh giới đỏ khi thêm tool-calling hoặc agent; làm thật phần đang có (minh bạch, nhãn AI, escape đầu ra, hành vi bị cấm, sổ hành động)
+- Lý do (tiêu chí chất lượng cuối): Mô hình chỉ nhận/trả chữ (H13), một nơi gọi duy nhất; khung tác tử không dùng là bề mặt tấn công và mã chết; test ranh giới buộc làm mục thật khi thêm tool
+- Đường lùi: Bỏ miễn trừ và làm các mục khi thêm tool-calling hoặc agent (test agent-boundary sẽ đỏ)

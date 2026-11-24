@@ -1,4 +1,4 @@
-import { SOURCE_LABEL } from "@/src/ai/labels";
+import { AI_DISCLOSURE, SOURCE_LABEL } from "@/src/ai/labels";
 import { formatDate } from "@/src/format/intl";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
@@ -101,6 +101,12 @@ export default async function SearchPage({
         <h2 id="ask-title" className="text-lg font-medium">
           Hỏi đáp có trích dẫn
         </h2>
+        <p
+          data-ai-disclosure
+          className="rounded border border-border p-3 text-sm"
+        >
+          {AI_DISCLOSURE}
+        </p>
         {ai.enabled ? (
           <AskForm workspaceId={workspaceId} />
         ) : (

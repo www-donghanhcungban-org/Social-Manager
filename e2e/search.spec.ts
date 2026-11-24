@@ -43,6 +43,12 @@ test("tìm trong tin đã đồng bộ (không phân biệt dấu) và hỏi đ�
   await page.getByRole("link", { name: "Tìm kiếm", exact: true }).click();
   await expect(page).toHaveURL(/\/search$/);
 
+  // Thông báo AI bằng chữ nhìn thấy, có từ đầu (UX-AI-001, CMP-AI-003)
+  await expect(page.locator("[data-ai-disclosure]")).toBeVisible();
+  await expect(page.locator("[data-ai-disclosure]")).toContainText(
+    /AI.*không phải người/,
+  );
+
   // AI tắt mặc định: không có form hỏi, trang nói rõ
   await expect(page.getByRole("note")).toContainText("AI chưa được bật");
   await expect(page.getByLabel("Câu hỏi")).toHaveCount(0);

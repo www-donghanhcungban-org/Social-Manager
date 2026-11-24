@@ -22,6 +22,21 @@ const INJECTION: RegExp[] = [
 ];
 
 /**
+ * Hành vi bị cấm (CMP-AI-002): yêu cầu thao túng/lừa dối, chấm điểm xã hội, nhận diện cảm xúc, deepfake, giả danh người,
+ * che giấu giám sát của người. Hỏi đáp chỉ đọc kho bằng chứng nên không có tính năng nào làm việc này; mẫu dưới đây
+ * từ chối sớm cả yêu cầu. Khớp trên văn bản đã bỏ dấu.
+ */
+const PROHIBITED: RegExp[] = [
+  /\b(cham diem|xep hang|danh gia)\b.{0,20}\b(xa hoi|cong dan|uy tin cua nguoi)\b/,
+  /\b(nhan dien|phan tich|doan)\b.{0,15}\bcam xuc\b/,
+  /\b(deepfake|gia mao (giong|guong mat|khuon mat|hinh anh))\b/,
+  /\b(thao tung|lua doi|danh lua)\b.{0,25}\b(khach hang|nguoi dung|nguoi gia|tre em|nguoi khuyet tat)\b/,
+  /\b(gia (lam|danh) (nguoi that|nhan vien|con nguoi)|khong cho (ai|nguoi) biet (la )?(ai|bot|may))\b/,
+  /\b(che giau|giau)\b.{0,20}\b(giam sat|kiem duyet cua con nguoi|nguoi duyet)\b/,
+  /\b(social scoring|emotion recognition|impersonate a human)\b/,
+];
+
+/**
  * Nhóm rủi ro cao theo AI-GUARD-008: mô hình không tự xử, chuyển người. Cụm từ khớp trên văn bản đã bỏ dấu.
  * (Tiền/giao dịch của người dùng đi qua sổ hành động và duyệt của người, không qua hỏi đáp.)
  */
@@ -52,7 +67,7 @@ const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 export function checkInput(question: string): InputVerdict {
   if (CONTROL.test(question)) return { ok: false, reason: "blocked_input" };
   const f = fold(question);
-  if (INJECTION.some((re) => re.test(f)))
+  if (INJECTION.some((re) => re.test(f)) || PROHIBITED.some((re) => re.test(f)))
     return { ok: false, reason: "blocked_input" };
   if (sensitiveTopics(question).length > 0)
     return { ok: false, reason: "human_required" };
