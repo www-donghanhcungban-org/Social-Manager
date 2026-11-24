@@ -121,8 +121,11 @@ def main(argv: list[str] | None = None) -> int:
 LEDGER = "docs/autopilot/ACCEPTANCE.json"
 MAX_FILES = 2000
 MAX_BYTES = 5 * 1024 * 1024
-SCENARIO = re.compile(r"\bS-\d{3,}\b")
+# Scenario = `S-NNN` (khung) hoặc `F-NNN/AC-xx` (quy ước dự án x-workspace, D-032/D-036: AC-xx của spec F-NNN-*.md,
+# tên test chứa `F-NNN/AC-xx`) — ID có tiền tố spec nên duy nhất toàn dự án.
+SCENARIO = re.compile(r"\b(?:S-\d{3,}|F-\d{3,}/AC-\d{2,})\b")
 HEADING = re.compile(r"^###\s+(S-\d{3,})\b", re.M)
+HEADING_AC = re.compile(r"^###\s+(AC-\d{2,})\b", re.M)
 HASH = re.compile("[0-9a-f]{64}")
 
 
@@ -276,9 +279,13 @@ def required_specs(core: ModuleType, base: Path) -> set[str]:
 
 
 def _scenarios(core: ModuleType, base: Path, spec: str) -> set[str]:
-    ids = set(HEADING.findall(core._markdown_shown(project_file(base, spec).read_text(encoding="utf-8"))))
+    text = core._markdown_shown(project_file(base, spec).read_text(encoding="utf-8"))
+    ids = set(HEADING.findall(text))
+    prefix = re.match(r"F-\d{3,}", Path(spec).name)
+    if not ids and prefix:
+        ids = {f"{prefix.group(0)}/{ac}" for ac in HEADING_AC.findall(text)}
     if not ids:
-        raise ValueError(f"{spec} thiếu tiêu đề scenario ### S-NNN")
+        raise ValueError(f"{spec} thiếu tiêu đề scenario ### S-NNN (hoặc ### AC-xx trong spec F-NNN-*.md)")
     return ids
 
 

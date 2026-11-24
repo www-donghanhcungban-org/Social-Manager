@@ -246,3 +246,24 @@
 - Chọn: B: đóng 4 nhóm, ghi khoảng thiếu và phát hiện
 - Lý do (tiêu chí chất lượng cuối): Hết trần vòng; 111 test xanh; phần thiếu và phát hiện ghi vào PROGRESS cho phiên sau
 - Đường lùi: Viết nốt nhóm SSRF và dò mật khẩu, mở lại tick T-582
+
+### D-036 · 2026-11-24T05:55:29+00:00 · Khoá nghiệm thu: khung chỉ nhận ### S-NNN, spec dự án dùng AC-xx — sửa spec hay mở rộng công cụ?
+
+- Phương án: (1) A: đổi 46 tiêu đề AC thành S-NNN và mọi tên test, sửa spec-lint · (2) B: mở rộng xt_acceptance.py nhận F-NNN/AC-xx (ID có tiền tố spec)
+- Chọn: B: mở rộng xt_acceptance.py nhận F-NNN/AC-xx (ID có tiền tố spec)
+- Lý do (tiêu chí chất lượng cuối): Công cụ .xtemplates thuộc dự án (ADR-0003); B nhỏ, giữ truy vết đã có test (D-032), không đổi tên hàng loạt; ID có tiền tố nên duy nhất toàn dự án
+- Đường lùi: Hoàn tác 2 chỗ ở xt_acceptance.py, gỡ khoá khỏi docs/autopilot/ACCEPTANCE.json
+
+### D-037 · 2026-11-24T06:29:16+00:00 · Khoá nghiệm thu F-001..F-005 trên mã đã có (xanh ngay), không theo thứ tự nghiệm thu trước mã?
+
+- Phương án: (1) A: gỡ mã để test đỏ rồi viết lại · (2) B: khoá bằng --existing: bộ nghiệm thu viết độc lập từ SPEC bởi acceptance-author sau khi mã đã có, chốt hash để chặn sửa test cho vừa mã
+- Chọn: B: khoá bằng --existing: bộ nghiệm thu viết độc lập từ SPEC bởi acceptance-author sau khi mã đã có, chốt hash để chặn sửa test cho vừa mã
+- Lý do (tiêu chí chất lượng cuối): Mã F-001..F-005 đã phát hành 1.0.0; gỡ mã là phá sản phẩm. Lợi ích còn lại của khoá (chống sửa test cho xanh) giữ nguyên; tác giả test là agent không viết mã, chỉ đọc SPEC và hợp đồng công khai
+- Đường lùi: Gỡ 5 khoá khỏi docs/autopilot/ACCEPTANCE.json, khai acceptance trống
+
+### D-038 · 2026-11-24T06:53:28+00:00 · SOCIALAPI_BASE_URL/AI_BASE_URL có chặn loopback và mạng riêng không?
+
+- Phương án: (1) A: giữ cho phép (chỉ chặn link-local/metadata), it.fails ghi hành vi mong muốn · (2) B: chặn kèm biến env cho phép bật lại · (3) C: chặn hẳn
+- Chọn: A: giữ cho phép (chỉ chặn link-local/metadata), it.fails ghi hành vi mong muốn
+- Lý do (tiêu chí chất lượng cuối): URL do người vận hành đặt, không phải người dùng cuối; chặn mạng riêng làm hỏng triển khai tự host qua proxy nội bộ (mặc định tự host, AGENTS §5). Đã chặn 169.254/16 và IPv6 tương đương (đường lấy khoá đám mây); redirect:error chặn bật hơi sang nội bộ
+- Đường lùi: Đổi it.fails thành it và thêm kiểm loopback/riêng ở src/config/env.ts
