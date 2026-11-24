@@ -102,7 +102,7 @@ afterEach(async () => {
 });
 
 describe("dự án", () => {
-  it("admin tạo, member chỉ đọc, người ngoài không thấy", async () => {
+  it("admin tạo, member chỉ đọc, người ngoài không thấy [F-007/AC-09]", async () => {
     const p = await mk("Cửa hàng Hoa");
     expect(p.name).toBe("Cửa hàng Hoa");
     await expect(mk("X", "member")).rejects.toBeInstanceOf(ForbiddenError);
@@ -116,7 +116,7 @@ describe("dự án", () => {
     expect(await svc().list(as("other", wsB))).toEqual([]);
   });
 
-  it("chuẩn hoá NFC và khoảng trắng; trùng tên không phân biệt hoa thường/NFD bị từ chối", async () => {
+  it("chuẩn hoá NFC và khoảng trắng; trùng tên không phân biệt hoa thường/NFD bị từ chối [F-007/AC-04]", async () => {
     await mk("  Việt   Nam ".normalize("NFD"));
     expect((await svc().list(as("member")))[0]!.name).toBe("Việt Nam");
     for (const dup of ["việt nam", "VIỆT NAM", "Việt Nam".normalize("NFD")])
@@ -127,13 +127,13 @@ describe("dự án", () => {
     ).resolves.toBeDefined();
   });
 
-  it("từ chối tên rỗng, chỉ khoảng trắng, quá 100 ký tự; nhận đúng 100", async () => {
+  it("từ chối tên rỗng, chỉ khoảng trắng, quá 100 ký tự; nhận đúng 100 [F-007/AC-04]", async () => {
     for (const name of ["", "   ", "x".repeat(101)])
       await expect(mk(name)).rejects.toBeInstanceOf(ValidationError);
     await expect(mk("x".repeat(100))).resolves.toBeDefined();
   });
 
-  it("trần số dự án mỗi workspace", async () => {
+  it("trần số dự án mỗi workspace [F-007/AC-04]", async () => {
     await t.db.insert(projects).values(
       Array.from({ length: MAX_PROJECTS_PER_WORKSPACE }, (_, i) => ({
         workspaceId: wsA,
@@ -148,7 +148,7 @@ describe("dự án", () => {
 });
 
 describe("bí danh", () => {
-  it("thêm, liệt kê cùng dự án, so khớp không phân biệt hoa thường; trùng trong workspace bị từ chối", async () => {
+  it("thêm, liệt kê cùng dự án, so khớp không phân biệt hoa thường; trùng trong workspace bị từ chối [F-007/AC-04]", async () => {
     const a = await mk("Dự án A");
     const b = await mk("Dự án B");
     await svc().addAlias({
@@ -166,7 +166,7 @@ describe("bí danh", () => {
     expect(listed.find((p) => p.id === b.id)!.aliases).toEqual([]);
   });
 
-  it("bí danh không được trùng tên dự án; tên dự án không được trùng bí danh", async () => {
+  it("bí danh không được trùng tên dự án; tên dự án không được trùng bí danh [F-007/AC-04]", async () => {
     const a = await mk("Dự án A");
     await mk("Dự án B");
     await expect(
@@ -176,7 +176,7 @@ describe("bí danh", () => {
     await expect(mk("da")).rejects.toMatchObject({ reason: "name_taken" });
   });
 
-  it("trần bí danh mỗi dự án; gỡ bí danh; dự án/bí danh của workspace khác là NotFound", async () => {
+  it("trần bí danh mỗi dự án; gỡ bí danh; dự án/bí danh của workspace khác là NotFound [F-007/AC-04] [F-007/AC-09]", async () => {
     const a = await mk("Dự án A");
     for (let i = 0; i < MAX_ALIASES_PER_PROJECT; i++)
       await svc().addAlias({
@@ -205,7 +205,7 @@ describe("bí danh", () => {
 });
 
 describe("liên kết nguồn–dự án", () => {
-  it("gắn hội thoại và bằng chứng; gắn lại là lũy đẳng; liệt kê đủ", async () => {
+  it("gắn hội thoại và bằng chứng; gắn lại là lũy đẳng; liệt kê đủ [F-007/AC-05]", async () => {
     const p = await mk("Dự án A");
     const c1 = await svc().link({
       ...as("admin"),
@@ -236,7 +236,7 @@ describe("liên kết nguồn–dự án", () => {
     });
   });
 
-  it("một nguồn gắn được nhiều dự án", async () => {
+  it("một nguồn gắn được nhiều dự án [F-007/AC-05]", async () => {
     const a = await mk("A");
     const b = await mk("B");
     for (const p of [a, b])
@@ -248,7 +248,7 @@ describe("liên kết nguồn–dự án", () => {
     expect(await t.db.select().from(projectLinks)).toHaveLength(2);
   });
 
-  it("nguồn của workspace khác hoặc id lạ là NotFound; member không gắn được", async () => {
+  it("nguồn của workspace khác hoặc id lạ là NotFound; member không gắn được [F-007/AC-09]", async () => {
     const p = await mk("A");
     for (const target of [
       { type: "conversation", conversationId: convB } as const,
@@ -270,7 +270,7 @@ describe("liên kết nguồn–dự án", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("gỡ liên kết không xoá hội thoại hay bằng chứng", async () => {
+  it("gỡ liên kết không xoá hội thoại hay bằng chứng [F-007/AC-05]", async () => {
     const p = await mk("A");
     const l = await svc().link({
       ...as("admin"),
@@ -288,7 +288,7 @@ describe("liên kết nguồn–dự án", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("xoá nguồn xoá liên kết theo tầng; xoá dự án xoá liên kết và bí danh nhưng giữ nguồn", async () => {
+  it("xoá nguồn xoá liên kết theo tầng; xoá dự án xoá liên kết và bí danh nhưng giữ nguồn [F-007/AC-05]", async () => {
     const p = await mk("A");
     await svc().addAlias({ ...as("admin"), projectId: p.id, alias: "bd" });
     await svc().link({
@@ -308,7 +308,7 @@ describe("liên kết nguồn–dự án", () => {
     expect(await t.db.select().from(evidenceItems)).toHaveLength(1);
   });
 
-  it("CHECK của CSDL từ chối liên kết thiếu đích hoặc có hai đích", async () => {
+  it("CHECK của CSDL từ chối liên kết thiếu đích hoặc có hai đích [F-007/AC-05]", async () => {
     const p = await mk("A");
     const base = { workspaceId: wsA, projectId: p.id, createdBy: "admin" };
     for (const row of [

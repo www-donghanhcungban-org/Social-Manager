@@ -56,7 +56,7 @@ afterEach(async () => {
 });
 
 describe("hộp chờ phân loại", () => {
-  it("bằng chứng chưa gắn nằm trong hộp; gắn xong thì ra khỏi hộp", async () => {
+  it("bằng chứng chưa gắn nằm trong hộp; gắn xong thì ra khỏi hộp [F-007/AC-08]", async () => {
     const a = await doc("a", "nội dung a");
     await doc("b", "nội dung b");
     expect((await inbox()).items).toHaveLength(2);
@@ -70,7 +70,7 @@ describe("hộp chờ phân loại", () => {
     expect((await inbox()).items.map((i) => i.externalId)).toEqual(["b"]);
   });
 
-  it("tin nhắn có hội thoại đã gắn dự án thì không nằm trong hộp", async () => {
+  it("tin nhắn có hội thoại đã gắn dự án thì không nằm trong hộp [F-007/AC-08]", async () => {
     const [c] = await t.db
       .insert(providerConnections)
       .values({
@@ -121,7 +121,7 @@ describe("hộp chờ phân loại", () => {
     expect((await inbox()).items).toEqual([]);
   });
 
-  it("mới nhất trước; phân trang cursor không sót, không lặp kể cả trùng thời điểm", async () => {
+  it("mới nhất trước; phân trang cursor không sót, không lặp kể cả trùng thời điểm [F-007/AC-08]", async () => {
     for (let i = 0; i < 7; i++)
       await doc(`d${i}`, `nội dung ${i}`, at(Math.min(i, 4)));
     const seen: string[] = [];
@@ -136,7 +136,7 @@ describe("hộp chờ phân loại", () => {
     expect(new Set(seen).size).toBe(7);
   });
 
-  it("hộp rỗng; limit bị kẹp 1..100; cursor hỏng là ValidationError; member đọc được, người ngoài bị Forbidden", async () => {
+  it("hộp rỗng; limit bị kẹp 1..100; cursor hỏng là ValidationError; member đọc được, người ngoài bị Forbidden [F-007/AC-08] [F-007/AC-09]", async () => {
     expect(await inbox()).toEqual({ items: [], nextCursor: null });
     await doc("a", "x");
     expect((await inbox({ limit: 0 })).items).toHaveLength(1);
@@ -174,7 +174,7 @@ describe("gợi ý theo bí danh", () => {
     return { hoa, xe };
   }
 
-  it("khớp tên hoặc bí danh, không phân biệt hoa thường và dấu NFD", async () => {
+  it("khớp tên hoặc bí danh, không phân biệt hoa thường và dấu NFD [F-007/AC-08]", async () => {
     const { hoa } = await setup();
     const a = await doc("a", "Khách hỏi về HOA HỒNG hôm qua".normalize("NFD"));
     const r = await suggest(a.itemId);
@@ -189,7 +189,7 @@ describe("gợi ý theo bí danh", () => {
     });
   });
 
-  it("chỉ khớp nguyên từ: không khớp bên trong từ khác", async () => {
+  it("chỉ khớp nguyên từ: không khớp bên trong từ khác [F-007/AC-08]", async () => {
     await svc.createProject({ ...A, workspaceId: ws, name: "da" });
     const a = await doc("a", "dạ vâng, nhưng đà này thì khó; candaxu");
     expect((await suggest(a.itemId)).matches).toEqual([]);
@@ -197,7 +197,7 @@ describe("gợi ý theo bí danh", () => {
     expect((await suggest(b.itemId)).matches).toHaveLength(1);
   });
 
-  it("nhiều dự án cùng khớp là mơ hồ; một dự án khớp qua cả tên lẫn bí danh không mơ hồ", async () => {
+  it("nhiều dự án cùng khớp là mơ hồ; một dự án khớp qua cả tên lẫn bí danh không mơ hồ [F-007/AC-08]", async () => {
     const { hoa } = await setup();
     const both = await doc("both", "Cửa hàng Hoa và Hoa Hồng");
     const r1 = await suggest(both.itemId);
@@ -210,14 +210,14 @@ describe("gợi ý theo bí danh", () => {
     expect((await suggest(two.itemId)).ambiguous).toBe(true);
   });
 
-  it("không có bí danh trong nội dung thì không gợi ý; không tự gắn", async () => {
+  it("không có bí danh trong nội dung thì không gợi ý; không tự gắn [F-007/AC-08]", async () => {
     await setup();
     const a = await doc("a", "chuyện khác hoàn toàn");
     expect(await suggest(a.itemId)).toEqual({ matches: [], ambiguous: false });
     expect((await inbox()).items).toHaveLength(1);
   });
 
-  it("tên có ký tự đặc biệt của regex được xử lý như chữ thường", async () => {
+  it("tên có ký tự đặc biệt của regex được xử lý như chữ thường [F-007/AC-08]", async () => {
     await svc.createProject({ ...A, workspaceId: ws, name: "C++ (v2)" });
     const a = await doc("a", "dự án C++ (v2) cần xem lại");
     expect((await suggest(a.itemId)).matches).toHaveLength(1);
@@ -225,7 +225,7 @@ describe("gợi ý theo bí danh", () => {
     expect((await suggest(b.itemId)).matches).toEqual([]);
   });
 
-  it("nội dung chứa chỉ thị không làm gì: chỉ so khớp", async () => {
+  it("nội dung chứa chỉ thị không làm gì: chỉ so khớp [F-007/AC-08]", async () => {
     await setup();
     const a = await doc(
       "a",
@@ -238,7 +238,7 @@ describe("gợi ý theo bí danh", () => {
     expect((await inbox()).items).toHaveLength(1);
   });
 
-  it("id lạ hoặc của workspace khác là NotFound; người ngoài bị Forbidden", async () => {
+  it("id lạ hoặc của workspace khác là NotFound; người ngoài bị Forbidden [F-007/AC-09]", async () => {
     await expect(suggest("lạ")).rejects.toBeInstanceOf(NotFoundError);
     const a = await doc("a", "x");
     await expect(suggest(a.itemId, "lạ")).rejects.toBeInstanceOf(

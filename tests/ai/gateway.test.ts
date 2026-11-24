@@ -59,13 +59,13 @@ afterEach(async () => {
 });
 
 describe("cổng AI", () => {
-  it("AI tắt (không có mô hình): AiDisabledError, không gọi gì, không ghi nhật ký", async () => {
+  it("AI tắt (không có mô hình): AiDisabledError, không gọi gì, không ghi nhật ký [F-008/AC-05]", async () => {
     expect(gw(null).enabled).toBe(false);
     await expect(ask(null)).rejects.toBeInstanceOf(AiDisabledError);
     expect(await rows()).toEqual([]);
   });
 
-  it("điểm cuối cục bộ: gọi được không cần cờ; nhật ký ghi số mục, số byte, điểm cuối — không có nội dung", async () => {
+  it("điểm cuối cục bộ: gọi được không cần cờ; nhật ký ghi số mục, số byte, điểm cuối — không có nội dung [F-008/AC-06] [F-008/AC-07]", async () => {
     const r = await ask(model());
     expect(r.text).toBe("trả lời");
     const [d] = await rows();
@@ -86,7 +86,7 @@ describe("cổng AI", () => {
     expect(JSON.stringify(d)).not.toMatch(/câu hỏi|trích đoạn|trả lời|SYS/);
   });
 
-  it("đám mây khi workspace chưa bật: bị chặn, KHÔNG gửi, ghi blocked với 0 byte", async () => {
+  it("đám mây khi workspace chưa bật: bị chặn, KHÔNG gửi, ghi blocked với 0 byte [F-008/AC-06]", async () => {
     const cloud = model({ local: false, host: "api.example.com" });
     await expect(ask(cloud)).rejects.toBeInstanceOf(AiNotAllowedError);
     expect(calls).toEqual([]);
@@ -99,7 +99,7 @@ describe("cổng AI", () => {
     });
   });
 
-  it("owner bật cờ thì đám mây chạy; tắt lại thì chặn lại; admin/member không đổi được cờ", async () => {
+  it("owner bật cờ thì đám mây chạy; tắt lại thì chặn lại; admin/member không đổi được cờ [F-008/AC-06] [F-009/AC-07]", async () => {
     const ws_svc = createWorkspaceService({ db: t.db });
     const cloud = model({ local: false, host: "api.example.com" });
     for (const actorId of ["admin", "member", "lạ"])
@@ -131,7 +131,7 @@ describe("cổng AI", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("nhật ký được ghi TRƯỚC khi gửi: ở thời điểm mô hình chạy, dòng đã có trạng thái sent", async () => {
+  it("nhật ký được ghi TRƯỚC khi gửi: ở thời điểm mô hình chạy, dòng đã có trạng thái sent [F-008/AC-07]", async () => {
     let seen: string | undefined;
     await ask(
       model({
@@ -145,7 +145,7 @@ describe("cổng AI", () => {
     expect((await rows())[0]!.status).toBe("ok");
   });
 
-  it("không ghi được nhật ký thì không gửi (thất bại đóng)", async () => {
+  it("không ghi được nhật ký thì không gửi (thất bại đóng) [F-008/AC-07]", async () => {
     // Chỉ `insert` hỏng; đọc (kiểm quyền) vẫn chạy để thấy đúng bước ghi nhật ký là bước chặn gửi.
     const broken = new Proxy(t.db, {
       get(target, prop, receiver) {
@@ -169,7 +169,7 @@ describe("cổng AI", () => {
     expect(calls).toEqual([]);
   });
 
-  it("mô hình lỗi: nhật ký thành error với mã an toàn, lỗi gốc được ném lại, không lộ nội dung", async () => {
+  it("mô hình lỗi: nhật ký thành error với mã an toàn, lỗi gốc được ném lại, không lộ nội dung [F-008/AC-07]", async () => {
     const err = new ModelError("model.http.500", "Mô hình trả 500");
     await expect(
       ask(
@@ -199,7 +199,7 @@ describe("cổng AI", () => {
     expect(JSON.stringify(await rows())).not.toMatch(/pw@|sk-live/);
   });
 
-  it("trần byte: đúng trần được nhận, vượt trần bị từ chối trước khi ghi/gửi", async () => {
+  it("trần byte: đúng trần được nhận, vượt trần bị từ chối trước khi ghi/gửi [F-008/AC-10]", async () => {
     await expect(
       ask(model(), { system: "", user: "x".repeat(MAX_PROMPT_BYTES) }),
     ).resolves.toBeDefined();
@@ -210,12 +210,12 @@ describe("cổng AI", () => {
     expect(await rows()).toHaveLength(1);
   });
 
-  it("đếm byte theo UTF-8 (tiếng Việt có dấu nhiều byte)", async () => {
+  it("đếm byte theo UTF-8 (tiếng Việt có dấu nhiều byte) [F-008/AC-07]", async () => {
     await ask(model(), { system: "", user: "ệ".repeat(10) });
     expect((await rows())[0]!.bytesSent).toBe(30);
   });
 
-  it("người ngoài workspace bị Forbidden trước khi gửi; mục đích và số mục sai bị từ chối", async () => {
+  it("người ngoài workspace bị Forbidden trước khi gửi; mục đích và số mục sai bị từ chối [F-008/AC-10]", async () => {
     await expect(ask(model(), { actorId: "lạ" })).rejects.toBeInstanceOf(
       ForbiddenError,
     );

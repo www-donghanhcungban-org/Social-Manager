@@ -49,7 +49,7 @@ describe("điểm cuối cục bộ hay đám mây", () => {
     ["http://localhost.evil.com/v1", false],
     ["http://127.0.0.1.evil.com/v1", false],
     ["http://[2001:db8::1]/v1", false],
-  ])("%s → cục bộ = %s", (url, local) => {
+  ])("%s → cục bộ = %s [F-008/AC-06]", (url, local) => {
     expect(isLocalEndpoint(url)).toBe(local);
   });
 });
@@ -127,7 +127,7 @@ describe("adapter OpenAI-tương-thích", () => {
     },
   );
 
-  it("lỗi mạng và hết giờ: mã riêng, không lộ URL/khoá", async () => {
+  it("lỗi mạng và hết giờ: mã riêng, không lộ URL/khoá [F-008/AC-07]", async () => {
     const net = createOpenAiCompatModel({
       baseUrl: "https://x.example.com/v1",
       model: "m",

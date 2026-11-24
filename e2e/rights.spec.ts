@@ -23,7 +23,7 @@ async function signUp(page: Page, email: string) {
   await expect(page).toHaveURL(/\/app\/[0-9a-f-]{36}$/);
 }
 
-test("rights-access: tải dữ liệu của chính mình, không lộ mật khẩu hay mã phiên", async ({
+test("rights-access: tải dữ liệu của chính mình, không lộ mật khẩu hay mã phiên [F-009/AC-01] [F-009/AC-02]", async ({
   page,
 }) => {
   const email = `rights-${randomUUID()}@example.com`;
@@ -58,7 +58,7 @@ test("rights-access: tải dữ liệu của chính mình, không lộ mật kh�
   await anon.close();
 });
 
-test("rights-withdraw-consent: cấp rồi rút đồng ý AI đám mây ở cùng một chỗ, cùng một nút", async ({
+test("rights-withdraw-consent: cấp rồi rút đồng ý AI đám mây ở cùng một chỗ, cùng một nút [F-009/AC-07]", async ({
   page,
 }) => {
   await signUp(page, `rights-${randomUUID()}@example.com`);
@@ -79,7 +79,7 @@ test("rights-withdraw-consent: cấp rồi rút đồng ý AI đám mây ở cù
   await expect(history).toContainText("Đồng ý lúc");
 });
 
-test("rights-delete: sai mật khẩu bị từ chối; đúng thì xoá tài khoản và không đăng nhập lại được", async ({
+test("rights-delete: sai mật khẩu bị từ chối; đúng thì xoá tài khoản và không đăng nhập lại được [F-009/AC-03] [F-009/AC-04]", async ({
   page,
 }) => {
   const email = `rights-${randomUUID()}@example.com`;

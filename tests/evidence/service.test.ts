@@ -68,7 +68,7 @@ afterEach(async () => {
 });
 
 describe("ingest", () => {
-  it("lưu nội dung theo hash, trả lại nguyên văn kèm kiểm hash", async () => {
+  it("lưu nội dung theo hash, trả lại nguyên văn kèm kiểm hash [F-007/AC-01]", async () => {
     const r = await svc().ingest({ actorId: "admin", ...base() });
     expect(r).toMatchObject({
       sha256: sha("Còn hàng không?"),
@@ -88,7 +88,7 @@ describe("ingest", () => {
     });
   });
 
-  it("cùng nội dung ở hai id ngoài: một blob, hai lần xuất hiện", async () => {
+  it("cùng nội dung ở hai id ngoài: một blob, hai lần xuất hiện [F-007/AC-01]", async () => {
     const a = await svc().ingestAsSystem(base({ externalId: "m1" }));
     const b = await svc().ingestAsSystem(base({ externalId: "m2" }));
     expect(b.blobReused).toBe(true);
@@ -99,14 +99,14 @@ describe("ingest", () => {
     expect(store.size).toBe(1);
   });
 
-  it("nhập lại cùng (nguồn, id ngoài, nội dung) là lũy đẳng", async () => {
+  it("nhập lại cùng (nguồn, id ngoài, nội dung) là lũy đẳng [F-007/AC-02]", async () => {
     const a = await svc().ingestAsSystem(base());
     const b = await svc().ingestAsSystem(base());
     expect(b).toMatchObject({ itemId: a.itemId, duplicate: true });
     expect(await t.db.select().from(evidenceItems)).toHaveLength(1);
   });
 
-  it("cùng id ngoài mà nội dung đổi là phiên bản mới, bản cũ vẫn còn", async () => {
+  it("cùng id ngoài mà nội dung đổi là phiên bản mới, bản cũ vẫn còn [F-007/AC-02]", async () => {
     const v1 = await svc().ingestAsSystem(base({ content: "bản 1" }));
     const v2 = await svc().ingestAsSystem(base({ content: "bản 2" }));
     expect(v2.blobId).not.toBe(v1.blobId);
@@ -119,7 +119,7 @@ describe("ingest", () => {
     expect(new TextDecoder().decode(old.content)).toBe("bản 1");
   });
 
-  it("chuẩn hoá NFC: dạng NFD và NFC cho cùng một hash", async () => {
+  it("chuẩn hoá NFC: dạng NFD và NFC cho cùng một hash [F-007/AC-02]", async () => {
     const nfd = "Việt".normalize("NFD");
     const a = await svc().ingestAsSystem(
       base({ externalId: "a", content: nfd }),
@@ -130,7 +130,7 @@ describe("ingest", () => {
     expect(a.sha256).toBe(b.sha256);
   });
 
-  it("từ chối nội dung rỗng, quá trần, loại/nguồn lạ, id ngoài rỗng hoặc quá dài, ngày hỏng", async () => {
+  it("từ chối nội dung rỗng, quá trần, loại/nguồn lạ, id ngoài rỗng hoặc quá dài, ngày hỏng [F-007/AC-03]", async () => {
     const bad: Record<string, unknown>[] = [
       { content: "" },
       { content: new Uint8Array(0) },
@@ -150,14 +150,14 @@ describe("ingest", () => {
     expect(store.size).toBe(0);
   });
 
-  it("nhận đúng trần kích thước", async () => {
+  it("nhận đúng trần kích thước [F-007/AC-03]", async () => {
     const r = await svc().ingestAsSystem(
       base({ content: new Uint8Array(MAX_EVIDENCE_BYTES).fill(97) }),
     );
     expect(r.duplicate).toBe(false);
   });
 
-  it("lỗi ghi kho nội dung: không để lại dòng DB nào", async () => {
+  it("lỗi ghi kho nội dung: không để lại dòng DB nào [F-007/AC-03]", async () => {
     const broken: BlobStore = {
       ...store,
       put: async () => {
@@ -169,7 +169,7 @@ describe("ingest", () => {
     expect(await t.db.select().from(evidenceItems)).toHaveLength(0);
   });
 
-  it("lỗi DB sau khi ghi tệp: không có dòng DB; tệp mồ côi không ai trỏ tới", async () => {
+  it("lỗi DB sau khi ghi tệp: không có dòng DB; tệp mồ côi không ai trỏ tới [F-007/AC-03]", async () => {
     await expect(
       svc().ingestAsSystem(
         base({ workspaceId: "00000000-0000-4000-8000-000000000000" }),
@@ -181,7 +181,7 @@ describe("ingest", () => {
 });
 
 describe("quyền và cô lập workspace", () => {
-  it("member không nhập được, người ngoài bị Forbidden; admin nhập được", async () => {
+  it("member không nhập được, người ngoài bị Forbidden; admin nhập được [F-007/AC-09]", async () => {
     for (const actorId of ["member", "other", "không-ai"])
       await expect(svc().ingest({ actorId, ...base() })).rejects.toBeInstanceOf(
         ForbiddenError,
@@ -191,7 +191,7 @@ describe("quyền và cô lập workspace", () => {
     ).resolves.toBeDefined();
   });
 
-  it("workspace khác không đọc được mục của mình dù biết id; cùng nội dung có blob riêng", async () => {
+  it("workspace khác không đọc được mục của mình dù biết id; cùng nội dung có blob riêng [F-007/AC-09]", async () => {
     const a = await svc().ingestAsSystem(base());
     await expect(
       svc().getContent({
@@ -223,7 +223,7 @@ describe("quyền và cô lập workspace", () => {
 });
 
 describe("toàn vẹn", () => {
-  it("nội dung bị sửa trong kho: IntegrityError, không trả nội dung sai", async () => {
+  it("nội dung bị sửa trong kho: IntegrityError, không trả nội dung sai [F-007/AC-03]", async () => {
     const r = await svc().ingestAsSystem(base());
     store.corrupt(r.sha256, new TextEncoder().encode("đã bị sửa"));
     await expect(
@@ -235,7 +235,7 @@ describe("toàn vẹn", () => {
     ).rejects.toBeInstanceOf(IntegrityError);
   });
 
-  it("nội dung mất khỏi kho: NotFound", async () => {
+  it("nội dung mất khỏi kho: NotFound [F-007/AC-03]", async () => {
     const r = await svc().ingestAsSystem(base());
     await store.delete(r.sha256);
     await expect(
@@ -271,7 +271,7 @@ describe("BlobStore thư mục", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("ghi theo <2 ký tự đầu>/<sha256>, đọc lại đúng, xoá được, đọc thiếu là null", async () => {
+  it("ghi theo <2 ký tự đầu>/<sha256>, đọc lại đúng, xoá được, đọc thiếu là null [F-007/AC-01]", async () => {
     const fs = createFsBlobStore(dir);
     const key = sha("xin chào");
     await fs.put(key, new TextEncoder().encode("xin chào"));

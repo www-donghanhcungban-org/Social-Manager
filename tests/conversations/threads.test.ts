@@ -53,7 +53,7 @@ async function addTo(
 }
 
 describe("danh sách hội thoại", () => {
-  it("mới hoạt động nhất trước; chưa có tin (null) xếp cuối; kèm tên tài khoản và nền tảng", async () => {
+  it("mới hoạt động nhất trước; chưa có tin (null) xếp cuối; kèm tên tài khoản và nền tảng [F-006/AC-01]", async () => {
     await conv("cu", at(5));
     await conv("moi", at(1));
     await conv("trong", null);
@@ -72,7 +72,7 @@ describe("danh sách hội thoại", () => {
     expect(r.nextCursor).toBeNull();
   });
 
-  it("phân trang bằng con trỏ: không lặp, không sót, kể cả cùng thời điểm và null", async () => {
+  it("phân trang bằng con trỏ: không lặp, không sót, kể cả cùng thời điểm và null [F-006/AC-01]", async () => {
     for (let i = 0; i < 3; i++) await conv(`same${i}`, at(2)); // cùng mốc: phá hoà bằng id
     await conv("n1", null);
     const seen: string[] = [];
@@ -87,7 +87,7 @@ describe("danh sách hội thoại", () => {
     expect(new Set(seen).size).toBe(5);
   });
 
-  it("con trỏ hỏng bị từ chối; chỉ thấy hội thoại của workspace mình; người ngoài bị cấm", async () => {
+  it("con trỏ hỏng bị từ chối; chỉ thấy hội thoại của workspace mình; người ngoài bị cấm [F-006/AC-11]", async () => {
     for (const bad of [
       "",
       "abc",
@@ -115,7 +115,7 @@ describe("danh sách hội thoại", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("trần số dòng: limit quá lớn hoặc không hợp lệ được kẹp", async () => {
+  it("trần số dòng: limit quá lớn hoặc không hợp lệ được kẹp [F-006/AC-01]", async () => {
     const r = await svc.list({ ...M(), limit: 100000 });
     expect(r.items.length).toBeLessThanOrEqual(100);
     expect((await svc.list({ ...M(), limit: Number.NaN })).items.length).toBe(
@@ -125,7 +125,7 @@ describe("danh sách hội thoại", () => {
 });
 
 describe("một cuộc trò chuyện", () => {
-  it("tin xếp cũ → mới, đúng hướng; hội thoại rỗng trả mảng rỗng", async () => {
+  it("tin xếp cũ → mới, đúng hướng; hội thoại rỗng trả mảng rỗng [F-006/AC-01]", async () => {
     const c = await conv("tt", at(0.5));
     await addTo(c, {
       direction: "outgoing",
@@ -150,7 +150,7 @@ describe("một cuộc trò chuyện", () => {
     expect(empty.actions).toEqual([]);
   });
 
-  it("cắt theo trần: lấy tin MỚI NHẤT và báo truncated", async () => {
+  it("cắt theo trần: lấy tin MỚI NHẤT và báo truncated [F-006/AC-01]", async () => {
     const c = await conv("cat", at(1));
     for (let i = 0; i < 5; i++)
       await addTo(c, { text: `tin ${i}`, sentAt: at(10 - i) });
@@ -158,7 +158,7 @@ describe("một cuộc trò chuyện", () => {
     expect(t.truncated).toBe(true);
   });
 
-  it("kèm nháp (nội dung phiên bản hiện tại) và hành động gửi của nháp", async () => {
+  it("kèm nháp (nội dung phiên bản hiện tại) và hành động gửi của nháp [F-006/AC-01]", async () => {
     const d = await e.draft("Dạ còn ạ");
     await e.drafts.edit({
       ...M(),
@@ -182,7 +182,7 @@ describe("một cuộc trò chuyện", () => {
     expect(t.actions[0]!.state).toBe(a.state);
   });
 
-  it("id lạ, sai định dạng hoặc thuộc workspace khác là NotFound; người ngoài bị cấm", async () => {
+  it("id lạ, sai định dạng hoặc thuộc workspace khác là NotFound; người ngoài bị cấm [F-006/AC-11]", async () => {
     for (const id of ["lạ", "00000000-0000-4000-8000-000000000000"])
       await expect(
         svc.get({ ...M(), conversationId: id }),

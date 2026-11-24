@@ -48,7 +48,7 @@ function holdSend() {
 }
 
 describe("bỏ nháp đã yêu cầu gửi", () => {
-  it("queued → bỏ nháp huỷ hành động trong cùng giao dịch; việc nền không gọi nhà cung cấp", async () => {
+  it("queued → bỏ nháp huỷ hành động trong cùng giao dịch; việc nền không gọi nhà cung cấp [F-006/AC-10]", async () => {
     const draftId = await e.draft("Dạ còn ạ");
     const a = await request(draftId);
     expect((await discard(draftId)).status).toBe("discarded");
@@ -67,7 +67,7 @@ describe("bỏ nháp đã yêu cầu gửi", () => {
     expect(await draftStatus(draftId)).toBe("discarded");
   });
 
-  it("thành viên khác bỏ nháp cũng huỷ; người ngoài bị từ chối và hành động vẫn queued", async () => {
+  it("thành viên khác bỏ nháp cũng huỷ; người ngoài bị từ chối và hành động vẫn queued [F-006/AC-10]", async () => {
     await e.t.db
       .insert(members)
       .values({ workspaceId: e.ws, userId: "other", role: "member" });
@@ -96,7 +96,7 @@ describe("bỏ nháp đã yêu cầu gửi", () => {
     ]);
   });
 
-  it("đang gửi (dispatching) → từ chối draft_send_pending; nháp vẫn mở, sổ không đổi; gửi xong thì nháp sent", async () => {
+  it("đang gửi (dispatching) → từ chối draft_send_pending; nháp vẫn mở, sổ không đổi; gửi xong thì nháp sent [F-006/AC-10]", async () => {
     const release = holdSend();
     const draftId = await e.draft();
     const a = await request(draftId);
@@ -112,7 +112,7 @@ describe("bỏ nháp đã yêu cầu gửi", () => {
     expect(await draftStatus(draftId)).toBe("sent");
   });
 
-  it("send_unknown hoặc cancel_requested → từ chối draft_send_pending (không huỷ được an toàn)", async () => {
+  it("send_unknown hoặc cancel_requested → từ chối draft_send_pending (không huỷ được an toàn) [F-006/AC-10]", async () => {
     e.send.mockRejectedValueOnce(new SocialApiError("x", 0, "client.timeout"));
     const dU = await e.draft("một");
     const u = await request(dU, "kU");
@@ -154,7 +154,7 @@ describe("bỏ nháp đã yêu cầu gửi", () => {
     await expect(discard(dB)).rejects.toMatchObject({ reason: "draft_closed" });
   });
 
-  it("bỏ nháp và gửi chạy song song: không bao giờ vừa bỏ thành công vừa gửi", async () => {
+  it("bỏ nháp và gửi chạy song song: không bao giờ vừa bỏ thành công vừa gửi [F-006/AC-10]", async () => {
     for (let i = 0; i < 5; i++) {
       const draftId = await e.draft(`tin ${i}`);
       const a = await request(draftId, `k${i}`);

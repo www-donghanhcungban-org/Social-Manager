@@ -19,13 +19,17 @@
 
 Phạm vi MVP đóng băng ở cổng G1; mọi thay đổi sau đó đi qua `SCOPE.md`.
 
-| Mức  | ID    | Tính năng                                                                                 | Spec                                    |
-| ---- | ----- | ----------------------------------------------------------------------------------------- | --------------------------------------- |
-| Must | F-001 | Đăng ký, đăng nhập, workspace nhiều thành viên với vai trò owner/admin/member             | `docs/specs/F-001-workspace-auth.md`    |
-| Must | F-002 | Kết nối nhà cung cấp, thêm tài khoản mạng xã hội; khoá mã hoá khi lưu, không hiển thị lại | `docs/specs/F-002-provider-accounts.md` |
-| Must | F-003 | Hộp thư hợp nhất: đồng bộ, lọc, đánh dấu đã xử lý                                         | `docs/specs/F-003-unified-inbox.md`     |
-| Must | F-004 | Đăng bài ngay và hẹn giờ, chạy bằng hàng đợi nền, không đăng trùng                        | `docs/specs/F-004-publish-posts.md`     |
-| Must | F-005 | Triển khai bằng Docker Compose                                                            | `docs/specs/F-005-self-host-deploy.md`  |
+| Mức    | ID    | Tính năng                                                                                  | Spec                                       |
+| ------ | ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| Must   | F-001 | Đăng ký, đăng nhập, workspace nhiều thành viên với vai trò owner/admin/member              | `docs/specs/F-001-workspace-auth.md`       |
+| Must   | F-002 | Kết nối nhà cung cấp, thêm tài khoản mạng xã hội; khoá mã hoá khi lưu, không hiển thị lại  | `docs/specs/F-002-provider-accounts.md`    |
+| Must   | F-003 | Hộp thư hợp nhất: đồng bộ, lọc, đánh dấu đã xử lý                                          | `docs/specs/F-003-unified-inbox.md`        |
+| Must   | F-004 | Đăng bài ngay và hẹn giờ, chạy bằng hàng đợi nền, không đăng trùng                         | `docs/specs/F-004-publish-posts.md`        |
+| Must   | F-005 | Triển khai bằng Docker Compose                                                             | `docs/specs/F-005-self-host-deploy.md`     |
+| Should | F-006 | Hội thoại, nháp trả lời có phiên bản, yêu cầu gửi đúng một lần (gửi thật tắt mặc định)     | `docs/specs/F-006-conversation-replies.md` |
+| Should | F-007 | Nhập tài liệu, dự án và bí danh, liên kết nguồn, tìm kiếm có dấu/không dấu trong workspace | `docs/specs/F-007-knowledge-projects.md`   |
+| Should | F-008 | Hỏi đáp AI có trích dẫn qua cổng AI (đồng ý đám mây, ngân sách, che PII, guard)            | `docs/specs/F-008-ai-answers.md`           |
+| Should | F-009 | Quyền chủ tài khoản: xuất dữ liệu, xoá tài khoản, cấp/rút đồng ý                           | `docs/specs/F-009-account-rights.md`       |
 
 - Should have: webhook nhận tin theo thời gian thực; trả lời từ hộp thư; nhật ký kiểm toán.
 - Could have: tự động trả lời bằng AI có chế độ duyệt nháp, thống kê, CRM nhẹ, PWA, i18n vi/en.
@@ -162,7 +166,7 @@ Nguyên tắc: chỉ thu cái cần cho chức năng; lớp bí mật không bao
 
 - **Vai trò:** chủ workspace là bên kiểm soát dữ liệu của khách nhắn tin; dự án là bên xử lý. Chủ tài khoản là chủ thể của dữ liệu tài khoản (email, tên, phiên).
 - **Kiểm kê:** `docs/compliance/data-inventory.csv` (hệ thống, cột, lớp, mục đích, cơ sở pháp lý, thời hạn, bản sao, bên nhận) khớp bảng phân loại ở trên và migration; `tests/config/data-classification.test.ts` đỏ khi lệch. Đây là sổ dữ liệu cá nhân duy nhất (D-030: không lập thêm `docs/privacy/data-map.yaml` trùng nội dung).
-- **Xem/xuất (rights-access):** trang `/app/account`, nút "Tải dữ liệu của tôi" → `GET /app/account/export` (JSON: hồ sơ, workspace, đồng ý, phiên, hành động trong audit; không có mật khẩu hay mã phiên). Dữ liệu trong workspace xuất theo dự án (`exportProject`).
+- **Xem/xuất (rights-access):** trang `/app/account`, nút "Tải dữ liệu của tôi" → `POST /app/account/export` (POST vì có ghi một dòng audit; JSON: hồ sơ, workspace, đồng ý, phiên, hành động trong audit; không có mật khẩu hay mã phiên). Dữ liệu trong workspace xuất theo dự án (`exportProject`) mới có ở tầng dịch vụ, giao diện chưa có nút (D-040).
 - **Xoá (rights-delete):** cùng trang, đòi nhập lại mật khẩu và tích xác nhận. Workspace chỉ có mình bạn bị xoá hẳn (cascade, kể cả tệp nội dung không còn nơi dùng); workspace còn người khác chỉ gỡ bạn khỏi danh sách; chủ duy nhất của workspace còn người khác bị từ chối cho tới khi chuyển quyền. Bản ghi đồng ý, phiên, đăng nhập, người dùng bị xoá. **Giữ lại có căn cứ:** dòng `audit_events` (append-only; sau xoá chỉ còn `actor_id` không gắn tên/email, `source_ip` giữ theo thời hạn ghi nhận an ninh) và các cột `actor_id`/`*_by` trong dữ liệu của workspace còn lại. Chưa có bên xử lý thứ ba nào giữ bản sao ngoài nhà cung cấp AI đám mây (không lưu theo hợp đồng; xem mục AI ở trên).
 - **Đồng ý (rights-withdraw-consent):** bật AI đám mây ở trang workspace là cấp đồng ý, ghi vào `consents` (chủ thể, mục đích, phiên bản văn bản, thời điểm, kênh, băm văn bản đã hiển thị); rút = cùng nút, một dòng MỚI có `withdrawn_at`, không sửa dòng cũ. Cổng AI đòi cả cờ lẫn bản ghi đang hiệu lực: rút xong, lượt gọi kế tiếp bị chặn ngay (không có độ trễ). Mục đích hiện có: `ai_cloud`. Chưa có tiếp thị hay chia sẻ cho bên thứ ba nên không có mục đích khác cần đồng ý.
 - **Thời hạn xử lý yêu cầu:** thao tác tự phục vụ có hiệu lực tức thì (nhanh hơn mọi mốc theo NĐ 356/2025). Mốc cho yêu cầu của khách không có tài khoản chờ hàng chờ DSAR (CMP-VN-007, chưa làm).

@@ -36,7 +36,7 @@ async function setup(page: Page) {
   ).toContainText(/Đã nhập \d+ tin mới/);
 }
 
-test("hội thoại → soạn nháp → sửa tạo phiên bản mới → yêu cầu gửi bị chặn vì gửi đang tắt", async ({
+test("hội thoại → soạn nháp → sửa tạo phiên bản mới → yêu cầu gửi bị chặn vì gửi đang tắt [F-006/AC-02] [F-006/AC-06]", async ({
   page,
 }) => {
   await setup(page);

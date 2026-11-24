@@ -45,7 +45,7 @@ describe("loadEnv", () => {
     expect((err as ConfigError).keys).toEqual([name]);
   });
 
-  it("AI tắt mặc định; đặt AI_BASE_URL thì bắt buộc AI_MODEL; khoá API là bí mật và bị che", () => {
+  it("AI tắt mặc định; đặt AI_BASE_URL thì bắt buộc AI_MODEL; khoá API là bí mật và bị che [F-008/AC-05]", () => {
     const off = loadEnv(valid());
     expect(off.AI_BASE_URL).toBeUndefined();
     expect(off.AI_MODEL).toBeUndefined();
@@ -71,7 +71,7 @@ describe("loadEnv", () => {
       ).toThrow(ConfigError);
   });
 
-  it("OUTBOUND_LIVE mặc định tắt; chỉ nhận true/false; rỗng coi như tắt", () => {
+  it("OUTBOUND_LIVE mặc định tắt; chỉ nhận true/false; rỗng coi như tắt [F-006/AC-06]", () => {
     expect(loadEnv(valid()).OUTBOUND_LIVE).toBe("false");
     expect(loadEnv({ ...valid(), OUTBOUND_LIVE: "  " }).OUTBOUND_LIVE).toBe(
       "false",

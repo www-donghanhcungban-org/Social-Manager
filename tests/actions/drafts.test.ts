@@ -82,7 +82,7 @@ afterEach(async () => {
 });
 
 describe("bản nháp", () => {
-  it("member soạn được; nháp mới ở phiên bản 1, nguồn human, trạng thái open; chuẩn hoá NFC", async () => {
+  it("member soạn được; nháp mới ở phiên bản 1, nguồn human, trạng thái open; chuẩn hoá NFC [F-006/AC-02]", async () => {
     const d = await create("  Dạ còn hàng ạ ".normalize("NFD"));
     expect(d).toMatchObject({
       conversationId: conv,
@@ -94,7 +94,7 @@ describe("bản nháp", () => {
     });
   });
 
-  it("mỗi lần sửa tạo phiên bản mới, giữ nguyên lịch sử; có thể đánh dấu nguồn ai", async () => {
+  it("mỗi lần sửa tạo phiên bản mới, giữ nguyên lịch sử; có thể đánh dấu nguồn ai [F-006/AC-02]", async () => {
     const d = await create("bản một");
     const d2 = await svc().edit({
       ...M,
@@ -122,7 +122,7 @@ describe("bản nháp", () => {
     ]);
   });
 
-  it("hai người sửa cùng phiên bản nền: chỉ một thắng, người kia nhận xung đột, không mất bản nào", async () => {
+  it("hai người sửa cùng phiên bản nền: chỉ một thắng, người kia nhận xung đột, không mất bản nào [F-006/AC-03]", async () => {
     const d = await create("gốc");
     const results = await Promise.allSettled([
       svc().edit({ ...M, draftId: d.id, baseVersion: 1, text: "của member" }),
@@ -147,7 +147,7 @@ describe("bản nháp", () => {
     expect(versions.map((v) => v.version).sort()).toEqual([1, 2]);
   });
 
-  it("sửa dựa vào phiên bản cũ bị xung đột; thông báo nêu phiên bản hiện tại", async () => {
+  it("sửa dựa vào phiên bản cũ bị xung đột; thông báo nêu phiên bản hiện tại [F-006/AC-03]", async () => {
     const d = await create();
     await svc().edit({ ...M, draftId: d.id, baseVersion: 1, text: "mới" });
     await expect(
@@ -158,7 +158,7 @@ describe("bản nháp", () => {
     });
   });
 
-  it("nháp đã bỏ hoặc đã gửi không sửa được và không bỏ lại được", async () => {
+  it("nháp đã bỏ hoặc đã gửi không sửa được và không bỏ lại được [F-006/AC-03]", async () => {
     const d = await create();
     const off = await svc().discard({ ...M, draftId: d.id });
     expect(off.status).toBe("discarded");
@@ -178,7 +178,7 @@ describe("bản nháp", () => {
     ).rejects.toMatchObject({ reason: "draft_closed" });
   });
 
-  it("kiểm nội dung: rỗng, chỉ khoảng trắng, quá dài bị từ chối; đúng trần được nhận", async () => {
+  it("kiểm nội dung: rỗng, chỉ khoảng trắng, quá dài bị từ chối; đúng trần được nhận [F-006/AC-04]", async () => {
     for (const text of ["", "   ", "x".repeat(MAX_DRAFT_CHARS + 1)])
       await expect(create(text)).rejects.toBeInstanceOf(ValidationError);
     await expect(create("x".repeat(MAX_DRAFT_CHARS))).resolves.toBeDefined();
@@ -192,7 +192,7 @@ describe("bản nháp", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("hội thoại workspace khác hoặc id lạ là NotFound; người ngoài bị Forbidden; không để lại dòng nào", async () => {
+  it("hội thoại workspace khác hoặc id lạ là NotFound; người ngoài bị Forbidden; không để lại dòng nào [F-006/AC-11]", async () => {
     await expect(create("x", { conversationId: convB })).rejects.toBeInstanceOf(
       NotFoundError,
     );
@@ -221,7 +221,7 @@ describe("bản nháp", () => {
     );
   });
 
-  it("liệt kê nháp của hội thoại, mới sửa trước; xoá hội thoại xoá luôn nháp và phiên bản", async () => {
+  it("liệt kê nháp của hội thoại, mới sửa trước; xoá hội thoại xoá luôn nháp và phiên bản [F-006/AC-02]", async () => {
     const a = await create("a");
     const b = await create("b");
     await svc().edit({ ...M, draftId: a.id, baseVersion: 1, text: "a2" });
@@ -235,7 +235,7 @@ describe("bản nháp", () => {
     expect(await t.db.select().from(draftVersions)).toHaveLength(0);
   });
 
-  it("CHECK của CSDL từ chối phiên bản trùng, nguồn lạ và nội dung rỗng", async () => {
+  it("CHECK của CSDL từ chối phiên bản trùng, nguồn lạ và nội dung rỗng [F-006/AC-04]", async () => {
     const d = await create();
     const base = { workspaceId: ws, draftId: d.id, createdBy: "u" };
     for (const row of [

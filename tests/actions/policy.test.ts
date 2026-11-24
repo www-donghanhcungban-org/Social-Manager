@@ -32,7 +32,7 @@ describe("chính sách gửi", () => {
     expect(evaluateSendPolicy(ok())).toEqual({ ok: true });
   });
 
-  it("cờ hệ thống tắt chặn mọi thứ khác (kể cả khi mọi điều kiện khác đều đạt)", () => {
+  it("cờ hệ thống tắt chặn mọi thứ khác (kể cả khi mọi điều kiện khác đều đạt) [F-006/AC-06]", () => {
     expect(reason({ live: false })).toBe("outbound_disabled");
     expect(
       reason({
@@ -73,7 +73,7 @@ describe("chính sách gửi", () => {
     },
   );
 
-  it("Zalo mở 7 ngày nhưng Facebook thì đóng ở 2 ngày", () => {
+  it("Zalo mở 7 ngày nhưng Facebook thì đóng ở 2 ngày [F-006/AC-06]", () => {
     const twoDays = new Date(NOW.getTime() - 48 * H);
     expect(reason({ platform: "zalo", lastIncomingAt: twoDays })).toBe("ok");
     expect(reason({ platform: "facebook", lastIncomingAt: twoDays })).toBe(
@@ -91,11 +91,11 @@ describe("chính sách gửi", () => {
       ).toBe("window_closed");
   });
 
-  it("tin đến ở tương lai (lệch đồng hồ) coi như vừa đến", () => {
+  it("tin đến ở tương lai (lệch đồng hồ) coi như vừa đến [F-006/AC-06]", () => {
     expect(reason({ lastIncomingAt: new Date(NOW.getTime() + H) })).toBe("ok");
   });
 
-  it("độ dài: Facebook 2000 ký tự, Instagram 1000 byte UTF-8, nền tảng khác không giới hạn thêm", () => {
+  it("độ dài: Facebook 2000 ký tự, Instagram 1000 byte UTF-8, nền tảng khác không giới hạn thêm [F-006/AC-06]", () => {
     expect(textWithinLimit("facebook", "x".repeat(2000))).toBe(true);
     expect(textWithinLimit("facebook", "x".repeat(2001))).toBe(false);
     expect(textWithinLimit("facebook", "ệ".repeat(2000))).toBe(true); // đếm ký tự, không phải byte
@@ -118,7 +118,7 @@ describe("chính sách gửi", () => {
     ).toBe("rate_limited");
   });
 
-  it("thứ tự kiểm: cửa sổ đóng được báo trước độ dài và hạn mức", () => {
+  it("thứ tự kiểm: cửa sổ đóng được báo trước độ dài và hạn mức [F-006/AC-06]", () => {
     expect(
       reason({
         lastIncomingAt: new Date(NOW.getTime() - 99 * H),
