@@ -1,6 +1,6 @@
 ---
 version: 2
-updated: 2026-11-23
+updated: 2026-11-24
 owner: chủ dự án
 ---
 
@@ -111,6 +111,7 @@ Mức = khả năng × tác động (Cao/TB/Thấp). Quyết định: mitigate /
 | TM-23 | 3     | T Tampering              | gửi tin trùng hoặc trái phép tới khách hàng                             | Cao | mitigate   | sổ hành động (ADR-0006): hai khoá `OUTBOUND_LIVE` + workspace, idempotency, chính sách thuần kiểm lại lúc gửi, kết quả không chắc → `send_unknown` không tự gửi lại, đối soát chỉ đọc                                      | `tests/actions/ledger.test.ts`, `tests/actions/policy.test.ts`, `tests/actions/unknown.test.ts`                                            | đã giảm    |
 | TM-24 | 6     | I Information disclosure | lộ token GitHub hoặc gửi token sang máy chủ khác                        | TB  | mitigate   | token do người gọi cấp mỗi lần, không lưu DB; chỉ theo trang `Link` cùng origin; log che bí mật                                                                                                                            | `tests/connectors/github.test.ts`                                                                                                          | đã giảm    |
 | TM-25 | 4     | D Denial of service      | job lỗi vĩnh viễn gây mất việc im lặng hoặc retry vô hạn                | TB  | mitigate   | retry hữu hạn có backoff, lỗi vĩnh viễn vào hàng chết `.dlq`, payload job tối thiểu có schema (cảnh báo DLQ chưa có)                                                                                                       | `tests/jobs/runner.test.ts`, `tests/jobs/policy.test.ts`                                                                                   | một phần   |
+| TM-26 | 1, 2  | I Information disclosure | trang theo người dùng bị cache dùng chung rồi trả cho người khác        | Cao | mitigate   | mọi route giao diện render động (ADR-0008), `Cache-Control: private, no-store` ở proxy, cấm `use cache`/`unstable_cache`/ISR/cacheComponents bằng test; bảng route ở `docs/ROUTES.md`                                      | `tests/config/render-perf.test.ts`, `e2e/auth-flow.spec.ts`, `e2e/security-headers.spec.ts`                                                | đã giảm    |
 
 ## 4b. OWASP Top 10:2025 → biện pháp
 
@@ -153,3 +154,4 @@ Tên hạng mục theo bản OWASP Top 10:2025 (chưa đối chiếu lại ngu�
 | --------- | ---------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | 1         | 2026-11-22 | bản đầu tiên                                                                                                     | MUST BASE-SEC-011, sau đợt 1 xong           |
 | 2         | 2026-11-23 | DFD Mermaid có ranh giới tin cậy, cột Quyết định, thêm kho bằng chứng/cổng AI/sổ gửi tin/GitHub, bảng OWASP 2025 | T-562 (SEC-TM-001/003/005/006, STD-SEC-003) |
+| 3         | 2026-11-24 | thêm TM-26 (cache dùng chung làm lộ dữ liệu người dùng)                                                          | T-526, ADR-0008 (SEC-TM-001)                |

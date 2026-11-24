@@ -1,0 +1,29 @@
+{
+  "$comment": "Ngân sách bundle web (FE-PERF-004, XC-PERF-003). Lý do và cách đổi ngưỡng: docs/PERF-BUDGET.md. Kiểm: node scripts/check-bundle.mjs sau npm run build; CI đỏ khi vượt.",
+  "budgets": [
+    {
+      "name": "js-total",
+      "dir": ".next/static/chunks",
+      "exts": [".js"],
+      "gzip": true,
+      "mode": "total",
+      "limit_kb": 260
+    },
+    {
+      "name": "js-largest-chunk",
+      "dir": ".next/static/chunks",
+      "exts": [".js"],
+      "gzip": true,
+      "mode": "each",
+      "limit_kb": 90
+    },
+    {
+      "name": "css-total",
+      "dir": ".next/static",
+      "exts": [".css"],
+      "gzip": true,
+      "mode": "total",
+      "limit_kb": 10
+    }
+  ]
+}

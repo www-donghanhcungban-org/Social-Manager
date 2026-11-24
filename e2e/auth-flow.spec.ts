@@ -71,6 +71,9 @@ test("người khác không mở được workspace của mình (trang không t�
   await a.getByRole("button", { name: "Tạo workspace" }).click();
   await expect(a).toHaveURL(/\/app\/[0-9a-f-]{36}$/);
   const url = a.url();
+  // PRF-WEB-001: trang theo người dùng không dùng cache chia sẻ.
+  const reload = await a.goto(url);
+  expect(reload!.headers()["cache-control"]).toBe("private, no-store");
 
   const b = await (await browser.newContext()).newPage();
   await signUp(b, `${unique()}@example.com`);

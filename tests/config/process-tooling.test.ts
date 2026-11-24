@@ -44,8 +44,10 @@ describe("công cụ quy trình thuộc dự án", () => {
     expect(readme).not.toMatch(/không sửa tay/);
   });
 
-  it("scripts/ chỉ còn migrate.mjs (di sản projects-template đã gỡ)", () => {
+  it("scripts/ chỉ có tệp của dự án (migrate.mjs, check-bundle.mjs); di sản projects-template đã gỡ", () => {
+    // check-bundle.mjs: bộ kiểm ngân sách bundle của dự án (D-026), CI chạy sau gate-par.
     expect(tracked.filter((f) => f.startsWith("scripts/"))).toEqual([
+      "scripts/check-bundle.mjs",
       "scripts/migrate.mjs",
     ]);
   });

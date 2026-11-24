@@ -176,3 +176,17 @@
 - Chọn: Cô lập tầng ứng dụng: mọi truy vấn lọc workspace_id sau requireAction; test BOLA/BFLA khoá hành vi; DB-SEC-007 Không áp dụng có điều kiện kiểm được
 - Lý do (tiêu chí chất lượng cuối): Ứng dụng hiện kết nối bằng một vai trò duy nhất (chủ dự án, DB-SEC-002 chưa tách) nên FORCE RLS không có hiệu lực bảo vệ thật nếu không tách vai trò và bọc mọi truy vấn vào giao dịch SET LOCAL; làm nửa vời tạo cảm giác an toàn giả. Chọn lọc ở tầng dịch vụ có test chéo workspace chạy trong CI; RLS để làm cùng DB-SEC-002 khi triển khai tách vai trò (cần người kiểm trên hạ tầng thật)
 - Đường lùi: Thêm migration bật RLS kèm vai trò app riêng; migration .down tắt RLS và thu hồi vai trò
+
+### D-026 · 2026-11-24T01:19:48+00:00 · Công cụ kiểm ngân sách bundle (FE-PERF-004)
+
+- Phương án: (1) Tự viết scripts/check-bundle.mjs đọc perf-budget.json, không thêm phụ thuộc · (2) Thêm size-limit và preset làm phụ thuộc dev
+- Chọn: Tự viết scripts/check-bundle.mjs đọc perf-budget.json, không thêm phụ thuộc
+- Lý do (tiêu chí chất lượng cuối): Không thêm phụ thuộc dev (chuỗi cung ứng), nhất quán ADR-0007; hàm violations có test cổng; đủ cho 3 mục ngân sách
+- Đường lùi: Đổi sang size-limit khi cần đo theo từng route hoặc import cost: giữ perf-budget.json làm nguồn số, thêm .size-limit.json
+
+### D-027 · 2026-11-24T01:19:49+00:00 · Chiến lược render và mục tiêu hiệu năng chính
+
+- Phương án: (1) Mọi route giao diện render động, không cache dùng chung; mục tiêu LCP 2,5 s, p95 máy chủ 800 ms · (2) Cache Components/PPR cho vỏ trang
+- Chọn: Mọi route giao diện render động, không cache dùng chung; mục tiêu LCP 2,5 s, p95 máy chủ 800 ms
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dữ liệu người dùng không vào cache chia sẻ; giữ nonce CSP theo request (D-006); chưa có số đo cần cache; mục tiêu số là đề xuất chủ dự án đổi được ở T-542
+- Đường lùi: Viết ADR mới thay ADR-0008 khi có trang công khai cần tĩnh hoặc p95 vượt mục tiêu

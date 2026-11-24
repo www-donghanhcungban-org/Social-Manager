@@ -61,6 +61,18 @@ Bảng chất lượng theo đặc tính ISO/IEC 25010:2023 (số đo và ngư�
 - Mobile-first & trình duyệt: bản hiện đại của Chrome, Firefox, Safari, Edge; bố cục co giãn theo chiều rộng.
 - Theme: token màu hai chế độ trong `app/globals.css`.
 
+### Hiệu năng
+
+Chỉ số chính, mục tiêu số và điều kiện đo (đề xuất của phiên chính theo D-027; chủ dự án chốt lại ở T-542 nếu muốn đổi). Ngân sách và cách báo cáo: `docs/PERF-BUDGET.md`.
+
+| Chỉ số                                 | Mục tiêu                      | Điều kiện đo                                                    | Nơi đo                              |
+| -------------------------------------- | ----------------------------- | --------------------------------------------------------------- | ----------------------------------- |
+| LCP của trang workspace và hộp thư     | ≤ 2,5 s (trung vị 3 lần chạy) | Lighthouse mobile, mạng 4G giả lập, dữ liệu mẫu ~1.000 tin      | lab (chưa có Lighthouse CI, xem nợ) |
+| CLS                                    | ≤ 0,1                         | như trên                                                        | lab                                 |
+| INP (proxy lab: TBT)                   | ≤ 200 ms (TBT ≤ 300 ms)       | như trên                                                        | lab                                 |
+| JS client gzip (tổng)                  | ≤ 260 kB                      | `next build` Turbopack, `.next/static/chunks`                   | CI: `scripts/check-bundle.mjs`      |
+| Độ trễ phản hồi máy chủ của trang động | p95 ≤ 800 ms                  | một Postgres cục bộ, 10 yêu cầu đồng thời, workspace ~1.000 tin | field: `/api/metrics` (histogram)   |
+
 ## 4. Tech stack
 
 Xác minh ngày 2026-11-22 (chi tiết và lý do: `docs/adr/0001-stack.md`).

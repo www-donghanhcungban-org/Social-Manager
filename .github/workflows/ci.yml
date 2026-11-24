@@ -118,6 +118,9 @@ jobs:
             echo 'flow_error=true' >> "$GITHUB_OUTPUT"
           fi
           exit "$gate_status"
+      # FE-PERF-004/XC-PERF-003: ngân sách bundle (perf-budget.json) đo trên bản build của gate-par; vượt = đỏ.
+      - name: Ngân sách bundle — node scripts/check-bundle.mjs
+        run: node scripts/check-bundle.mjs
       # Sàn M/L (LOOP-HARNESS-023): khoá sàn khai riêng trong xt.yaml (`format_check`, `coverage`, kiểm kiểu theo stack) —
       # trước chỉ `loop verify` chạy nên CI xanh khi sàn đỏ (AUD-XFEAT-020). Lệnh trùng lệnh của gate-par bỏ qua; `e2e` có
       # job riêng; quy mô S/không blueprint → không áp; khoá thiếu chỉ cảnh báo (như doctor).
