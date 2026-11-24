@@ -163,8 +163,11 @@ describe("E2E (QA-E2E-001/005/006, FE-TEST-002, PRF-WEB-006)", () => {
     expect(pw).toMatch(/name:\s*"desktop"/);
     expect(pw).toMatch(/name:\s*"mobile"/);
     const a11y = read("e2e/a11y-responsive.spec.ts");
-    expect(a11y).toMatch(/AxeBuilder/);
-    expect(a11y).toMatch(/violations[\s\S]{0,120}toEqual\(\[\]\)/);
+    // Từ T-524 phần quét axe nằm ở helper dùng chung; spec responsive gọi qua helper đó.
+    const helper = read("e2e/helpers/a11y.ts");
+    expect(helper).toMatch(/AxeBuilder/);
+    expect(helper).toMatch(/violations[\s\S]{0,120}toEqual\(\[\]\)/);
+    expect(a11y).toContain("expectNoA11yViolations");
     expect(a11y).toMatch(/mobile-320/);
     expect(a11y).toMatch(/desktop-1280/);
   });

@@ -20,9 +20,17 @@ export function CreateWorkspaceForm() {
           required
           maxLength={100}
           className="mt-1 w-full rounded border border-border bg-background px-3 py-2"
+          {...(state.error
+            ? { "aria-invalid": true, "aria-describedby": "workspace-error" }
+            : {})}
         />
       </label>
-      <p role="alert" aria-live="polite" className="min-h-6 text-danger">
+      <p
+        id="workspace-error"
+        role="alert"
+        aria-live="polite"
+        className="min-h-6 text-danger"
+      >
         {state.error}
       </p>
       <button

@@ -53,6 +53,10 @@ export function AuthForm() {
 
   const input =
     "mt-1 w-full rounded border border-border bg-background px-3 py-2";
+  // Lỗi của biểu mẫu gắn vào mọi ô nhập (FE-FORM-002): aria-invalid + aria-describedby trỏ tới phần tử chứa lỗi.
+  const invalid = error
+    ? ({ "aria-invalid": true, "aria-describedby": "auth-error" } as const)
+    : {};
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
@@ -68,6 +72,7 @@ export function AuthForm() {
             required
             autoComplete="name"
             className={input}
+            {...invalid}
           />
         </label>
       )}
@@ -79,6 +84,7 @@ export function AuthForm() {
           required
           autoComplete="email"
           className={input}
+          {...invalid}
         />
       </label>
       <label className="block">
@@ -89,8 +95,13 @@ export function AuthForm() {
           required
           minLength={MIN_PASSWORD}
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          aria-describedby="password-hint"
           className={input}
+          {...{
+            "aria-describedby": error
+              ? "auth-error password-hint"
+              : "password-hint",
+            ...(error ? { "aria-invalid": true } : {}),
+          }}
         />
         {mode === "signup" && (
           <span
@@ -101,7 +112,12 @@ export function AuthForm() {
           </span>
         )}
       </label>
-      <p role="alert" aria-live="polite" className="min-h-6 text-danger">
+      <p
+        id="auth-error"
+        role="alert"
+        aria-live="polite"
+        className="min-h-6 text-danger"
+      >
         {error}
       </p>
       <button

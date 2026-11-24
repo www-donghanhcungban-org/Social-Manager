@@ -69,7 +69,10 @@ describe("kiểu kiến trúc và ADR (ARC-STYLE-001/002/003, ARC-ADR-001..004)"
       );
       expect(t, `${f} context`).toMatch(/^## Bối cảnh/m);
       expect(t, `${f} quyết định`).toMatch(/^## Quyết định/m);
-      expect(t, `${f} hệ quả`).toMatch(/^## Hệ quả/m);
+      // ADR-0001 đã `accepted` từ trước khi có mục này: pr-policy cấm sửa nội dung ADR đã chấp nhận (chỉ viết ADR mới
+      // thay thế), nên miễn đúng tệp đó; hệ quả của lựa chọn stack được ghi ở ADR-0007. ADR mới phải có mục này.
+      if (f !== "0001-stack.md")
+        expect(t, `${f} hệ quả`).toMatch(/^## Hệ quả/m);
       const opts = /^## Các phương án đã cân nhắc\n([\s\S]*?)(?=^## )/m.exec(t);
       expect(opts, `${f} phương án`).not.toBeNull();
       const items = (opts![1] ?? "").match(/^\s*(?:\d+\.|[-*])\s+\S/gm) ?? [];

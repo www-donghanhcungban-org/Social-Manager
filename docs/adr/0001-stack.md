@@ -59,10 +59,6 @@ typescript ^5 (mới nhất 7.0.2).
 
 `rg -n '"(drizzle-orm|pg|pg-boss|better-auth|zod)"' package.json` ra đủ gói khi đợt 0 xong; `implementation-status` cập nhật theo PR.
 
-## Hệ quả
-
-Đánh đổi và việc phải làm nằm ở mục Quyết định phía trên (một dịch vụ phụ, thông lượng job thấp hơn Redis, cài gói từng PR). Mục này thêm ở T-518 chỉ để đủ trường theo mẫu (ARC-ADR-003); nội dung quyết định không đổi.
-
 ## Ưu / nhược từng phương án
 
 ### Phương án 1

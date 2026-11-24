@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { expectNoA11yViolations } from "./helpers/a11y";
+
 // Cần DB đã migrate: đặt E2E_DATABASE_URL. Không đặt thì bỏ qua.
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
@@ -34,6 +36,7 @@ test("đăng ký → tạo workspace → đăng xuất → chặn truy cập →
   await expect(
     page.getByRole("heading", { name: "Cửa hàng thử" }),
   ).toBeVisible();
+  await expectNoA11yViolations(page, "tổng quan workspace");
   const workspaceUrl = page.url();
 
   await page.getByRole("button", { name: "Đăng xuất" }).click();
