@@ -13,7 +13,9 @@ import {
   AiNotAllowedError,
   ModelError,
   type ModelPort,
+  type ModelResponse,
 } from "./port";
+import { redactPii, totalRedactions } from "./redact";
 
 /** Trần dữ liệu gửi một lượt (system + user): chặn đẩy cả kho tài liệu ra ngoài trong một lần gọi. */
 export const MAX_PROMPT_BYTES = 200_000;
@@ -51,6 +53,7 @@ export function createAiGateway({
   log,
   budget = DEFAULT_AI_BUDGET,
   metrics,
+  redact = true,
 }: {
   db: Db;
   /** null = AI tắt. */
@@ -58,6 +61,11 @@ export function createAiGateway({
   log?: Logger;
   budget?: AiBudget;
   metrics?: Pick<Metrics, "addLlmTokens">;
+  /**
+   * Che PII (SĐT, CCCD, email, địa chỉ) trong phần dữ liệu gửi tới điểm cuối KHÔNG cục bộ (CMP-PRIV-010). Mặc định bật;
+   * đây là cấu hình dựng cổng (mã/test), không phải tham số của người gọi hay của client (AI-GUARD-005).
+   */
+  redact?: boolean;
 }) {
   /** Tỉ lệ đã dùng (0..) của cửa sổ 24 giờ; lượt `blocked` không tính vì không gửi gì. */
   async function usage(workspaceId: string, purpose: string) {
@@ -124,7 +132,11 @@ export function createAiGateway({
       /** Số mục bằng chứng đưa vào lời nhắc (để ghi nhật ký). */
       itemCount: number;
       maxOutputTokens?: number;
-    }): Promise<{ text: string; disclosureId: string }> {
+    }): Promise<{
+      text: string;
+      disclosureId: string;
+      stopReason?: ModelResponse["stopReason"];
+    }> {
       if (!model) throw new AiDisabledError();
       await requireAction(
         db,
@@ -136,8 +148,12 @@ export function createAiGateway({
         throw new ValidationError("Mục đích gọi AI không hợp lệ");
       if (!Number.isInteger(input.itemCount) || input.itemCount < 0)
         throw new ValidationError("Số mục không hợp lệ");
+      // Che PII trước khi gửi ra ngoài máy/mạng người dùng; điểm cuối cục bộ giữ nguyên văn (dữ liệu không rời đi).
+      const redaction = redact && !model.local ? redactPii(input.user) : null;
+      const user = redaction ? redaction.text : input.user;
+      const piiRedacted = redaction ? totalRedactions(redaction.counts) : 0;
       const bytesSent =
-        Buffer.byteLength(input.system) + Buffer.byteLength(input.user);
+        Buffer.byteLength(input.system) + Buffer.byteLength(user);
       if (bytesSent > MAX_PROMPT_BYTES)
         throw new ValidationError(
           `Dữ liệu gửi AI vượt trần ${MAX_PROMPT_BYTES} byte`,
@@ -192,9 +208,10 @@ export function createAiGateway({
           text,
           usage: tokens,
           responseModel,
+          stopReason,
         } = await model.generate({
           system: input.system,
-          user: input.user,
+          user,
           maxOutputTokens: input.maxOutputTokens,
         });
         await db
@@ -213,6 +230,9 @@ export function createAiGateway({
           workspace_id: input.workspaceId,
           disclosure_id: id,
           duration_ms: Date.now() - started,
+          // Chỉ số lượng, không có nội dung đã che (AI-GUARD-004).
+          pii_redacted: piiRedacted,
+          "gen_ai.response.finish_reason": stopReason ?? null,
         });
         if (tokens && metrics) {
           const base = {
@@ -231,7 +251,7 @@ export function createAiGateway({
             tokens: tokens.outputTokens,
           });
         }
-        return { text, disclosureId: id };
+        return { text, disclosureId: id, stopReason };
       } catch (e) {
         const code =
           e instanceof ModelError && SAFE_CODE.test(e.code)

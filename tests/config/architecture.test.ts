@@ -131,6 +131,8 @@ describe("ranh giới module (ARC-MOD-003/004/005/008)", () => {
     "src/search/fold.ts",
     "src/ai/labels.ts",
     "src/ai/port.ts",
+    "src/ai/guard.ts",
+    "src/ai/redact.ts",
     "src/providers/types.ts",
     ...srcFiles.filter((f) => /^src\/(log|security)\//.test(f)),
   ];

@@ -24,6 +24,11 @@ export interface ModelResponse {
   usage?: { inputTokens: number; outputTokens: number };
   /** Mô hình thực tế phục vụ (có thể khác mô hình yêu cầu). */
   responseModel?: string;
+  /**
+   * Lý do dừng nhà cung cấp báo (AI-APP-003): `length` = hết `max_tokens` (đầu ra có thể cụt), `refusal` = mô hình từ
+   * chối hoặc bị lọc nội dung. Vắng = nhà cung cấp không báo; dịch vụ vẫn kiểm schema đầu ra bằng mã.
+   */
+  stopReason?: "stop" | "length" | "refusal" | "other";
 }
 
 export type ModelErrorCode =

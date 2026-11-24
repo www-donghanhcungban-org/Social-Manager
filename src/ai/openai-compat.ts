@@ -6,7 +6,15 @@ const TIMEOUT_MS = 60_000;
 
 const Completion = z.object({
   choices: z
-    .array(z.object({ message: z.object({ content: z.string().nullable() }) }))
+    .array(
+      z.object({
+        message: z.object({
+          content: z.string().nullable(),
+          refusal: z.string().nullish(),
+        }),
+        finish_reason: z.string().nullish(),
+      }),
+    )
     .min(1),
   model: z.string().max(200).optional(),
   usage: z
@@ -16,6 +24,19 @@ const Completion = z.object({
     })
     .optional(),
 });
+
+/** `finish_reason` của API tương thích OpenAI → lý do dừng chuẩn của cổng mô hình (AI-APP-003). */
+export function stopReasonOf(
+  finish: string | null | undefined,
+  refused: boolean,
+): "stop" | "length" | "refusal" | "other" | undefined {
+  if (refused || finish === "content_filter") return "refusal";
+  // Nhà cung cấp không báo → vắng (không khẳng định "stop"); dịch vụ vẫn kiểm schema đầu ra bằng mã.
+  if (finish === undefined || finish === null) return undefined;
+  if (finish === "length") return "length";
+  if (finish === "stop") return "stop";
+  return "other";
+}
 
 /**
  * Điểm cuối cục bộ = dữ liệu không rời máy/mạng của người dùng: `localhost`, địa chỉ loopback, địa chỉ mạng riêng
@@ -111,17 +132,21 @@ export function createOpenAiCompatModel(opts: {
         );
       }
       const parsed = Completion.safeParse(json);
-      const text = parsed.success
-        ? parsed.data.choices[0]!.message.content
-        : null;
-      if (text === null || text === undefined)
+      const choice = parsed.success ? parsed.data.choices[0] : undefined;
+      const refused =
+        typeof choice?.message.refusal === "string" &&
+        choice.message.refusal !== "";
+      const text = choice?.message.content;
+      if (!refused && (text === null || text === undefined))
         throw new ModelError(
           "model.invalid_response",
           "Phản hồi mô hình sai hình dạng",
         );
       const u = parsed.success ? parsed.data.usage : undefined;
       return {
-        text,
+        text: text ?? "",
+        stopReason: stopReasonOf(choice?.finish_reason, refused),
+        // Mô hình từ chối: không mang nội dung từ chối đi tiếp (có thể chứa dữ liệu của nguồn).
         ...(u && {
           usage: {
             inputTokens: u.prompt_tokens,

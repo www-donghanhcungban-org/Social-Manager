@@ -9,6 +9,11 @@ export const UNANSWERED_LABEL = {
   insufficient: "Các nguồn tìm được chưa đủ để trả lời chắc chắn.",
   invalid_output:
     "Mô hình trả về kết quả không hợp lệ nên bị loại, không hiển thị câu trả lời.",
+  refused: "Mô hình từ chối trả lời câu hỏi này.",
+  blocked_input:
+    "Câu hỏi có nội dung không được xử lý tự động (ví dụ yêu cầu đổi luật hoặc lộ lời nhắc); hãy diễn đạt lại.",
+  human_required:
+    "Câu hỏi thuộc nhóm nhạy cảm (y tế, pháp lý, tài chính cá nhân, trẻ em, an toàn cá nhân): cần người xem xét, hệ thống không trả lời tự động.",
 } as const;
 export type UnansweredReason = keyof typeof UNANSWERED_LABEL;
 

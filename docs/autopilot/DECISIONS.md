@@ -190,3 +190,10 @@
 - Chọn: Mọi route giao diện render động, không cache dùng chung; mục tiêu LCP 2,5 s, p95 máy chủ 800 ms
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dữ liệu người dùng không vào cache chia sẻ; giữ nonce CSP theo request (D-006); chưa có số đo cần cache; mục tiêu số là đề xuất chủ dự án đổi được ở T-542
 - Đường lùi: Viết ADR mới thay ADR-0008 khi có trang công khai cần tĩnh hoặc p95 vượt mục tiêu
+
+### D-028 · 2026-11-24T01:41:16+00:00 · T-527: dùng gì cho eval/dataset AI khi CI không có khoá mô hình, và FTS dùng cột tsvector hay chỉ mục biểu thức?
+
+- Phương án: (1) Khoá băm sha256 + chỉ số truy xuất tất định tự viết; GIN trên biểu thức to_tsvector('simple', text_folded) · (2) DVC/lakeFS + ragas/deepeval; cột tsvector GENERATED STORED
+- Chọn: Khoá băm sha256 + chỉ số truy xuất tất định tự viết; GIN trên biểu thức to_tsvector('simple', text_folded)
+- Lý do (tiêu chí chất lượng cuối): CI không được gọi model thật (AI-EVAL-002) nên ragas/deepeval (cần model judge) không chạy được; dataset 50 mẫu nằm trong git, khoá băm đủ để phát hiện lệch; chỉ mục biểu thức cho cùng EXPLAIN (Bitmap Index Scan) mà không thêm cột phải đồng bộ
+- Đường lùi: Thêm DVC/ragas khi có model judge hiệu chuẩn; thêm cột search_vector bằng migration expand/contract nếu bảng lớn
