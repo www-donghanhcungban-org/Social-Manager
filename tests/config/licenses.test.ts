@@ -125,7 +125,9 @@ describe("SBOM CycloneDX và THIRD_PARTY_NOTICES (CMP-LIC-001, CMP-LIC-003)", ()
       components: { licenses?: unknown[] }[];
     };
     expect(bom.bomFormat).toBe("CycloneDX");
-    expect(bom.components.length).toBeGreaterThanOrEqual(entries.length);
+    // npm 11 gộp các bản sao cùng name@version ở nhiều đường dẫn node_modules; npm 10 thì liệt kê từng đường dẫn.
+    const unique = new Set(entries.map((e) => `${e.name}@${e.version}`)).size;
+    expect(bom.components.length).toBeGreaterThanOrEqual(unique);
     const withLicense = bom.components.filter(
       (c) => (c.licenses ?? []).length > 0,
     );

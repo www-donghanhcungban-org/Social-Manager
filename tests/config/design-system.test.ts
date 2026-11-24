@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const read = (f: string) => readFileSync(f, "utf-8");
@@ -14,6 +15,40 @@ const walk = (d: string): string[] =>
 const uiFiles = [...walk("app"), ...walk("src")].filter((f) =>
   /\.(tsx)$/.test(f),
 );
+
+/** Phân tích JSX bằng AST của TypeScript (không dùng regex lên thẻ HTML). */
+type JsxTag = ts.JsxOpeningElement | ts.JsxSelfClosingElement;
+function jsxElements(file: string): JsxTag[] {
+  const sf = ts.createSourceFile(
+    file,
+    read(file),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const out: JsxTag[] = [];
+  const visit = (n: ts.Node) => {
+    if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) out.push(n);
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return out;
+}
+const tagOf = (n: JsxTag) => n.tagName.getText();
+/** Giá trị thuộc tính dưới dạng văn bản nguồn (`"x"` hoặc `{expr}`); `""` nếu không có giá trị; undefined nếu vắng. */
+function attr(n: JsxTag, name: string): string | undefined {
+  for (const p of n.attributes.properties)
+    if (ts.isJsxAttribute(p) && p.name.getText() === name)
+      return p.initializer?.getText() ?? "";
+  return undefined;
+}
+const lineOf = (n: ts.Node) =>
+  n.getSourceFile().getLineAndCharacterOfPosition(n.getStart()).line + 1;
+function insideLabel(n: ts.Node): boolean {
+  for (let p: ts.Node | undefined = n.parent; p; p = p.parent)
+    if (ts.isJsxElement(p) && tagOf(p.openingElement) === "label") return true;
+  return false;
+}
 const cssFiles = [...walk("app"), ...walk("src")].filter((f) =>
   f.endsWith(".css"),
 );
@@ -36,8 +71,8 @@ describe("design system: token một nguồn, không màu cứng (UX-DS-001/002)
       /\b(?:bg|text|border|ring|fill|stroke|from|to|via|outline|divide|placeholder|decoration|accent|caret|shadow)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|black|white)(?:-\d{2,3})?\b/;
     for (const f of uiFiles) {
       const t = read(f);
-      if (/#[0-9a-fA-F]{3,8}\b/.test(t.replace(/&#\d+;/g, "")))
-        bad.push(`${f}: hex`);
+      // `(?<!&)`: bỏ qua thực thể HTML dạng `&#39;`.
+      if (/(?<!&)#[0-9a-fA-F]{3,8}\b/.test(t)) bad.push(`${f}: hex`);
       if (/\b(?:rgba?|hsla?|oklch|oklab|lab|lch)\(/.test(t))
         bad.push(`${f}: hàm màu`);
       if (primitive.test(t)) bad.push(`${f}: lớp màu primitive`);
@@ -87,10 +122,10 @@ describe("hình ảnh, chuyển động, hover (UX-VISUAL-001/002/006/007, UX-RE
     const emoji = /\p{Extended_Pictographic}/u;
     const withEmoji = uiFiles.filter((f) => emoji.test(read(f)));
     expect(withEmoji).toEqual([]);
-    for (const f of uiFiles) {
-      for (const m of read(f).matchAll(/<(?:img|Image)\b[^>]*>/g))
-        expect(m[0], `${f}: ảnh thiếu alt`).toMatch(/\balt=/);
-    }
+    for (const f of uiFiles)
+      for (const n of jsxElements(f))
+        if (["img", "Image"].includes(tagOf(n)))
+          expect(attr(n, "alt"), `${f}: ảnh thiếu alt`).toBeDefined();
   });
 
   it("UX-VISUAL-007: mọi ảnh trong public/ và docs/assets/ có đúng một hàng trong docs/assets/CREDITS.md", () => {
@@ -135,25 +170,24 @@ describe("nhãn ô nhập (UX-A11Y-011, FE-FORM-002)", () => {
   it("mọi input/select/textarea (trừ hidden) nằm trong <label> hoặc có aria-label/aria-labelledby", () => {
     const bad: string[] = [];
     for (const f of uiFiles) {
-      const t = read(f);
-      let depth = 0;
-      for (const m of t.matchAll(
-        /<label\b|<\/label>|<(?:input|select|textarea)\b[^>]*?(?:\/>|>)/g,
-      )) {
-        const tag = m[0];
-        if (tag.startsWith("<label")) depth++;
-        else if (tag === "</label>") depth--;
-        else if (
-          depth <= 0 &&
-          !/type=["']hidden["']/.test(tag) &&
-          !/aria-label(?:ledby)?=/.test(tag)
-        ) {
-          // hoặc có id và một <label htmlFor> cùng tệp trỏ tới đúng id đó
-          const id = /\bid=(?:"([^"]+)"|{([^}]+)})/.exec(tag);
-          const target = id?.[1] ? `"${id[1]}"` : id?.[2] ? `{${id[2]}}` : null;
-          if (!target || !t.includes(`htmlFor=${target}`))
-            bad.push(`${f}: ${tag.slice(0, 60)}`);
-        }
+      const nodes = jsxElements(f);
+      const htmlFor = nodes
+        .filter((n) => tagOf(n) === "label")
+        .map((n) => attr(n, "htmlFor"))
+        .filter((x): x is string => x !== undefined);
+      for (const n of nodes) {
+        if (!["input", "select", "textarea"].includes(tagOf(n))) continue;
+        if (attr(n, "type") === '"hidden"') continue;
+        if (
+          attr(n, "aria-label") !== undefined ||
+          attr(n, "aria-labelledby") !== undefined
+        )
+          continue;
+        if (insideLabel(n)) continue;
+        // hoặc có id và một <label htmlFor> cùng tệp trỏ tới đúng id đó
+        const id = attr(n, "id");
+        if (id === undefined || !htmlFor.includes(id))
+          bad.push(`${f}: <${tagOf(n)}> dòng ${lineOf(n)}`);
       }
     }
     expect(bad).toEqual([]);
@@ -218,7 +252,8 @@ describe("tương phản token (UX-A11Y-002, UX-DS-003)", () => {
   it("xt.py contrast exit 0 trên app/globals.css với contrast-pairs.txt", () => {
     expect(() =>
       execFileSync(
-        "python3",
+        // CI cài Python 3.15 ở đường dẫn riêng (không vào PATH): xt.py đòi đúng 3.15.x.
+        process.env.XT_FRAMEWORK_PYTHON ?? "python3",
         [
           ".xtemplates/scripts/xt.py",
           "contrast",
