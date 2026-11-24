@@ -32,7 +32,7 @@ const SELF = new Set([
 const decisions = decisionIds(read("docs/autopilot/DECISIONS.md"));
 const mustRows = [
   ...read("PROJECT.md").matchAll(
-    /^\| Must\s+\| (F-\d{3})\s+\|.*\| `([^`]+)`\s*\|$/gm,
+    /^\| (?:Must|Should)\s+\| (F-\d{3})\s+\|.*\| `([^`]+)`\s*\|$/gm,
   ),
 ].map((m) => ({ id: m[1]!, file: m[2]! }));
 const specFiles = readdirSync("docs/specs")
@@ -44,7 +44,7 @@ const corpus = [...walk("tests"), ...walk("e2e")]
   .map(read);
 
 describe("mỗi F-NNN của PROJECT.md có spec Approved (PM-SPEC-001, WF-SDD-001)", () => {
-  it("bảng MoSCoW có ≥ 5 dòng Must và khớp đúng tập file docs/specs/F-*.md", () => {
+  it("bảng MoSCoW có ≥ 5 dòng Must/Should và khớp đúng tập file docs/specs/F-*.md", () => {
     expect(mustRows.length).toBeGreaterThanOrEqual(5);
     expect(mustRows.map((r) => r.file).sort()).toEqual([...specFiles].sort());
   });

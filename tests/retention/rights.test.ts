@@ -106,7 +106,7 @@ afterEach(async () => {
 });
 
 describe("rights-access: xem và xuất dữ liệu của chính mình (STD-PRIV-004)", () => {
-  it("xuất hồ sơ, thành viên, đồng ý, phiên, hành động của mình; không có mã phiên, mật khẩu hay dữ liệu người khác", async () => {
+  it("xuất hồ sơ, thành viên, đồng ý, phiên, hành động của mình; không có mã phiên, mật khẩu hay dữ liệu người khác [F-009/AC-01]", async () => {
     const ws = await makeWorkspace("Cửa hàng A");
     await t.db.insert(members).values([
       { workspaceId: ws, userId: "u1", role: "owner" },
@@ -142,7 +142,7 @@ describe("rights-access: xem và xuất dữ liệu của chính mình (STD-PRIV
     expect(audit).toHaveLength(1);
   });
 
-  it("người dùng không tồn tại: từ chối, không rò gì", async () => {
+  it("người dùng không tồn tại: từ chối, không rò gì [F-009/AC-02]", async () => {
     await expect(
       rights().exportMyData({ userId: "không-có" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -150,7 +150,7 @@ describe("rights-access: xem và xuất dữ liệu của chính mình (STD-PRIV
 });
 
 describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao (CMP-PRIV-005, CMP-RIGHTS-007)", () => {
-  it("sai mật khẩu hoặc rỗng: từ chối, không xoá gì", async () => {
+  it("sai mật khẩu hoặc rỗng: từ chối, không xoá gì [F-009/AC-04]", async () => {
     for (const password of ["sai-mat-khau-1234", ""])
       await expect(
         rights().deleteAccount({ userId: "u1", password }),
@@ -159,7 +159,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
   });
 
   // AUD-CODE-008: bước nhập lại mật khẩu là một phép dò mật khẩu cho ai giữ phiên; phải bị giới hạn như đăng nhập.
-  it("dò mật khẩu: sai nhiều lần thì bị khoá, dù sau đó nhập đúng cũng không xoá được", async () => {
+  it("dò mật khẩu: sai nhiều lần thì bị khoá, dù sau đó nhập đúng cũng không xoá được [F-009/AC-05]", async () => {
     for (let i = 0; i < 5; i++)
       await expect(
         rights().deleteAccount({ userId: "u1", password: `sai-lan-${i}-xxxx` }),
@@ -172,7 +172,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     ).toHaveLength(1);
   });
 
-  it("ghi sự kiện bảo mật khi sai mật khẩu và khi bị khoá, không lộ mật khẩu", async () => {
+  it("ghi sự kiện bảo mật khi sai mật khẩu và khi bị khoá, không lộ mật khẩu [F-009/AC-05]", async () => {
     logLines = [];
     for (let i = 0; i < 5; i++)
       await rights()
@@ -201,7 +201,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     expect(logLines.join("\n")).not.toContain("sai-lan-");
   });
 
-  it("đúng mật khẩu xoá bộ đếm: vài lần sai rồi đúng thì xoá được", async () => {
+  it("đúng mật khẩu xoá bộ đếm: vài lần sai rồi đúng thì xoá được [F-009/AC-05]", async () => {
     for (let i = 0; i < 3; i++)
       await expect(
         rights().deleteAccount({ userId: "u1", password: `sai-lan-${i}-xxxx` }),
@@ -212,7 +212,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     ).toHaveLength(0);
   });
 
-  it("workspace chỉ có mình: xoá cùng bằng chứng, blob, đồng ý; workspace còn người khác: chỉ gỡ khỏi danh sách; audit còn", async () => {
+  it("workspace chỉ có mình: xoá cùng bằng chứng, blob, đồng ý; workspace còn người khác: chỉ gỡ khỏi danh sách; audit còn [F-009/AC-03]", async () => {
     const solo = await makeWorkspace("Một mình");
     const shared = await makeWorkspace("Chung");
     await t.db.insert(members).values([
@@ -291,7 +291,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     ]);
   });
 
-  it("tệp nội dung dùng chung hash với workspace khác thì giữ lại; hết nơi dùng thì xoá (không để tệp mồ côi)", async () => {
+  it("tệp nội dung dùng chung hash với workspace khác thì giữ lại; hết nơi dùng thì xoá (không để tệp mồ côi) [F-009/AC-03]", async () => {
     const solo = await makeWorkspace("Một mình");
     const shared = await makeWorkspace("Chung");
     await t.db.insert(members).values([
@@ -307,7 +307,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     expect(store.size).toBe(0);
   });
 
-  it("chủ duy nhất của workspace còn thành viên khác: từ chối và không xoá gì (nguyên tử)", async () => {
+  it("chủ duy nhất của workspace còn thành viên khác: từ chối và không xoá gì (nguyên tử) [F-009/AC-06]", async () => {
     const ws = await makeWorkspace("Có người");
     await t.db.insert(members).values([
       { workspaceId: ws, userId: "u1", role: "owner" },
@@ -330,7 +330,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     ).toHaveLength(2);
   });
 
-  it("còn owner khác thì được rời đi", async () => {
+  it("còn owner khác thì được rời đi [F-009/AC-03]", async () => {
     const ws = await makeWorkspace("Hai chủ");
     await t.db.insert(members).values([
       { workspaceId: ws, userId: "u1", role: "owner" },
@@ -346,7 +346,7 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
     ).toHaveLength(1);
   });
 
-  it("tài khoản không có mật khẩu đăng nhập (không có hàng credential): không xoá được bằng mật khẩu bất kỳ", async () => {
+  it("tài khoản không có mật khẩu đăng nhập (không có hàng credential): không xoá được bằng mật khẩu bất kỳ [F-009/AC-04]", async () => {
     await t.db.delete(account).where(eq(account.userId, "u1"));
     await expect(
       rights().deleteAccount({ userId: "u1", password: PASSWORD }),
@@ -380,7 +380,7 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
       .values({ workspaceId: ws, userId: "u1", role: "owner" });
   });
 
-  it("bật tạo bản ghi đủ trường, băm đúng văn bản đã hiển thị; rút tạo bản ghi MỚI, bản cũ nguyên vẹn", async () => {
+  it("bật tạo bản ghi đủ trường, băm đúng văn bản đã hiển thị; rút tạo bản ghi MỚI, bản cũ nguyên vẹn [F-009/AC-07]", async () => {
     await wsSvc().setAiCloud({ actorId: "u1", workspaceId: ws, enabled: true });
     const [g] = await t.db.select().from(consents);
     expect(g).toMatchObject({
@@ -413,7 +413,7 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
     expect((await currentConsent(t.db, ws, "ai_cloud")).granted).toBe(false);
   });
 
-  it("rút khi chưa cấp, hoặc rút hai lần: không sinh dòng thừa; bật hai lần: một dòng cấp", async () => {
+  it("rút khi chưa cấp, hoặc rút hai lần: không sinh dòng thừa; bật hai lần: một dòng cấp [F-009/AC-07]", async () => {
     await wsSvc().setAiCloud({
       actorId: "u1",
       workspaceId: ws,
@@ -436,7 +436,7 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
     expect(await t.db.select().from(consents)).toHaveLength(2);
   });
 
-  it("rút đồng ý thì dừng xử lý mục đích đó: cổng AI đám mây chặn, không gọi mô hình; cấp lại thì chạy", async () => {
+  it("rút đồng ý thì dừng xử lý mục đích đó: cổng AI đám mây chặn, không gọi mô hình; cấp lại thì chạy [F-009/AC-07] [F-008/AC-06]", async () => {
     await wsSvc().setAiCloud({ actorId: "u1", workspaceId: ws, enabled: true });
     await expect(call()).resolves.toBeDefined();
     await wsSvc().setAiCloud({
@@ -458,12 +458,12 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
     ]);
   });
 
-  it("thiếu bản ghi đồng ý: từ chối xử lý dù cờ workspace đang bật (CMP-VN-001)", async () => {
+  it("thiếu bản ghi đồng ý: từ chối xử lý dù cờ workspace đang bật (CMP-VN-001) [F-009/AC-07] [F-008/AC-06]", async () => {
     await t.db.update(workspaces).set({ aiCloudEnabled: true });
     await expect(call()).rejects.toBeInstanceOf(AiNotAllowedError);
   });
 
-  it("chỉ owner xem được lịch sử đồng ý của workspace", async () => {
+  it("chỉ owner xem được lịch sử đồng ý của workspace [F-009/AC-07]", async () => {
     await t.db
       .insert(members)
       .values({ workspaceId: ws, userId: "u2", role: "member" });
@@ -474,7 +474,7 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
 
   // AUD-DATA-008: trang tài khoản đã hứa "xuất theo từng dự án ở trang dự án" trong khi không có nút/route nào gọi
   // `exportProject`. Câu chữ phải khớp thứ có thật: hứa xuất ở trang dự án thì `app/` phải có nơi gọi nó.
-  it("trang tài khoản không hứa xuất ở trang dự án khi giao diện chưa có đường xuất đó", () => {
+  it("trang tài khoản không hứa xuất ở trang dự án khi giao diện chưa có đường xuất đó [F-009/AC-08]", () => {
     const walk = (d: string): string[] =>
       readdirSync(d, { withFileTypes: true }).flatMap((e) =>
         e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`],
@@ -490,7 +490,7 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
     expect(promises && !callsExportProject).toBe(false);
   });
 
-  it("mã không có đường sửa/xoá bản ghi đồng ý ngoài xoá tài khoản (chỉ ghi thêm)", () => {
+  it("mã không có đường sửa/xoá bản ghi đồng ý ngoài xoá tài khoản (chỉ ghi thêm) [F-009/AC-07]", () => {
     const walk = (d: string): string[] =>
       readdirSync(d, { withFileTypes: true }).flatMap((e) =>
         e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`],

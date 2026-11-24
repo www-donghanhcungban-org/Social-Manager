@@ -72,7 +72,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     maxCallsPerPurposePerDay: 100,
   };
 
-  it("80% cảnh báo, 100% chặn bằng mã lỗi và không gọi mô hình thêm", async () => {
+  it("80% cảnh báo, 100% chặn bằng mã lỗi và không gọi mô hình thêm [F-008/AC-08]", async () => {
     let calls = 0;
     const gw = createAiGateway({
       db: t.db,
@@ -104,7 +104,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     expect(rows.filter((r) => r.status === "blocked")).toHaveLength(1);
   });
 
-  it("ngân sách tính theo workspace: workspace khác không bị ảnh hưởng", async () => {
+  it("ngân sách tính theo workspace: workspace khác không bị ảnh hưởng [F-008/AC-08]", async () => {
     const [w2] = await t.db
       .insert(workspaces)
       .values({ name: "B" })
@@ -127,7 +127,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     ).resolves.toMatchObject({ text: expect.any(String) });
   });
 
-  it("trần theo tính năng: một purpose hết hạn mức không chặn purpose khác", async () => {
+  it("trần theo tính năng: một purpose hết hạn mức không chặn purpose khác [F-008/AC-08]", async () => {
     const gw = createAiGateway({
       db: t.db,
       model: model(),
@@ -139,7 +139,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     await expect(call(gw, "labels")).resolves.toBeDefined();
   });
 
-  it("trần byte: một lượt đẩy tổng byte qua trần thì lượt sau bị chặn", async () => {
+  it("trần byte: một lượt đẩy tổng byte qua trần thì lượt sau bị chặn [F-008/AC-08]", async () => {
     const gw = createAiGateway({
       db: t.db,
       model: model(),
@@ -149,7 +149,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     await expect(call(gw)).rejects.toBeInstanceOf(AiBudgetError);
   });
 
-  it("lượt bị chặn (blocked) không ăn ngân sách của lần sau", async () => {
+  it("lượt bị chặn (blocked) không ăn ngân sách của lần sau [F-008/AC-08]", async () => {
     const gw = createAiGateway({
       db: t.db,
       model: model({ local: false, host: "api.example.com" }),
@@ -169,7 +169,7 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
 });
 
 describe("quan sát lời gọi AI (AI-OBS-001/004, OPS-COST-003)", () => {
-  it("ghi span gen_ai.* đủ thuộc tính, KHÔNG có nội dung prompt hay câu trả lời", async () => {
+  it("ghi span gen_ai.* đủ thuộc tính, KHÔNG có nội dung prompt hay câu trả lời [F-008/AC-07]", async () => {
     const metrics = createMetrics();
     const gw = createAiGateway({
       db: t.db,
@@ -197,7 +197,7 @@ describe("quan sát lời gọi AI (AI-OBS-001/004, OPS-COST-003)", () => {
     expect(text).toContain('direction="output"');
   });
 
-  it("chặn AI đám mây chưa cho phép ghi sự kiện ai.blocked", async () => {
+  it("chặn AI đám mây chưa cho phép ghi sự kiện ai.blocked [F-008/AC-06]", async () => {
     const gw = createAiGateway({
       db: t.db,
       model: model({ local: false, host: "api.example.com" }),

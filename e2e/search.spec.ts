@@ -36,7 +36,7 @@ async function setup(page: Page) {
   ).toContainText(/Đã nhập \d+ tin mới/);
 }
 
-test("tìm trong tin đã đồng bộ (không phân biệt dấu) và hỏi đáp báo AI chưa bật", async ({
+test("tìm trong tin đã đồng bộ (không phân biệt dấu) và hỏi đáp báo AI chưa bật [F-007/AC-07] [F-008/AC-05] [F-008/AC-11]", async ({
   page,
 }) => {
   await setup(page);

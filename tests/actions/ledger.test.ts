@@ -40,7 +40,7 @@ const request = (draftId: string, key = "k1", actorId = "member") =>
 const rows = () => e.t.db.select().from(actionLedger);
 
 describe("yêu cầu gửi và chính sách", () => {
-  it("đủ điều kiện: xếp hàng (chưa gọi nhà cung cấp); dòng sổ có băm, người nhận suy ra từ hội thoại, không có nội dung", async () => {
+  it("đủ điều kiện: xếp hàng (chưa gọi nhà cung cấp); dòng sổ có băm, người nhận suy ra từ hội thoại, không có nội dung [F-006/AC-05]", async () => {
     const d = await e.draft("Dạ còn ạ");
     const a = await request(d);
     expect(a).toMatchObject({
@@ -98,7 +98,7 @@ describe("yêu cầu gửi và chính sách", () => {
       "rate_limited",
     ],
   ] as const)(
-    "%s → ghi dòng blocked kèm lý do, không xếp hàng",
+    "%s → ghi dòng blocked kèm lý do, không xếp hàng [F-006/AC-06]",
     async (_n, arrange, reason) => {
       const d = await e.draft();
       await arrange();
@@ -109,7 +109,7 @@ describe("yêu cầu gửi và chính sách", () => {
     },
   );
 
-  it("nội dung quá dài so với nền tảng (Facebook 2000 ký tự) bị chặn text_too_long", async () => {
+  it("nội dung quá dài so với nền tảng (Facebook 2000 ký tự) bị chặn text_too_long [F-006/AC-06]", async () => {
     const d = await e.draft("x".repeat(2001));
     expect(await request(d)).toMatchObject({
       state: "blocked",
@@ -117,7 +117,7 @@ describe("yêu cầu gửi và chính sách", () => {
     });
   });
 
-  it("hạn mức giờ: đúng biên; hành động bị chặn không tính vào hạn mức; qua giờ thì hết tính", async () => {
+  it("hạn mức giờ: đúng biên; hành động bị chặn không tính vào hạn mức; qua giờ thì hết tính [F-006/AC-06]", async () => {
     await e.t.db.update(workspaces).set({ outboundMaxPerHour: 2 });
     const ids = [await e.draft("a"), await e.draft("b"), await e.draft("c")];
     expect((await request(ids[0]!, "k-a")).state).toBe("queued");
@@ -132,7 +132,7 @@ describe("yêu cầu gửi và chính sách", () => {
     expect((await request(ids[2]!, "k-c2")).state).toBe("queued");
   });
 
-  it("nháp lạ/workspace khác là NotFound; nháp đã bỏ là draft_closed; khoá rỗng hoặc quá dài bị từ chối; người ngoài Forbidden", async () => {
+  it("nháp lạ/workspace khác là NotFound; nháp đã bỏ là draft_closed; khoá rỗng hoặc quá dài bị từ chối; người ngoài Forbidden [F-006/AC-05] [F-006/AC-11]", async () => {
     const d = await e.draft();
     await expect(request("lạ")).rejects.toBeInstanceOf(NotFoundError);
     await expect(
@@ -150,7 +150,7 @@ describe("yêu cầu gửi và chính sách", () => {
 });
 
 describe("lũy đẳng", () => {
-  it("gửi lại cùng khoá trả cùng hành động, không tạo thứ hai; vẫn đúng sau khi đã gửi xong", async () => {
+  it("gửi lại cùng khoá trả cùng hành động, không tạo thứ hai; vẫn đúng sau khi đã gửi xong [F-006/AC-05]", async () => {
     const d = await e.draft();
     const a = await request(d, "same");
     const again = await request(d, "same");
@@ -165,7 +165,7 @@ describe("lũy đẳng", () => {
     expect(await rows()).toHaveLength(1);
   });
 
-  it("cùng khoá cho nháp khác là xung đột; khoá khác cho nháp đang có hành động hiệu lực cũng bị từ chối", async () => {
+  it("cùng khoá cho nháp khác là xung đột; khoá khác cho nháp đang có hành động hiệu lực cũng bị từ chối [F-006/AC-05]", async () => {
     const d1 = await e.draft("một");
     const d2 = await e.draft("hai");
     await request(d1, "k");
@@ -178,7 +178,7 @@ describe("lũy đẳng", () => {
     expect(await rows()).toHaveLength(1);
   });
 
-  it("hai yêu cầu song song cùng khoá chỉ tạo một dòng", async () => {
+  it("hai yêu cầu song song cùng khoá chỉ tạo một dòng [F-006/AC-05]", async () => {
     const d = await e.draft();
     const [a, b] = await Promise.all([request(d, "race"), request(d, "race")]);
     expect(a.id).toBe(b.id);
@@ -186,7 +186,7 @@ describe("lũy đẳng", () => {
     expect(await rows()).toHaveLength(1);
   });
 
-  it("sau khi bị chặn hoặc thất bại, cùng nháp yêu cầu lại với khoá MỚI được", async () => {
+  it("sau khi bị chặn hoặc thất bại, cùng nháp yêu cầu lại với khoá MỚI được [F-006/AC-05]", async () => {
     const d = await e.draft();
     e.state.live = false;
     expect((await request(d, "k1")).state).toBe("blocked");
@@ -203,7 +203,7 @@ describe("lũy đẳng", () => {
 });
 
 describe("gửi đúng một lần", () => {
-  it("dispatch gọi nhà cung cấp một lần với đúng tài khoản, hội thoại, nội dung; confirmed + nháp thành sent", async () => {
+  it("dispatch gọi nhà cung cấp một lần với đúng tài khoản, hội thoại, nội dung; confirmed + nháp thành sent [F-006/AC-07]", async () => {
     const d = await e.draft("Dạ còn ạ");
     const a = await request(d);
     expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
@@ -229,7 +229,7 @@ describe("gửi đúng một lần", () => {
     expect(draft!.status).toBe("sent");
   });
 
-  it("gọi dispatch lần hai cho hành động đã xong bị bỏ qua, không gửi lại", async () => {
+  it("gọi dispatch lần hai cho hành động đã xong bị bỏ qua, không gửi lại [F-006/AC-07]", async () => {
     const a = await request(await e.draft());
     await e.actions.dispatch({ actionId: a.id });
     expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
@@ -243,7 +243,7 @@ describe("gửi đúng một lần", () => {
     expect(e.send).toHaveBeenCalledTimes(1);
   });
 
-  it("hai dispatch song song: chỉ một thắng, nhà cung cấp chỉ bị gọi một lần", async () => {
+  it("hai dispatch song song: chỉ một thắng, nhà cung cấp chỉ bị gọi một lần [F-006/AC-07]", async () => {
     const a = await request(await e.draft());
     e.send.mockImplementation(async () => {
       await new Promise((r) => setTimeout(r, 30));
@@ -263,7 +263,7 @@ describe("gửi đúng một lần", () => {
     expect((await rows())[0]!.attempts).toBe(1);
   });
 
-  it("Zalo trả id rỗng vẫn confirmed với danh sách id rỗng", async () => {
+  it("Zalo trả id rỗng vẫn confirmed với danh sách id rỗng [F-006/AC-07]", async () => {
     e.send.mockResolvedValueOnce({ messageIds: [] });
     const a = await request(await e.draft());
     await e.actions.dispatch({ actionId: a.id });
@@ -281,7 +281,7 @@ describe("kết quả của nhà cung cấp", () => {
     return { r, got: await e.actions.get({ ...M(), actionId: a.id }) };
   };
 
-  it("từ chối chắc chắn → failed với mã an toàn; nháp vẫn mở", async () => {
+  it("từ chối chắc chắn → failed với mã an toàn; nháp vẫn mở [F-006/AC-08]", async () => {
     e.send.mockRejectedValueOnce(new SendRejectedError("http.422", "rejected"));
     const { r, got } = await run();
     expect(r.status).toBe("failed");
@@ -294,7 +294,7 @@ describe("kết quả của nhà cung cấp", () => {
     expect(d!.status).toBe("open");
   });
 
-  it("nhà cung cấp báo hết cửa sổ → blocked window_closed (không phải lỗi để thử lại)", async () => {
+  it("nhà cung cấp báo hết cửa sổ → blocked window_closed (không phải lỗi để thử lại) [F-006/AC-08]", async () => {
     e.send.mockRejectedValueOnce(
       new SendRejectedError("messaging_window_closed", "window_closed"),
     );
@@ -328,28 +328,31 @@ describe("kết quả của nhà cung cấp", () => {
       () => new Error("postgres://u:pw@h/db sk-live-x"),
       "internal",
     ],
-  ])("%s → send_unknown, mã an toàn, KHÔNG gửi lại", async (_n, make, code) => {
-    e.send.mockRejectedValueOnce(make());
-    const a = await request(await e.draft());
-    expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
-      status: "send_unknown",
-    });
-    const got = await e.actions.get({ ...M(), actionId: a.id });
-    expect(got).toMatchObject({
-      state: "send_unknown",
-      errorCode: code,
-      attempts: 1,
-    });
-    expect(JSON.stringify(got)).not.toMatch(/pw@|sk-live/);
-    expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
-      status: "skipped",
-    });
-    expect(e.send).toHaveBeenCalledTimes(1);
-    // nháp còn bị khoá bởi hành động chưa rõ: không yêu cầu gửi lại bằng khoá khác
-    await expect(request(a.draftId!, "k-moi")).rejects.toMatchObject({
-      reason: "idempotency_conflict",
-    });
-  });
+  ])(
+    "%s → send_unknown, mã an toàn, KHÔNG gửi lại [F-006/AC-08]",
+    async (_n, make, code) => {
+      e.send.mockRejectedValueOnce(make());
+      const a = await request(await e.draft());
+      expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
+        status: "send_unknown",
+      });
+      const got = await e.actions.get({ ...M(), actionId: a.id });
+      expect(got).toMatchObject({
+        state: "send_unknown",
+        errorCode: code,
+        attempts: 1,
+      });
+      expect(JSON.stringify(got)).not.toMatch(/pw@|sk-live/);
+      expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
+        status: "skipped",
+      });
+      expect(e.send).toHaveBeenCalledTimes(1);
+      // nháp còn bị khoá bởi hành động chưa rõ: không yêu cầu gửi lại bằng khoá khác
+      await expect(request(a.draftId!, "k-moi")).rejects.toMatchObject({
+        reason: "idempotency_conflict",
+      });
+    },
+  );
 
   it("nhà cung cấp không cài sendMessage → failed not_implemented (chắc chắn chưa gửi)", async () => {
     e.state.provider = {
@@ -374,7 +377,7 @@ describe("kết quả của nhà cung cấp", () => {
 });
 
 describe("kiểm lại trước khi gửi", () => {
-  it("cờ hệ thống tắt giữa chừng: giữ nguyên hàng đợi (deferred), bật lại thì gửi", async () => {
+  it("cờ hệ thống tắt giữa chừng: giữ nguyên hàng đợi (deferred), bật lại thì gửi [F-006/AC-07]", async () => {
     const a = await request(await e.draft());
     e.state.live = false;
     expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
@@ -388,7 +391,7 @@ describe("kiểm lại trước khi gửi", () => {
     expect((await e.actions.dispatch({ actionId: a.id })).status).toBe("sent");
   });
 
-  it("owner tắt gửi của workspace sau khi xếp hàng → blocked policy_disabled, không gửi", async () => {
+  it("owner tắt gửi của workspace sau khi xếp hàng → blocked policy_disabled, không gửi [F-006/AC-07]", async () => {
     const a = await request(await e.draft());
     await createWorkspaceService({ db: e.t.db }).setOutbound({
       actorId: "owner",
@@ -404,7 +407,7 @@ describe("kiểm lại trước khi gửi", () => {
     expect(e.send).not.toHaveBeenCalled();
   });
 
-  it("cửa sổ nhắn tin đóng trong lúc chờ → blocked window_closed", async () => {
+  it("cửa sổ nhắn tin đóng trong lúc chờ → blocked window_closed [F-006/AC-07]", async () => {
     const a = await request(await e.draft());
     e.state.now = new Date(NOW.getTime() + 25 * H);
     expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
@@ -416,7 +419,7 @@ describe("kiểm lại trước khi gửi", () => {
     expect(e.send).not.toHaveBeenCalled();
   });
 
-  it("nội dung phiên bản nháp bị đụng vào sau khi duyệt → failed draft_changed, không gửi thứ chưa duyệt", async () => {
+  it("nội dung phiên bản nháp bị đụng vào sau khi duyệt → failed draft_changed, không gửi thứ chưa duyệt [F-006/AC-07]", async () => {
     const a = await request(await e.draft("bản đã duyệt"));
     await e.t.db.update(draftVersions).set({ text: "bản bị sửa lén" });
     expect(await e.actions.dispatch({ actionId: a.id })).toEqual({
@@ -460,7 +463,7 @@ describe("kiểm lại trước khi gửi", () => {
 });
 
 describe("phạm vi và ràng buộc", () => {
-  it("người ngoài không xem được; hành động workspace khác là NotFound; liệt kê theo trạng thái", async () => {
+  it("người ngoài không xem được; hành động workspace khác là NotFound; liệt kê theo trạng thái [F-006/AC-11]", async () => {
     const a = await request(await e.draft());
     await expect(
       e.actions.get({ actorId: "lạ", workspaceId: e.ws, actionId: a.id }),
@@ -493,7 +496,7 @@ describe("phạm vi và ràng buộc", () => {
     expect(await rows()).toHaveLength(0);
   });
 
-  it("owner đổi chính sách gửi; admin/member không; hạn mức ngoài 0-1000 bị từ chối", async () => {
+  it("owner đổi chính sách gửi; admin/member không; hạn mức ngoài 0-1000 bị từ chối [F-006/AC-06]", async () => {
     const svc = createWorkspaceService({ db: e.t.db });
     expect(await svc.getOutbound({ ...M() })).toEqual({
       enabled: true,

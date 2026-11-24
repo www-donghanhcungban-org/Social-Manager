@@ -8,6 +8,7 @@ Phạm vi MVP (bảng MoSCoW trong `PROJECT.md` §2) đóng băng ở cổng G1.
 
 Điều kiện xét một thay đổi: có người dùng thật cần, spec có tiêu chí chấp nhận, và đã chỉ ra mục nào bị đẩy ra.
 
-| Ngày       | Người quyết                        | Thay đổi                                                                                  | Bù bằng                           |
-| ---------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------- |
-| 2026-11-23 | chủ dự án (qua phiên chính, D-016) | Trang dự án xw-4e và cổng hành động gửi tin thuộc hướng "trợ lý công việc" (`docs/work/`) | không đẩy mục Must nào ra (Could) |
+| Ngày       | Người quyết                        | Thay đổi                                                                                  | Bù bằng                                                            |
+| ---------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 2026-11-23 | chủ dự án (qua phiên chính, D-016) | Trang dự án xw-4e và cổng hành động gửi tin thuộc hướng "trợ lý công việc" (`docs/work/`) | không đẩy mục Must nào ra (Could)                                  |
+| 2026-11-24 | phiên chính (D-041)                | Ghi nhận F-006..F-009 (đã có mã) thành dòng Should của bảng MoSCoW, kèm spec bù           | không đẩy mục nào ra: ghi nhận việc đã làm, không thêm phạm vi mới |

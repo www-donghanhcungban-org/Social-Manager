@@ -20,13 +20,13 @@ describe("che PII tiếng Việt trước khi gửi mô hình", () => {
     expect(r.counts.phone).toBe(1);
   });
 
-  it("che CCCD 12 số, không nhầm thành số điện thoại", () => {
+  it("che CCCD 12 số, không nhầm thành số điện thoại [F-008/AC-09]", () => {
     const r = redactPii("CCCD 079201001234 của khách");
     expect(r.text).toBe("CCCD [CCCD] của khách");
     expect(r.counts).toMatchObject({ cccd: 1, phone: 0 });
   });
 
-  it("che email, kể cả có dấu + và tên miền nhiều cấp", () => {
+  it("che email, kể cả có dấu + và tên miền nhiều cấp [F-008/AC-09]", () => {
     const r = redactPii("Gửi tới an.nguyen+shop@example.org giúp");
     expect(r.text).toBe("Gửi tới [EMAIL] giúp");
     expect(r.counts.email).toBe(1);
@@ -45,7 +45,7 @@ describe("che PII tiếng Việt trước khi gửi mô hình", () => {
     expect(r.counts.address).toBe(1);
   });
 
-  it("không che số tiền, ngày, mã đơn, số lượng (không phải PII)", () => {
+  it("không che số tiền, ngày, mã đơn, số lượng (không phải PII) [F-008/AC-09]", () => {
     for (const s of [
       "Giá 1.500.000 đồng một bó",
       "Giảm 10% đơn từ 5 bó, đặt trước 15/10",
@@ -57,7 +57,7 @@ describe("che PII tiếng Việt trước khi gửi mô hình", () => {
       expect(redactPii(s).text, s).toBe(s);
   });
 
-  it("đếm theo nhóm, không giữ nội dung đã che; chạy lại không đổi (lũy đẳng)", () => {
+  it("đếm theo nhóm, không giữ nội dung đã che; chạy lại không đổi (lũy đẳng) [F-008/AC-09]", () => {
     const raw = `KH ${PHONE}, email a@example.com, CCCD 079201001234, ở 25 Nguyễn Trãi, quận 5`;
     const r = redactPii(raw);
     expect(r.counts).toEqual({ email: 1, cccd: 1, phone: 1, address: 1 });

@@ -281,3 +281,10 @@
 - Chọn: sửa câu chữ cho khớp thực tế, test chặn hứa suông, mở việc UI xuất thành mục 🟢 có chủ
 - Lý do (tiêu chí chất lượng cuối): đúng và an toàn trước: bỏ ngay lời hứa sai; tính năng xuất theo dự án cần thiết kế quyền và hợp đồng API riêng, không nhét vào đợt sửa lỗi
 - Đường lùi: hoàn câu chữ ở app/app/account/page.tsx và gỡ test; hoặc thêm route xuất
+
+### D-041 · 2026-11-24T13:51:12+00:00 · AUD-HAR-013: WF-SDD-001 tick nhưng 5 nhóm tính năng (hội thoại/nháp/gửi, tài liệu+dự án, hỏi đáp AI, quyền tài khoản) không có spec
+
+- Phương án: (1) mở lại tick WF-SDD-001 và chờ · (2) viết spec bù F-006..F-009 theo code thật, AC truy vết test, giữ tick
+- Chọn: viết spec bù F-006..F-009 theo code thật, AC truy vết test, giữ tick
+- Lý do (tiêu chí chất lượng cuối): cùng cách đã duyệt cho F-001..F-005 (D-032): spec mô tả hành vi thật, test lint và truy vết AC; mở lại tick chỉ ghi nhận thiếu mà không sửa
+- Đường lùi: xoá docs/specs/F-006..F-009, gỡ dòng Should khỏi PROJECT.md và mở lại tick WF-SDD-001

@@ -353,7 +353,7 @@ describe("xuất dự án", () => {
     return p;
   }
 
-  it("xuất tên, bí danh, liên kết và nội dung nguyên văn; không kèm khoá hay mã nội bộ", async () => {
+  it("xuất tên, bí danh, liên kết và nội dung nguyên văn; không kèm khoá hay mã nội bộ [F-009/AC-08]", async () => {
     const p = await setup();
     const out = await erasure().exportProject({
       actorId: "admin",
@@ -374,7 +374,7 @@ describe("xuất dự án", () => {
     expect(json).not.toMatch(/credentials|webhook_secret|created_by|"owner"/i);
   });
 
-  it("member không xuất được; workspace khác là NotFound; vượt trần xuất bị từ chối", async () => {
+  it("member không xuất được; workspace khác là NotFound; vượt trần xuất bị từ chối [F-009/AC-08]", async () => {
     const p = await setup();
     await expect(
       erasure().exportProject({
@@ -398,7 +398,7 @@ describe("xuất dự án", () => {
     ).resolves.toBeDefined();
   });
 
-  it("dự án rỗng xuất được; nội dung bị sửa trong kho thì không xuất (IntegrityError)", async () => {
+  it("dự án rỗng xuất được; nội dung bị sửa trong kho thì không xuất (IntegrityError) [F-009/AC-08]", async () => {
     const empty = await knowledge.createProject({ ...owner, name: "Rỗng" });
     expect(
       (await erasure().exportProject({ ...owner, projectId: empty.id })).items,

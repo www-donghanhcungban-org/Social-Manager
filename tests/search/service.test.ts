@@ -69,7 +69,7 @@ afterEach(async () => {
 });
 
 describe("tìm kiếm có dấu và không dấu", () => {
-  it("tìm không dấu trúng nội dung có dấu và ngược lại, không phân biệt hoa thường", async () => {
+  it("tìm không dấu trúng nội dung có dấu và ngược lại, không phân biệt hoa thường [F-007/AC-07]", async () => {
     await doc("a", "Khách đặt Cửa hàng Hoa vào thứ Sáu");
     for (const q of [
       "cua hang hoa",
@@ -83,14 +83,14 @@ describe("tìm kiếm có dấu và không dấu", () => {
     expect(await ids("cua hang xe")).toEqual([]);
   });
 
-  it("chữ đ và Đ: tìm 'duong' ra 'Đường', 'đơn' ra 'don'", async () => {
+  it("chữ đ và Đ: tìm 'duong' ra 'Đường', 'đơn' ra 'don' [F-007/AC-07]", async () => {
     await doc("a", "Đường Đồng Khởi, đơn hàng số 5");
     expect(await ids("duong dong khoi")).toEqual(["a"]);
     expect(await ids("đơn hàng")).toEqual(["a"]);
     expect(await ids("DON HANG so 5")).toEqual(["a"]);
   });
 
-  it("khớp tiền tố (gõ dở) và yêu cầu mọi từ cùng có mặt", async () => {
+  it("khớp tiền tố (gõ dở) và yêu cầu mọi từ cùng có mặt [F-007/AC-07]", async () => {
     await doc("a", "báo giá hoa hồng");
     await doc("b", "báo giá xe đạp");
     expect((await ids("bao gi")).sort()).toEqual(["a", "b"]);
@@ -98,7 +98,7 @@ describe("tìm kiếm có dấu và không dấu", () => {
     expect(await ids("hoa xe")).toEqual([]);
   });
 
-  it("truy vấn rỗng, chỉ dấu câu, hoặc ký tự đặc biệt của tsquery không gây lỗi", async () => {
+  it("truy vấn rỗng, chỉ dấu câu, hoặc ký tự đặc biệt của tsquery không gây lỗi [F-007/AC-07]", async () => {
     await doc("a", "nội dung bình thường");
     for (const q of [
       "",
@@ -121,7 +121,7 @@ describe("tìm kiếm có dấu và không dấu", () => {
     expect(await ids("!!!")).toEqual([]);
   });
 
-  it("xếp hạng: nội dung khớp nhiều hơn lên trước; đồng điểm thì mới hơn trước", async () => {
+  it("xếp hạng: nội dung khớp nhiều hơn lên trước; đồng điểm thì mới hơn trước [F-007/AC-07]", async () => {
     await doc("it", "hoa hoa hoa hoa hồng", at(1));
     await doc("old", "hoa", at(2));
     await doc("new", "hoa", at(3));
@@ -130,7 +130,7 @@ describe("tìm kiếm có dấu và không dấu", () => {
     expect(r.indexOf("new")).toBeLessThan(r.indexOf("old"));
   });
 
-  it("limit bị kẹp 1..50", async () => {
+  it("limit bị kẹp 1..50 [F-007/AC-07]", async () => {
     for (let i = 0; i < 3; i++) await doc(`d${i}`, `hoa ${i}`);
     expect(await ids("hoa", { limit: 0 })).toHaveLength(1);
     expect(await ids("hoa", { limit: 2 })).toHaveLength(2);
@@ -139,7 +139,7 @@ describe("tìm kiếm có dấu và không dấu", () => {
 });
 
 describe("đoạn trích và phiên bản", () => {
-  it("đoạn trích lấy từ nguyên văn (có dấu) quanh chỗ khớp", async () => {
+  it("đoạn trích lấy từ nguyên văn (có dấu) quanh chỗ khớp [F-007/AC-07]", async () => {
     const long = `${"mở đầu dài ".repeat(30)}Cửa hàng Hoa chốt giá ${"kết thúc dài ".repeat(30)}`;
     await doc("a", long);
     const [hit] = await find("cua hang hoa");
@@ -154,7 +154,7 @@ describe("đoạn trích và phiên bản", () => {
     expect(snippetOf(s, ["viet"])).toContain("Việt Nam");
   });
 
-  it("mặc định chỉ trả phiên bản mới nhất của một mục; phiên bản cũ chỉ khi allVersions", async () => {
+  it("mặc định chỉ trả phiên bản mới nhất của một mục; phiên bản cũ chỉ khi allVersions [F-007/AC-02]", async () => {
     await doc("x", "giá cũ là 100");
     await doc("x", "giá mới là 200");
     expect(await ids("gia cu")).toEqual([]); // bản cũ bị bản mới thay thế
@@ -172,7 +172,7 @@ describe("đoạn trích và phiên bản", () => {
 });
 
 describe("phạm vi và quyền", () => {
-  it("không thấy mục của workspace khác; người ngoài và id lạ bị chặn", async () => {
+  it("không thấy mục của workspace khác; người ngoài và id lạ bị chặn [F-007/AC-09]", async () => {
     await doc("a", "bí mật của A");
     await doc("b", "bí mật của B", at(0), wsB);
     expect(await ids("bi mat")).toEqual(["a"]);
@@ -193,14 +193,14 @@ describe("phạm vi và quyền", () => {
     );
   });
 
-  it("member tìm được (chỉ đọc)", async () => {
+  it("member tìm được (chỉ đọc) [F-007/AC-09]", async () => {
     await doc("a", "tài liệu");
     await expect(
       search.search({ actorId: "member", workspaceId: ws, query: "tai lieu" }),
     ).resolves.toHaveLength(1);
   });
 
-  it("lọc theo dự án: gắn trực tiếp hoặc qua hội thoại; dự án khác không lẫn", async () => {
+  it("lọc theo dự án: gắn trực tiếp hoặc qua hội thoại; dự án khác không lẫn [F-007/AC-07]", async () => {
     const p1 = await knowledge.createProject({
       ...A,
       workspaceId: ws,
@@ -281,7 +281,7 @@ describe("phạm vi và quyền", () => {
 });
 
 describe("chỉ mục", () => {
-  it("nhập bằng chứng ghi chỉ mục cùng giao dịch; lũy đẳng khi nhập lại", async () => {
+  it("nhập bằng chứng ghi chỉ mục cùng giao dịch; lũy đẳng khi nhập lại [F-007/AC-01]", async () => {
     await doc("a", "nội dung");
     await doc("a", "nội dung");
     expect(await t.db.select().from(searchDocuments)).toHaveLength(1);

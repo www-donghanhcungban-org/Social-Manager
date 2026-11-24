@@ -86,7 +86,7 @@ afterEach(async () => {
 });
 
 describe("guardrail tất định chạy trước mô hình (AI-GUARD-001/005/008)", () => {
-  it("câu hỏi đổi luật bị chặn khi tầng mô hình 'tắt': không gọi mô hình, không ghi nhật ký gửi", async () => {
+  it("câu hỏi đổi luật bị chặn khi tầng mô hình 'tắt': không gọi mô hình, không ghi nhật ký gửi [F-008/AC-04]", async () => {
     await doc("giá", "Giá hoa hồng 200k mỗi bó.");
     const r = await ask(
       mustNotBeCalled,
@@ -100,7 +100,7 @@ describe("guardrail tất định chạy trước mô hình (AI-GUARD-001/005/00
     expect(await t.db.select().from(aiDisclosures)).toHaveLength(0);
   });
 
-  it("nhóm rủi ro cao chuyển người: không gọi mô hình", async () => {
+  it("nhóm rủi ro cao chuyển người: không gọi mô hình [F-008/AC-04]", async () => {
     await doc("giá", "Giá hoa hồng 200k mỗi bó.");
     const r = await ask(
       mustNotBeCalled,
@@ -110,7 +110,7 @@ describe("guardrail tất định chạy trước mô hình (AI-GUARD-001/005/00
     expect(await t.db.select().from(aiDisclosures)).toHaveLength(0);
   });
 
-  it("không có tham số nào để tắt guard: chữ ký ask chỉ nhận actor, workspace, câu hỏi, dự án, topK", async () => {
+  it("không có tham số nào để tắt guard: chữ ký ask chỉ nhận actor, workspace, câu hỏi, dự án, topK [F-008/AC-04]", async () => {
     const svc = createAnswerService({
       search,
       ai: createAiGateway({ db: t.db, model: mustNotBeCalled }),
@@ -131,12 +131,12 @@ describe("đầu ra mô hình có schema và nhánh lỗi (AI-APP-003)", () => {
     await doc("giá", "Giá hoa hồng 200k mỗi bó, giao trong ngày.");
   });
 
-  it("JSON hỏng → invalid_output", async () => {
+  it("JSON hỏng → invalid_output [F-008/AC-03]", async () => {
     const r = await ask(model({ text: "đây không phải json" }), "giá hoa hồng");
     expect(r).toMatchObject({ answered: false, reason: "invalid_output" });
   });
 
-  it("mô hình từ chối → refused, không hiển thị nội dung", async () => {
+  it("mô hình từ chối → refused, không hiển thị nội dung [F-008/AC-03]", async () => {
     const r = await ask(
       model({ text: "", stopReason: "refusal" }),
       "giá hoa hồng",
@@ -144,7 +144,7 @@ describe("đầu ra mô hình có schema và nhánh lỗi (AI-APP-003)", () => {
     expect(r).toMatchObject({ answered: false, reason: "refused" });
   });
 
-  it("hết max_tokens (đầu ra cụt) → loại, dù phần đã có trông hợp lệ", async () => {
+  it("hết max_tokens (đầu ra cụt) → loại, dù phần đã có trông hợp lệ [F-008/AC-03]", async () => {
     const r = await ask(
       model({
         text: '{"answer":"200k","citations":[1]}',
@@ -155,7 +155,7 @@ describe("đầu ra mô hình có schema và nhánh lỗi (AI-APP-003)", () => {
     expect(r).toMatchObject({ answered: false, reason: "invalid_output" });
   });
 
-  it("đầu ra đúng schema nhưng có URL ngoài nguồn → loại (chặn rò dữ liệu qua URL)", async () => {
+  it("đầu ra đúng schema nhưng có URL ngoài nguồn → loại (chặn rò dữ liệu qua URL) [F-008/AC-03]", async () => {
     const r = await ask(
       model({
         text: '{"answer":"200k, xem https://evil.example/steal?d=200k","citations":[1]}',
@@ -202,7 +202,7 @@ describe("đầu ra mô hình có schema và nhánh lỗi (AI-APP-003)", () => {
 });
 
 describe("dữ liệu ngoài là dữ liệu, không phải chỉ thị (AI-APP-007, AI-RAG-002)", () => {
-  it("tài liệu chứa chỉ thị: nằm trong khối NGUỒN có ranh giới, không lọt vào system; mô hình 'làm theo' bị loại", async () => {
+  it("tài liệu chứa chỉ thị: nằm trong khối NGUỒN có ranh giới, không lọt vào system; mô hình 'làm theo' bị loại [F-008/AC-03]", async () => {
     // Ngắn hơn bán kính đoạn trích (80 ký tự) để cả chỉ thị lẫn URL nằm trong nguồn đưa vào lời nhắc.
     await doc(
       "độc",
@@ -250,7 +250,7 @@ describe("che PII trước khi gửi ra ngoài (CMP-PRIV-010, AI-GUARD-004)", ()
     });
   });
 
-  it("điểm cuối đám mây: SĐT, email, địa chỉ bị che trong lời nhắc; số byte ghi nhật ký là của bản đã che", async () => {
+  it("điểm cuối đám mây: SĐT, email, địa chỉ bị che trong lời nhắc; số byte ghi nhật ký là của bản đã che [F-008/AC-09]", async () => {
     const r = await ask(cloud(ANSWER), Q);
     expect(r.answered).toBe(true);
     const { system, user } = prompts[0]!;
@@ -268,13 +268,13 @@ describe("che PII trước khi gửi ra ngoài (CMP-PRIV-010, AI-GUARD-004)", ()
     expect(r.citations[0]!.snippet).toContain(PHONE);
   });
 
-  it("điểm cuối cục bộ giữ nguyên văn (dữ liệu không rời máy)", async () => {
+  it("điểm cuối cục bộ giữ nguyên văn (dữ liệu không rời máy) [F-008/AC-09]", async () => {
     await ask(model(ANSWER), Q);
     expect(prompts[0]!.user).toContain(PHONE);
     expect(prompts[0]!.user).not.toContain("[SĐT]");
   });
 
-  it("nhật ký gen_ai chỉ có số lượng đã che, không có PII hay nội dung nguồn", async () => {
+  it("nhật ký gen_ai chỉ có số lượng đã che, không có PII hay nội dung nguồn [F-008/AC-09]", async () => {
     await ask(cloud(ANSWER), Q);
     const span = logs.find((l) => l.message === "gen_ai.client.operation");
     expect(span?.fields).toMatchObject({ pii_redacted: 3 });
@@ -283,7 +283,7 @@ describe("che PII trước khi gửi ra ngoài (CMP-PRIV-010, AI-GUARD-004)", ()
       expect(all).not.toContain(secret);
   });
 
-  it("cấu hình dựng cổng có thể tắt che (không phải tham số của người gọi), mặc định bật", async () => {
+  it("cấu hình dựng cổng có thể tắt che (không phải tham số của người gọi), mặc định bật [F-008/AC-09]", async () => {
     await ask(cloud(ANSWER), Q, { redact: false });
     expect(prompts[0]!.user).toContain(PHONE);
     prompts.length = 0;

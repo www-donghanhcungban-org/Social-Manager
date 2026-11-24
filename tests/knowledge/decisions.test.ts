@@ -79,7 +79,7 @@ afterEach(async () => {
 });
 
 describe("sổ quyết định", () => {
-  it("ghi quyết định kèm nguồn; thời điểm mặc định là lúc nguồn xảy ra", async () => {
+  it("ghi quyết định kèm nguồn; thời điểm mặc định là lúc nguồn xảy ra [F-007/AC-06]", async () => {
     const p = await project();
     const src = await doc("họp-1", ws, at(30));
     const d = await decide(p.id, src.itemId);
@@ -111,7 +111,7 @@ describe("sổ quyết định", () => {
     expect(await t.db.select().from(decisions)).toHaveLength(0);
   });
 
-  it("thay thế: cái cũ thành superseded và trỏ tới cái mới; liệt kê mặc định chỉ hiệu lực", async () => {
+  it("thay thế: cái cũ thành superseded và trỏ tới cái mới; liệt kê mặc định chỉ hiệu lực [F-007/AC-06]", async () => {
     const p = await project();
     const src = await doc("a");
     const d1 = await decide(p.id, src.itemId, { text: "Giá 200k" });
@@ -137,7 +137,7 @@ describe("sổ quyết định", () => {
     });
   });
 
-  it("không thay được quyết định đã bị thay; không thay quyết định của dự án khác; thất bại không để lại dòng nào", async () => {
+  it("không thay được quyết định đã bị thay; không thay quyết định của dự án khác; thất bại không để lại dòng nào [F-007/AC-06]", async () => {
     const p = await project("P1");
     const q = await project("P2");
     const src = await doc("a");
@@ -159,7 +159,7 @@ describe("sổ quyết định", () => {
     ).toEqual(["Chốt giá 200k", "mới", "của Q"].sort());
   });
 
-  it("luôn còn đúng một quyết định hiệu lực trong chuỗi thay thế", async () => {
+  it("luôn còn đúng một quyết định hiệu lực trong chuỗi thay thế [F-007/AC-06]", async () => {
     const p = await project();
     const src = await doc("a");
     let prev = await decide(p.id, src.itemId, { text: "v0" });
@@ -173,7 +173,7 @@ describe("sổ quyết định", () => {
     expect(rows.filter((r) => r.status === "superseded")).toHaveLength(4);
   });
 
-  it("xoá bằng chứng nguồn giữ quyết định nhưng đánh dấu mất nguồn, còn nhãn nguồn", async () => {
+  it("xoá bằng chứng nguồn giữ quyết định nhưng đánh dấu mất nguồn, còn nhãn nguồn [F-007/AC-06]", async () => {
     const p = await project();
     const src = await doc("biên-bản-họp");
     await decide(p.id, src.itemId);
@@ -191,7 +191,7 @@ describe("sổ quyết định", () => {
     });
   });
 
-  it("kiểm đầu vào: nội dung rỗng/quá dài, ngày hỏng; quyền: member chỉ đọc, người ngoài bị Forbidden", async () => {
+  it("kiểm đầu vào: nội dung rỗng/quá dài, ngày hỏng; quyền: member chỉ đọc, người ngoài bị Forbidden [F-007/AC-09]", async () => {
     const p = await project();
     const src = await doc("a");
     for (const text of ["", "   ", "x".repeat(2001)])
@@ -246,7 +246,7 @@ describe("sổ quyết định", () => {
 });
 
 describe("hồ sơ dự án", () => {
-  it("dự án rỗng: không nguồn, không hoạt động, không quyết định", async () => {
+  it("dự án rỗng: không nguồn, không hoạt động, không quyết định [F-007/AC-06]", async () => {
     const p = await project("Dự án Hoa");
     expect(
       await svc.profile({ ...A, workspaceId: ws, projectId: p.id }),
@@ -261,7 +261,7 @@ describe("hồ sơ dự án", () => {
     });
   });
 
-  it("tổng hợp bí danh, số nguồn (kể cả qua hội thoại), hoạt động gần nhất và quyết định đang hiệu lực kèm nguồn", async () => {
+  it("tổng hợp bí danh, số nguồn (kể cả qua hội thoại), hoạt động gần nhất và quyết định đang hiệu lực kèm nguồn [F-007/AC-06]", async () => {
     const p = await project("Dự án Hoa");
     await svc.addAlias({
       ...A,
@@ -343,7 +343,7 @@ describe("hồ sơ dự án", () => {
     });
   });
 
-  it("người ngoài bị Forbidden; dự án workspace khác là NotFound", async () => {
+  it("người ngoài bị Forbidden; dự án workspace khác là NotFound [F-007/AC-09]", async () => {
     const p = await project();
     await expect(
       svc.profile({ actorId: "other", workspaceId: ws, projectId: p.id }),

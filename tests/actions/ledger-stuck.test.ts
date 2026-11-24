@@ -96,7 +96,7 @@ function worker(fault: {
 }
 
 describe("hành động kẹt giữa chừng → send_unknown (không bao giờ gửi lại)", () => {
-  it("dòng dispatching trẻ hơn ngưỡng không bị đụng; đủ ngưỡng → send_unknown `interrupted`; không về queued, không gửi lại", async () => {
+  it("dòng dispatching trẻ hơn ngưỡng không bị đụng; đủ ngưỡng → send_unknown `interrupted`; không về queued, không gửi lại [F-006/AC-08]", async () => {
     const { a } = await stuck();
     e.state.now = at(STUCK - 1);
     expect(await recover()).toBe(0);
@@ -121,7 +121,7 @@ describe("hành động kẹt giữa chừng → send_unknown (không bao giờ 
     expect(e.send).toHaveBeenCalledTimes(1);
   });
 
-  it("sau khi gỡ, đối soát nền thấy tin đã đi → confirmed, nháp sent; KHÔNG gọi sendMessage lần hai", async () => {
+  it("sau khi gỡ, đối soát nền thấy tin đã đi → confirmed, nháp sent; KHÔNG gọi sendMessage lần hai [F-006/AC-09]", async () => {
     const { a, draftId } = await stuck("Dạ còn ạ");
     e.state.now = at(STUCK);
     await recover();
@@ -255,7 +255,7 @@ describe("hành động kẹt giữa chừng → send_unknown (không bao giờ 
     expect(states).toEqual(["send_unknown", "send_unknown"]);
   });
 
-  it("nhà cung cấp trả lời muộn sau khi đã gỡ: không đè send_unknown, không gửi lại", async () => {
+  it("nhà cung cấp trả lời muộn sau khi đã gỡ: không đè send_unknown, không gửi lại [F-006/AC-08]", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => {
       release = r;
@@ -286,7 +286,7 @@ describe("hành động kẹt giữa chừng → send_unknown (không bao giờ 
 describe("lỗi CSDL trước khi gọi nhà cung cấp → failed (chắc chắn chưa gửi), không kẹt", () => {
   // 6 lần đọc sau khi nhận việc: trạng thái nháp, workspace, nội dung, đích, tin đến gần nhất, đọc lại nháp trước khi gửi.
   it.each([1, 2, 3, 4, 5, 6])(
-    "lần đọc thứ %i lỗi tạm thời → failed `precheck_failed`; nhà cung cấp chưa bị gọi; nháp mở cho yêu cầu mới",
+    "lần đọc thứ %i lỗi tạm thời → failed `precheck_failed`; nhà cung cấp chưa bị gọi; nháp mở cho yêu cầu mới [F-006/AC-08]",
     async (k) => {
       const { svc, seen } = worker({ select: (n) => n === k });
       const draftId = await e.draft();

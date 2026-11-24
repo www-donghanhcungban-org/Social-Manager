@@ -113,12 +113,12 @@ afterEach(async () => {
 });
 
 describe("dòng thời gian dự án", () => {
-  it("dự án rỗng trả danh sách rỗng", async () => {
+  it("dự án rỗng trả danh sách rỗng [F-007/AC-06]", async () => {
     const p = await project();
     expect(await timeline(p.id)).toEqual({ items: [], nextCursor: null });
   });
 
-  it("gộp bằng chứng gắn trực tiếp và tin của hội thoại đã gắn, mới nhất trước", async () => {
+  it("gộp bằng chứng gắn trực tiếp và tin của hội thoại đã gắn, mới nhất trước [F-007/AC-06]", async () => {
     const p = await project();
     const d = await doc("biên-bản", at(5));
     await linkDoc(p.id, d.itemId);
@@ -140,7 +140,7 @@ describe("dòng thời gian dự án", () => {
     ]);
   });
 
-  it("mục gắn cả trực tiếp lẫn qua hội thoại chỉ xuất hiện một lần", async () => {
+  it("mục gắn cả trực tiếp lẫn qua hội thoại chỉ xuất hiện một lần [F-007/AC-06]", async () => {
     const p = await project();
     const conv = await conversationWithMessages("c1", [1]);
     await svc.link({
@@ -164,7 +164,7 @@ describe("dòng thời gian dự án", () => {
     ]);
   });
 
-  it("phân trang cursor không sót, không lặp kể cả trùng thời điểm", async () => {
+  it("phân trang cursor không sót, không lặp kể cả trùng thời điểm [F-007/AC-06]", async () => {
     const p = await project();
     for (let i = 0; i < 7; i++)
       await linkDoc(p.id, (await doc(`d${i}`, at(Math.min(i, 4)))).itemId);
@@ -192,7 +192,7 @@ describe("dòng thời gian dự án", () => {
     ).toBe("x");
   });
 
-  it("member đọc được; người ngoài bị Forbidden; dự án workspace khác/lạ là NotFound; cursor hỏng là ValidationError", async () => {
+  it("member đọc được; người ngoài bị Forbidden; dự án workspace khác/lạ là NotFound; cursor hỏng là ValidationError [F-007/AC-09]", async () => {
     const p = await project();
     await expect(timeline(p.id, { actorId: "member" })).resolves.toBeDefined();
     await expect(timeline(p.id, { actorId: "other" })).rejects.toBeInstanceOf(

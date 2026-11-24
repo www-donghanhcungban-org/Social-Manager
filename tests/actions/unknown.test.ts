@@ -50,7 +50,7 @@ async function unknown(text = "Dạ còn ạ") {
 const get = (id: string) => e.actions.get({ ...M(), actionId: id });
 
 describe("đối soát send_unknown", () => {
-  it("thấy tin gửi đi cùng nội dung sau lúc gửi → confirmed kèm id tin; nháp thành sent; KHÔNG gọi sendMessage lần hai", async () => {
+  it("thấy tin gửi đi cùng nội dung sau lúc gửi → confirmed kèm id tin; nháp thành sent; KHÔNG gọi sendMessage lần hai [F-006/AC-09]", async () => {
     const { a, draftId } = await unknown("Dạ còn ạ");
     listReturns(
       out("Dạ còn ạ", new Date(NOW.getTime() + 5_000), { id: "mid-found" }),
@@ -71,7 +71,7 @@ describe("đối soát send_unknown", () => {
     expect(e.send).toHaveBeenCalledTimes(1);
   });
 
-  it("không thấy → giữ send_unknown kèm not_found (không chứng minh được là chưa gửi); thử lại được; vẫn không gửi lại", async () => {
+  it("không thấy → giữ send_unknown kèm not_found (không chứng minh được là chưa gửi); thử lại được; vẫn không gửi lại [F-006/AC-09]", async () => {
     const { a } = await unknown();
     listReturns();
     expect(await e.actions.reconcile({ actionId: a.id })).toEqual({
@@ -90,7 +90,7 @@ describe("đối soát send_unknown", () => {
     expect(e.send).toHaveBeenCalledTimes(1);
   });
 
-  it("không nhận nhầm: tin cùng nội dung gửi TRƯỚC lúc gửi, tin ĐẾN cùng nội dung, hoặc tin khác nội dung", async () => {
+  it("không nhận nhầm: tin cùng nội dung gửi TRƯỚC lúc gửi, tin ĐẾN cùng nội dung, hoặc tin khác nội dung [F-006/AC-09]", async () => {
     const { a } = await unknown("Dạ còn ạ");
     listReturns(
       out("Dạ còn ạ", new Date(NOW.getTime() - 10 * 60_000)), // đã có từ trước
@@ -105,7 +105,7 @@ describe("đối soát send_unknown", () => {
     expect((await get(a.id)).state).toBe("send_unknown");
   });
 
-  it("dung sai lệch đồng hồ 60 giây: sớm hơn 30 giây vẫn nhận, sớm hơn 61 giây thì không", async () => {
+  it("dung sai lệch đồng hồ 60 giây: sớm hơn 30 giây vẫn nhận, sớm hơn 61 giây thì không [F-006/AC-09]", async () => {
     const { a } = await unknown();
     listReturns(out("Dạ còn ạ", new Date(NOW.getTime() - 61_000)));
     expect((await e.actions.reconcile({ actionId: a.id })).status).toBe(
@@ -155,7 +155,7 @@ describe("đối soát send_unknown", () => {
     expect(e.list).toHaveBeenCalledTimes(1); // gặp tin cũ thì không đọc tiếp
   });
 
-  it("lỗi đọc hoặc nhà cung cấp không đọc lại được: ghi error, giữ send_unknown, không lộ nội dung lỗi", async () => {
+  it("lỗi đọc hoặc nhà cung cấp không đọc lại được: ghi error, giữ send_unknown, không lộ nội dung lỗi [F-006/AC-09]", async () => {
     const { a } = await unknown();
     e.list.mockRejectedValue(new Error("postgres://u:pw@h/db sk-live-x"));
     expect(await e.actions.reconcile({ actionId: a.id })).toEqual({
@@ -204,7 +204,7 @@ describe("đối soát send_unknown", () => {
 });
 
 describe("người quyết định send_unknown", () => {
-  it("chỉ admin/owner; sent → confirmed và nháp thành sent; ghi người quyết định", async () => {
+  it("chỉ admin/owner; sent → confirmed và nháp thành sent; ghi người quyết định [F-006/AC-09]", async () => {
     const { a, draftId } = await unknown();
     await expect(
       e.actions.resolveUnknown({ ...M(), actionId: a.id, outcome: "sent" }),
@@ -229,7 +229,7 @@ describe("người quyết định send_unknown", () => {
     expect(e.send).toHaveBeenCalledTimes(1);
   });
 
-  it("not_sent → failed confirmed_not_sent và mở đường cho yêu cầu MỚI (khoá mới), không tự gửi lại", async () => {
+  it("not_sent → failed confirmed_not_sent và mở đường cho yêu cầu MỚI (khoá mới), không tự gửi lại [F-006/AC-09]", async () => {
     const { a, draftId } = await unknown();
     const r = await e.actions.resolveUnknown({
       actorId: "owner",
@@ -252,7 +252,7 @@ describe("người quyết định send_unknown", () => {
     expect(e.send).toHaveBeenCalledTimes(2); // lần gửi MỚI do người chủ động yêu cầu
   });
 
-  it("đã quyết rồi hoặc không phải send_unknown là xung đột; kết quả lạ, id lạ, workspace khác bị từ chối", async () => {
+  it("đã quyết rồi hoặc không phải send_unknown là xung đột; kết quả lạ, id lạ, workspace khác bị từ chối [F-006/AC-09]", async () => {
     const { a } = await unknown();
     await e.actions.resolveUnknown({
       actorId: "admin",
@@ -308,7 +308,7 @@ describe("huỷ", () => {
       idempotencyKey: key,
     });
 
-  it("queued → cancelled, không bao giờ gửi; dispatch sau đó bị bỏ qua", async () => {
+  it("queued → cancelled, không bao giờ gửi; dispatch sau đó bị bỏ qua [F-006/AC-10]", async () => {
     const a = await request();
     expect((await e.actions.cancel({ ...M(), actionId: a.id })).state).toBe(
       "cancelled",
@@ -319,7 +319,7 @@ describe("huỷ", () => {
     expect(e.send).not.toHaveBeenCalled();
   });
 
-  it("chỉ người tạo hoặc admin/owner huỷ được; người khác bị từ chối", async () => {
+  it("chỉ người tạo hoặc admin/owner huỷ được; người khác bị từ chối [F-006/AC-10]", async () => {
     const a = await request("k1", "member");
     await e.t.db
       .insert((await import("@/src/db/schema")).members)
@@ -344,7 +344,7 @@ describe("huỷ", () => {
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it("huỷ khi đang gửi → cancel_requested; kết quả thật vẫn được ghi (không rút lại được tin đã đi)", async () => {
+  it("huỷ khi đang gửi → cancel_requested; kết quả thật vẫn được ghi (không rút lại được tin đã đi) [F-006/AC-10]", async () => {
     const a = await request();
     let release!: () => void;
     const gate = new Promise<void>((r) => {
@@ -364,7 +364,7 @@ describe("huỷ", () => {
     expect((await get(a.id)).state).toBe("confirmed");
   });
 
-  it("đã xong, đang send_unknown, đã huỷ hoặc bị chặn thì không huỷ được", async () => {
+  it("đã xong, đang send_unknown, đã huỷ hoặc bị chặn thì không huỷ được [F-006/AC-10]", async () => {
     const done = await request("k1");
     await e.actions.dispatch({ actionId: done.id });
     await expect(

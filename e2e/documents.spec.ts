@@ -21,7 +21,7 @@ async function setup(page: Page) {
   await expect(page).toHaveURL(/\/app\/[0-9a-f-]{36}$/);
 }
 
-test("nhập tài liệu → nhập lại không trùng → tìm thấy; tạo dự án", async ({
+test("nhập tài liệu → nhập lại không trùng → tìm thấy; tạo dự án [F-007/AC-01] [F-007/AC-02] [F-007/AC-04]", async ({
   page,
 }) => {
   await setup(page);
