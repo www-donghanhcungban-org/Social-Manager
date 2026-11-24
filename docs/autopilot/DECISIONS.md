@@ -169,3 +169,10 @@
 - Chọn: Modular monolith một deployable, ranh giới kiểm bằng test tự viết (không thêm phụ thuộc)
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: một nơi triển khai/sao lưu, giao dịch chung dữ liệu+job; ranh giới có máy canh mà không thêm phụ thuộc dev chưa xác minh; ORM trong service là đánh đổi chấp nhận có điều kiện đọc lại
 - Đường lùi: Viết ADR mới thay ADR-0007: đổi test sang dependency-cruiser hoặc tách deployable kèm mục Bằng chứng tách
+
+### D-025 · 2026-11-23T23:59:46+00:00 · DB-SEC-007: cô lập workspace bằng RLS Postgres hay bằng tầng ứng dụng?
+
+- Phương án: (1) RLS: ENABLE+FORCE trên mọi bảng có workspace_id, policy theo biến phiên SET LOCAL, cần vai trò app không phải owner và mọi truy vấn trong giao dịch · (2) Cô lập tầng ứng dụng: mọi truy vấn lọc workspace_id sau requireAction; test BOLA/BFLA khoá hành vi; DB-SEC-007 Không áp dụng có điều kiện kiểm được
+- Chọn: Cô lập tầng ứng dụng: mọi truy vấn lọc workspace_id sau requireAction; test BOLA/BFLA khoá hành vi; DB-SEC-007 Không áp dụng có điều kiện kiểm được
+- Lý do (tiêu chí chất lượng cuối): Ứng dụng hiện kết nối bằng một vai trò duy nhất (chủ dự án, DB-SEC-002 chưa tách) nên FORCE RLS không có hiệu lực bảo vệ thật nếu không tách vai trò và bọc mọi truy vấn vào giao dịch SET LOCAL; làm nửa vời tạo cảm giác an toàn giả. Chọn lọc ở tầng dịch vụ có test chéo workspace chạy trong CI; RLS để làm cùng DB-SEC-002 khi triển khai tách vai trò (cần người kiểm trên hạ tầng thật)
+- Đường lùi: Thêm migration bật RLS kèm vai trò app riêng; migration .down tắt RLS và thu hồi vai trò
