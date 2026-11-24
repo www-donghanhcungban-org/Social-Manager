@@ -472,6 +472,24 @@ describe("rights-withdraw-consent: cấp và rút đồng ý (CMP-RIGHTS-001/004
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
+  // AUD-DATA-008: trang tài khoản đã hứa "xuất theo từng dự án ở trang dự án" trong khi không có nút/route nào gọi
+  // `exportProject`. Câu chữ phải khớp thứ có thật: hứa xuất ở trang dự án thì `app/` phải có nơi gọi nó.
+  it("trang tài khoản không hứa xuất ở trang dự án khi giao diện chưa có đường xuất đó", () => {
+    const walk = (d: string): string[] =>
+      readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`],
+      );
+    const page = readFileSync("app/app/account/page.tsx", "utf-8").replace(
+      /\s+/g,
+      " ",
+    );
+    const callsExportProject = walk("app")
+      .filter((f) => /\.(ts|tsx)$/.test(f))
+      .some((f) => /exportProject/.test(readFileSync(f, "utf-8")));
+    const promises = /xuất theo từng dự án|xuất[^.]*ở trang dự án/i.test(page);
+    expect(promises && !callsExportProject).toBe(false);
+  });
+
   it("mã không có đường sửa/xoá bản ghi đồng ý ngoài xoá tài khoản (chỉ ghi thêm)", () => {
     const walk = (d: string): string[] =>
       readdirSync(d, { withFileTypes: true }).flatMap((e) =>

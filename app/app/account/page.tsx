@@ -20,7 +20,8 @@ export default async function AccountPage() {
         <p>
           Tải về hồ sơ, danh sách workspace bạn tham gia, lịch sử đồng ý, phiên
           đăng nhập và hành động của bạn trong sổ audit (JSON). Dữ liệu trong
-          workspace (tin nhắn, tài liệu) xuất theo từng dự án ở trang dự án.
+          workspace (tin nhắn, tài liệu) không nằm trong tệp này: giao diện chưa
+          có nút xuất theo dự án, hãy nhờ chủ workspace nếu cần bản sao.
         </p>
         {/* Tải tệp: biểu mẫu POST thường tới route handler (có ghi kiểm toán), không qua router phía client. */}
         <form method="post" action="/app/account/export" className="self-start">
