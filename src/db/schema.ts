@@ -645,6 +645,46 @@ export const aiDisclosures = pgTable(
   ],
 );
 
+export const AUDIT_OUTCOMES = ["success", "denied", "error"] as const;
+export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
+
+/**
+ * Audit trail hành động nhạy cảm (SEC-LOG-007, CMP-AUDIT-002): chỉ ghi thêm. Trigger CSDL từ chối UPDATE/DELETE/TRUNCATE
+ * với MỌI vai trò (kể cả chủ bảng) — không dựa vào việc ứng dụng tự giữ kỷ luật. `workspace_id` KHÔNG có khoá ngoại
+ * để xoá workspace không xoá dấu vết (và không bị trigger chặn). Không lưu nội dung người dùng: chỉ loại + id đối tượng.
+ */
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").notNull(),
+    /** Người làm (`user.id`); `system` cho job. Không tên thật. */
+    actorId: text("actor_id").notNull(),
+    /** Tên sự kiện dạng `nhóm.hành_động`, vd `workspace.settings_changed`. */
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    outcome: text("outcome", { enum: AUDIT_OUTCOMES }).notNull(),
+    /** Lý do/mã ngắn, không chứa dữ liệu cá nhân. */
+    reason: text("reason"),
+    sourceIp: text("source_ip"),
+    userAgent: text("user_agent"),
+    requestId: text("request_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "audit_events_outcome_check",
+      sql`${t.outcome} in (${inList(AUDIT_OUTCOMES)})`,
+    ),
+    check(
+      "audit_events_action_check",
+      sql`${t.action} ~ '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$'`,
+    ),
+    index("audit_events_ws_created_idx").on(t.workspaceId, t.createdAt),
+  ],
+);
+
 export const DRAFT_STATUSES = ["open", "sent", "discarded"] as const;
 export type DraftStatus = (typeof DRAFT_STATUSES)[number];
 export const DRAFT_SOURCES = ["human", "ai"] as const;

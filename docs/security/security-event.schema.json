@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sự kiện bảo mật (một dòng log JSON)",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "level",
+    "message",
+    "service",
+    "event",
+    "actor",
+    "target_type",
+    "target_id",
+    "outcome",
+    "source_ip",
+    "user_agent",
+    "request_id",
+    "security_event"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
+    "level": { "enum": ["info", "warn", "error"] },
+    "message": { "type": "string" },
+    "service": { "type": "string" },
+    "event": { "type": "string", "pattern": "^[a-z]+\\.[a-z_]+$" },
+    "actor": { "type": "string", "minLength": 1 },
+    "target_type": { "type": ["string", "null"] },
+    "target_id": { "type": ["string", "null"] },
+    "outcome": { "enum": ["success", "denied", "error"] },
+    "source_ip": { "type": ["string", "null"] },
+    "user_agent": { "type": ["string", "null"], "maxLength": 256 },
+    "request_id": { "type": ["string", "null"] },
+    "security_event": { "const": true }
+  }
+}

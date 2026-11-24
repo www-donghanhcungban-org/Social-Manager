@@ -1,5 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 
+import { recordAudit } from "../audit/record";
 import { ConflictError, ForbiddenError, NotFoundError } from "../auth/errors";
 import { getRole, type Db } from "../auth/members";
 import { can } from "../auth/permissions";
@@ -93,6 +94,14 @@ export function createConnectionService({
             credentialsEnc: box.encrypt(input.credentials),
           })
           .returning();
+        await recordAudit(db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "connection.created",
+          targetType: "connection",
+          targetId: row!.id,
+          reason: `provider=${input.provider}`,
+        });
         return view(row!);
       } catch (e) {
         if (isUniqueViolation(e)) {
@@ -139,6 +148,13 @@ export function createConnectionService({
         )
         .returning({ id: providerConnections.id });
       if (deleted.length === 0) throw new NotFoundError();
+      await recordAudit(db, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: "connection.removed",
+        targetType: "connection",
+        targetId: input.connectionId,
+      });
     },
 
     /**
@@ -183,6 +199,14 @@ export function createConnectionService({
         )
         .returning();
       if (!row) throw new NotFoundError();
+      await recordAudit(db, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: "connection.webhook_secret_changed",
+        targetType: "connection",
+        targetId: input.connectionId,
+        reason: input.secret === null ? "cleared" : "set",
+      });
       return view(row);
     },
 

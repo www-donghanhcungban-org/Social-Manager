@@ -46,10 +46,13 @@ describe("không dùng GET để đổi trạng thái (SEC-WEB-007)", () => {
         read(f),
       ),
     );
-    // health: chỉ `select 1`, không ghi, không dữ liệu người dùng
+    // health: chỉ `select 1`, không ghi, không dữ liệu người dùng; health/live: không chạm gì; metrics: chỉ đọc bộ đếm
+    // trong bộ nhớ, đóng mặc định, cần Bearer (T-523, tests/server/metrics.test.ts)
     expect(withGet).toEqual([
       "app/api/auth/[...all]/route.ts",
+      "app/api/health/live/route.ts",
       "app/api/health/route.ts",
+      "app/api/metrics/route.ts",
     ]);
   });
 

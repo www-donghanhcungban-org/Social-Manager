@@ -12,6 +12,8 @@ import { createActionService } from "../actions/ledger";
 import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
+import { defaultLogger } from "../log/process";
+import { metrics } from "../observability/metrics";
 import { createThreadService } from "../conversations/threads";
 import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
@@ -76,7 +78,7 @@ export function createContainer(cfg: Env) {
   registry.register(buildProvider("socialapi", "-")!);
 
   const search = createSearchService({ db, evidence });
-  const ai = createAiGateway({ db, model });
+  const ai = createAiGateway({ db, model, log: defaultLogger(), metrics });
 
   const services = {
     workspaces: createWorkspaceService({ db }),

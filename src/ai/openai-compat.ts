@@ -8,6 +8,13 @@ const Completion = z.object({
   choices: z
     .array(z.object({ message: z.object({ content: z.string().nullable() }) }))
     .min(1),
+  model: z.string().max(200).optional(),
+  usage: z
+    .object({
+      prompt_tokens: z.number().int().nonnegative(),
+      completion_tokens: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 /**
@@ -112,7 +119,18 @@ export function createOpenAiCompatModel(opts: {
           "model.invalid_response",
           "Phản hồi mô hình sai hình dạng",
         );
-      return { text };
+      const u = parsed.success ? parsed.data.usage : undefined;
+      return {
+        text,
+        ...(u && {
+          usage: {
+            inputTokens: u.prompt_tokens,
+            outputTokens: u.completion_tokens,
+          },
+        }),
+        ...(parsed.success &&
+          parsed.data.model && { responseModel: parsed.data.model }),
+      };
     },
   };
 }

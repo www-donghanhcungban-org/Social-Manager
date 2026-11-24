@@ -1,5 +1,6 @@
 import { asc, count, eq } from "drizzle-orm";
 
+import { recordAudit } from "../audit/record";
 import { requireAction } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
@@ -112,19 +113,29 @@ export function createWorkspaceService({ db }: { db: Db }) {
         );
       if (typeof input.forever !== "boolean")
         throw new ValidationError("Giá trị giữ vô thời hạn không hợp lệ");
-      const [row] = await db
-        .update(workspaces)
-        .set({
-          inboxRetentionDays: input.days,
-          retainInboxForever: input.forever,
-        })
-        .where(eq(workspaces.id, input.workspaceId))
-        .returning({
-          days: workspaces.inboxRetentionDays,
-          forever: workspaces.retainInboxForever,
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(workspaces)
+          .set({
+            inboxRetentionDays: input.days,
+            retainInboxForever: input.forever,
+          })
+          .where(eq(workspaces.id, input.workspaceId))
+          .returning({
+            days: workspaces.inboxRetentionDays,
+            forever: workspaces.retainInboxForever,
+          });
+        if (!row) throw new NotFoundError();
+        await recordAudit(tx as unknown as Db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "workspace.retention_changed",
+          targetType: "workspace",
+          targetId: input.workspaceId,
+          reason: input.forever ? "forever" : `days=${input.days ?? "default"}`,
         });
-      if (!row) throw new NotFoundError();
-      return toRetention(row.days, row.forever);
+        return toRetention(row.days, row.forever);
+      });
     },
 
     /** Cờ cho phép gửi dữ liệu tới AI đám mây (H6). Thành viên xem được để biết dữ liệu có thể rời máy hay không. */
@@ -155,13 +166,23 @@ export function createWorkspaceService({ db }: { db: Db }) {
       );
       if (typeof input.enabled !== "boolean")
         throw new ValidationError("Giá trị không hợp lệ");
-      const [row] = await db
-        .update(workspaces)
-        .set({ aiCloudEnabled: input.enabled })
-        .where(eq(workspaces.id, input.workspaceId))
-        .returning({ on: workspaces.aiCloudEnabled });
-      if (!row) throw new NotFoundError();
-      return { enabled: row.on };
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(workspaces)
+          .set({ aiCloudEnabled: input.enabled })
+          .where(eq(workspaces.id, input.workspaceId))
+          .returning({ on: workspaces.aiCloudEnabled });
+        if (!row) throw new NotFoundError();
+        await recordAudit(tx as unknown as Db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "workspace.ai_cloud_changed",
+          targetType: "workspace",
+          targetId: input.workspaceId,
+          reason: `enabled=${row.on}`,
+        });
+        return { enabled: row.on };
+      });
     },
 
     /** Chính sách gửi tin của workspace (thành viên xem được để biết vì sao một yêu cầu gửi bị chặn). */
@@ -206,21 +227,31 @@ export function createWorkspaceService({ db }: { db: Db }) {
           input.maxPerHour > 1000)
       )
         throw new ValidationError("Hạn mức giờ phải là số nguyên 0-1000");
-      const [row] = await db
-        .update(workspaces)
-        .set({
-          outboundEnabled: input.enabled,
-          ...(input.maxPerHour === undefined
-            ? {}
-            : { outboundMaxPerHour: input.maxPerHour }),
-        })
-        .where(eq(workspaces.id, input.workspaceId))
-        .returning({
-          on: workspaces.outboundEnabled,
-          max: workspaces.outboundMaxPerHour,
+      return db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(workspaces)
+          .set({
+            outboundEnabled: input.enabled,
+            ...(input.maxPerHour === undefined
+              ? {}
+              : { outboundMaxPerHour: input.maxPerHour }),
+          })
+          .where(eq(workspaces.id, input.workspaceId))
+          .returning({
+            on: workspaces.outboundEnabled,
+            max: workspaces.outboundMaxPerHour,
+          });
+        if (!row) throw new NotFoundError();
+        await recordAudit(tx as unknown as Db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "workspace.outbound_changed",
+          targetType: "workspace",
+          targetId: input.workspaceId,
+          reason: `enabled=${row.on};max=${row.max}`,
         });
-      if (!row) throw new NotFoundError();
-      return { enabled: row.on, maxPerHour: row.max };
+        return { enabled: row.on, maxPerHour: row.max };
+      });
     },
 
     async listForUser(userId: string): Promise<WorkspaceView[]> {

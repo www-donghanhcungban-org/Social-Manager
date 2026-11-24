@@ -1,10 +1,14 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq, gte, ne, sql } from "drizzle-orm";
 
 import { requireAction } from "../auth/access";
 import type { Db } from "../auth/members";
 import { aiDisclosures, workspaces } from "../db/schema";
+import type { Logger } from "../log/logger";
+import { logSecurityEvent } from "../log/security-events";
+import type { Metrics } from "../observability/metrics";
 import { ValidationError } from "../providers/types";
 import {
+  AiBudgetError,
   AiDisabledError,
   AiNotAllowedError,
   ModelError,
@@ -22,14 +26,68 @@ const SAFE_CODE = /^[A-Za-z0-9_.-]{1,64}$/;
  * 5) GHI nhật ký `sent` trước khi gửi — không ghi được thì không gửi; 6) gửi; 7) cập nhật `ok`/`error` kèm mã an toàn.
  * Nhật ký chỉ có số mục/byte/điểm cuối — không có nội dung.
  */
+/** Ngân sách mỗi workspace trong cửa sổ 24 giờ trượt (cấu hình được; thực thi bằng mã). */
+export interface AiBudget {
+  /** Tổng số lượt gọi (mọi tính năng). */
+  maxCallsPerDay: number;
+  /** Tổng byte gửi đi (xấp xỉ token, đo được trước khi gửi). */
+  maxBytesPerDay: number;
+  /** Trần số lượt cho MỘT tính năng (`purpose`). */
+  maxCallsPerPurposePerDay: number;
+}
+
+export const DEFAULT_AI_BUDGET: AiBudget = {
+  maxCallsPerDay: 500,
+  maxBytesPerDay: 20_000_000,
+  maxCallsPerPurposePerDay: 300,
+};
+
+/** Cảnh báo ở 80%, bóp (chặn lượt mới) ở 100%: kiểm bằng mã trước khi gửi. */
+export const BUDGET_WARN_RATIO = 0.8;
+
 export function createAiGateway({
   db,
   model,
+  log,
+  budget = DEFAULT_AI_BUDGET,
+  metrics,
 }: {
   db: Db;
   /** null = AI tắt. */
   model: ModelPort | null;
+  log?: Logger;
+  budget?: AiBudget;
+  metrics?: Pick<Metrics, "addLlmTokens">;
 }) {
+  /** Tỉ lệ đã dùng (0..) của cửa sổ 24 giờ; lượt `blocked` không tính vì không gửi gì. */
+  async function usage(workspaceId: string, purpose: string) {
+    const since = sql`now() - interval '24 hours'`;
+    const [row] = await db
+      .select({
+        calls: count(),
+        bytes: sql<number>`coalesce(sum(${aiDisclosures.bytesSent}), 0)`,
+        purposeCalls: sql<number>`count(*) filter (where ${aiDisclosures.purpose} = ${purpose})`,
+      })
+      .from(aiDisclosures)
+      .where(
+        and(
+          eq(aiDisclosures.workspaceId, workspaceId),
+          gte(aiDisclosures.createdAt, since as unknown as Date),
+          ne(aiDisclosures.status, "blocked"),
+        ),
+      );
+    const calls = Number(row?.calls ?? 0);
+    const bytes = Number(row?.bytes ?? 0);
+    const purposeCalls = Number(row?.purposeCalls ?? 0);
+    return {
+      ratio: Math.max(
+        calls / budget.maxCallsPerDay,
+        bytes / budget.maxBytesPerDay,
+        purposeCalls / budget.maxCallsPerPurposePerDay,
+      ),
+    };
+  }
+
   const disclosure = (
     input: { actorId: string; workspaceId: string; purpose: string },
     m: ModelPort,
@@ -86,6 +144,27 @@ export function createAiGateway({
         );
       const counts = { itemCount: input.itemCount, bytesSent };
 
+      // Ngân sách TRƯỚC mọi thứ có thể gửi ra ngoài: 100% → chặn bằng mã lỗi; 80% → cảnh báo.
+      const { ratio } = await usage(input.workspaceId, input.purpose);
+      if (ratio >= 1) {
+        await disclosure(input, model, counts, "blocked");
+        if (log)
+          logSecurityEvent(log, {
+            event: "ai.budget_exceeded",
+            outcome: "denied",
+            actor: input.actorId,
+            targetType: "workspace",
+            targetId: input.workspaceId,
+          });
+        throw new AiBudgetError();
+      }
+      if (ratio >= BUDGET_WARN_RATIO)
+        log?.warn("ai budget warning", {
+          workspace_id: input.workspaceId,
+          purpose: input.purpose,
+          used_ratio: Math.round(ratio * 100) / 100,
+        });
+
       if (!model.local) {
         const [w] = await db
           .select({ on: workspaces.aiCloudEnabled })
@@ -93,14 +172,27 @@ export function createAiGateway({
           .where(eq(workspaces.id, input.workspaceId));
         if (!w?.on) {
           await disclosure(input, model, counts, "blocked");
+          if (log)
+            logSecurityEvent(log, {
+              event: "ai.blocked",
+              outcome: "denied",
+              actor: input.actorId,
+              targetType: "workspace",
+              targetId: input.workspaceId,
+            });
           throw new AiNotAllowedError();
         }
       }
 
       const [row] = await disclosure(input, model, counts, "sent");
       const id = row!.id;
+      const started = Date.now();
       try {
-        const { text } = await model.generate({
+        const {
+          text,
+          usage: tokens,
+          responseModel,
+        } = await model.generate({
           system: input.system,
           user: input.user,
           maxOutputTokens: input.maxOutputTokens,
@@ -109,6 +201,36 @@ export function createAiGateway({
           .update(aiDisclosures)
           .set({ status: "ok" })
           .where(eq(aiDisclosures.id, id));
+        // Span dạng log có cấu trúc theo OTel GenAI (AI-OBS-001). TUYỆT ĐỐI không có prompt/completion (AI-OBS-004).
+        log?.info("gen_ai.client.operation", {
+          "gen_ai.provider.name": model.id,
+          "gen_ai.operation.name": "chat",
+          "gen_ai.request.model": model.model,
+          "gen_ai.response.model": responseModel ?? model.model,
+          "gen_ai.usage.input_tokens": tokens?.inputTokens ?? null,
+          "gen_ai.usage.output_tokens": tokens?.outputTokens ?? null,
+          "gen_ai.purpose": input.purpose,
+          workspace_id: input.workspaceId,
+          disclosure_id: id,
+          duration_ms: Date.now() - started,
+        });
+        if (tokens && metrics) {
+          const base = {
+            tenant: input.workspaceId,
+            feature: input.purpose,
+            model: model.model,
+          };
+          metrics.addLlmTokens({
+            ...base,
+            direction: "input",
+            tokens: tokens.inputTokens,
+          });
+          metrics.addLlmTokens({
+            ...base,
+            direction: "output",
+            tokens: tokens.outputTokens,
+          });
+        }
         return { text, disclosureId: id };
       } catch (e) {
         const code =

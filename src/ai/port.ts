@@ -15,7 +15,15 @@ export interface ModelPort {
   readonly local: boolean;
   /** Tên máy của điểm cuối (không kèm đường dẫn/khoá) để ghi nhật ký. */
   readonly host: string;
-  generate(req: ModelRequest): Promise<{ text: string }>;
+  generate(req: ModelRequest): Promise<ModelResponse>;
+}
+
+export interface ModelResponse {
+  text: string;
+  /** Số token nhà cung cấp báo (nếu có) — dùng đo chi phí, không dùng để suy nội dung. */
+  usage?: { inputTokens: number; outputTokens: number };
+  /** Mô hình thực tế phục vụ (có thể khác mô hình yêu cầu). */
+  responseModel?: string;
 }
 
 export type ModelErrorCode =
@@ -32,6 +40,15 @@ export class ModelError extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+/** Vượt ngân sách gọi AI của workspace (OPS-COST-004, AI-OBS-003): chặn bằng mã, không bằng lời nhắc. */
+export class AiBudgetError extends Error {
+  readonly name = "AiBudgetError";
+  readonly code = "ai_budget_exceeded";
+  constructor() {
+    super("Đã hết ngân sách gọi AI của workspace trong 24 giờ qua");
   }
 }
 

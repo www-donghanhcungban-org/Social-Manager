@@ -196,8 +196,14 @@ describe("không bí mật/tài khoản mặc định trong compose và mã (OPS
     );
   });
 
-  it("SEC-INFRA-010: không route /metrics, không seed tài khoản/mật khẩu mặc định trong mã", () => {
-    expect(existsSync("app/api/metrics")).toBe(false);
+  it("SEC-INFRA-010: /metrics chỉ tồn tại khi đóng mặc định và có Bearer; không seed tài khoản/mật khẩu mặc định trong mã", () => {
+    // T-523 (OPS-OBS-003): route metrics được thêm, nhưng không bao giờ mở công khai — phải qua checkMetricsAccess
+    // (404 khi chưa đặt METRICS_TOKEN, 401 khi sai Bearer). Test hành vi: tests/server/metrics.test.ts.
+    if (existsSync("app/api/metrics/route.ts")) {
+      const r = read("app/api/metrics/route.ts");
+      expect(r).toContain("checkMetricsAccess");
+      expect(r).toMatch(/disabled[\s\S]*404/);
+    }
     const src = [...walk("src"), ...walk("app")].filter((f) =>
       /\.(ts|tsx)$/.test(f),
     );

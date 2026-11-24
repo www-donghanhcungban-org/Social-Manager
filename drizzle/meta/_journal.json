@@ -141,6 +141,13 @@
       "when": 1795397445294,
       "tag": "0019_action_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795479563411,
+      "tag": "0020_audit_events",
+      "breakpoints": true
     }
   ]
 }

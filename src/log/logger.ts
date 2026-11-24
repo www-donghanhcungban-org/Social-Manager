@@ -37,10 +37,16 @@ export interface LoggerOptions {
 const REDACTED = "[REDACTED]";
 const SENSITIVE_KEY =
   /pass(word|wd)?|token|authorization|cookie|secret|key|credential|session/i;
+// Số đếm token LLM (OTel GenAI) là số, không phải bí mật: khoá có chữ "token" nhưng giá trị được giữ.
+const COUNT_KEY = /^gen_ai\.usage\.(input|output|cache_read_input)_tokens$/;
 const CONNECTION_PASSWORD = /([a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:)[^\s@/]+(@)/gi;
 // Giá trị trong query string của URL với tham số mang bí mật (SEC-SECRET-007).
 const QUERY_SECRET =
   /([?&](?:[a-z0-9_.-]*(?:token|key|secret|pass(?:word|wd)?|signature|sig|auth|credential)[a-z0-9_.-]*)=)[^&\s#]+/gi;
+// Định danh cá nhân không được vào log dù đã pseudonymize (CMP-PRIV-008): email và số điện thoại Việt Nam (+84/0 + 9-10 số).
+const EMAIL =
+  /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+const PHONE_VN = /(?<![\w.])(?:\+84|0)(?:[\s.-]?\d){9,10}(?!\d)/g;
 const MAX_DEPTH = 8;
 const CORE = new Set([
   "timestamp",
@@ -57,6 +63,8 @@ function escapeString(s: string): string {
   return s
     .replace(CONNECTION_PASSWORD, `$1${REDACTED}$2`)
     .replace(QUERY_SECRET, `$1${REDACTED}`)
+    .replace(EMAIL, "[EMAIL]")
+    .replace(PHONE_VN, "[PHONE]")
     .replace(/[\u0000-\u001f\u007f]/g, (c) => {
       if (c === "\n") return "\\n";
       if (c === "\r") return "\\r";
@@ -84,9 +92,10 @@ function sanitize(
     }
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      out[escapeString(k)] = SENSITIVE_KEY.test(k)
-        ? REDACTED
-        : sanitize(v, depth + 1, seen);
+      out[escapeString(k)] =
+        SENSITIVE_KEY.test(k) && !COUNT_KEY.test(k)
+          ? REDACTED
+          : sanitize(v, depth + 1, seen);
     }
     return out;
   } finally {

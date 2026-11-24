@@ -26,6 +26,8 @@ Mỗi thư mục cấp một của `src/` là một dòng `- \`<tên>\``dưới 
 - `config` — cấu hình từ biến môi trường
 - `jobs` — hàng đợi và lịch chạy nền
 - `http` — lỗi và kiểm sống dùng chung cho route
-- `log` — nhật ký có cấu trúc, bộ che bí mật
+- `log` — nhật ký có cấu trúc, bộ che bí mật, sự kiện bảo mật
+- `audit` — audit trail chỉ ghi thêm cho hành động nhạy cảm
+- `observability` — metric RED/token LLM, bọc route đo thời gian
 - `security` — CSRF, tiêu đề bảo mật, hộp khoá bí mật
 - `server` — điểm nối khung web: container phụ thuộc, tiến trình chạy

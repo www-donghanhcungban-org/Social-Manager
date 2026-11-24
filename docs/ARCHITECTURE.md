@@ -53,6 +53,8 @@ Route handler trong `app/api/` là **danh sách công khai đã duyệt**; mọi
 | ---------------------------------------- | --------------------------------------------------------------------- |
 | `/api/auth/*`                            | Better Auth (đăng ký/đăng nhập; giới hạn tần suất; CSRF qua proxy)    |
 | `/api/health`                            | công khai, chỉ đọc, không dữ liệu người dùng (`{status}` ok/degraded) |
+| `/api/health/live`                       | công khai, chỉ đọc, liveness: không gọi phụ thuộc (`{status:"ok"}`)   |
+| `/api/metrics`                           | Bearer `METRICS_TOKEN`; chưa đặt token thì 404 (đóng mặc định)        |
 | `/api/webhooks/socialapi/[connectionId]` | chữ ký HMAC-SHA256 trên thân thô + timestamp; secret theo kết nối     |
 
 Trang và Server Action của `/app/*` luôn qua `requireUser`/`requireWorkspace` (`src/server/runtime.ts`).
