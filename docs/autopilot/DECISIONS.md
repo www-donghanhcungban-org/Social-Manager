@@ -267,3 +267,10 @@
 - Chọn: A: giữ cho phép (chỉ chặn link-local/metadata), it.fails ghi hành vi mong muốn
 - Lý do (tiêu chí chất lượng cuối): URL do người vận hành đặt, không phải người dùng cuối; chặn mạng riêng làm hỏng triển khai tự host qua proxy nội bộ (mặc định tự host, AGENTS §5). Đã chặn 169.254/16 và IPv6 tương đương (đường lấy khoá đám mây); redirect:error chặn bật hơi sang nội bộ
 - Đường lùi: Đổi it.fails thành it và thêm kiểm loopback/riêng ở src/config/env.ts
+
+### D-039 · 2026-11-24T11:07:10+00:00 · Lệnh Kiểm của 7 MUST AI/CMP-PRIV-010 bị guard coi quá phức tạp (exit 126) do 3 đường dẫn vitest
+
+- Phương án: (1) giữ 3 đường dẫn tests/ai tests/eval tests/search · (2) thu hẹp về tests/ai
+- Chọn: thu hẹp về tests/ai
+- Lý do (tiêu chí chất lượng cuối): test được dẫn làm bằng chứng đều nằm ở tests/ai; không nới ngưỡng, không bỏ test; lệnh vẫn chạy lại được
+- Đường lùi: đổi lại chuỗi Kiểm trong BLUEPRINT.md (7 dòng)
