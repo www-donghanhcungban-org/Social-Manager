@@ -239,3 +239,10 @@
 - Chọn: Giữ migration, thêm bước dọn dữ liệu vào quy trình lùi và test ghi nhận lỗi đã biết; người duyệt việc sửa
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: migration đã phát hành không sửa tại chỗ; không làm yếu test; lỗi chỉ lộ khi lùi 0011 trên dữ liệu có bằng chứng message, và v1.0.0 là bản đầu nên chưa có đường lùi về trạng thái trước đó
 - Đường lùi: Bỏ bước dọn trong tests/db/migration-data.test.ts và ca lỗi đã biết; test đỏ trở lại ở ca 0011
+
+### D-035 · 2026-11-24T04:41:38+00:00 · T-582: đóng với 4/6 nhóm tấn công?
+
+- Phương án: (1) A: viết nốt SSRF và dò mật khẩu · (2) B: đóng 4 nhóm, ghi khoảng thiếu và phát hiện
+- Chọn: B: đóng 4 nhóm, ghi khoảng thiếu và phát hiện
+- Lý do (tiêu chí chất lượng cuối): Hết trần vòng; 111 test xanh; phần thiếu và phát hiện ghi vào PROGRESS cho phiên sau
+- Đường lùi: Viết nốt nhóm SSRF và dò mật khẩu, mở lại tick T-582

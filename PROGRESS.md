@@ -6,6 +6,8 @@
 - Xong từ T-501 đến T-531, T-550 (floor xanh), T-560 (5 spec F-001..F-005 có AC truy vết test, lint spec), T-561 (API-CONTRACT + OpenAPI + test so khớp), T-580/T-581 (migration trên dữ liệu, diễn tập rollback DB)
 - Xong thêm T-582 (`tests/security/attack/`: 10 tệp, 111 test xanh; `attack` khai trong xt.yaml). Chưa làm: T-583, T-570, T-584
 
+- T-582 đóng với 4/6 nhóm (D-035): còn thiếu SSRF và dò mật khẩu bị 429. Phát hiện chưa có test: (1) khoá tài khoản kiểm-rồi-mới-ghi, request song song nhiều IP có thể vượt 5 lần (giả thuyết, chưa đo); (2) URL cấu hình qua env chỉ kiểm scheme nên `https://169.254.169.254` qua được; client SocialAPI/GitHub chưa đặt `redirect: "error"`; `conversationId` = `..` bị chuẩn hoá thành `/v1/inbox/messages` (cùng host, mức thấp); (3) Better Auth tắt kiểm Origin khi NODE_ENV=test, lớp này chỉ E2E kiểm. Viết nốt hai nhóm, phát hiện (1) dùng `it.fails`
+
 ## Tiếp theo
 
 1. T-583 (acceptance: `acceptance-author` viết `tests/acceptance` từ AC của spec, `acceptance lock`), T-570 (refactor CODE/ARCH, Gate `dev-task.sh gate`), T-584 (`blueprint-status --run` + `audit check --strict`)
