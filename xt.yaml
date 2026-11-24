@@ -47,7 +47,9 @@ e2e_setup: "npx playwright install --with-deps chromium" # trước e2e: cài tr
 e2e_affected: "" # chỉ spec của lát đang làm (Gate mỗi task); trống = e2e
 audit: "" # audit phụ thuộc (npm audit · pip-audit …)
 # Trước phát hành (pha harden, `release-check` chạy — ADR-0042): đỏ = NO-GO; trống ở M/L = người ký lý do không áp.
-attack: "" # tấn công thử: DAST (ZAP baseline/API scan) · fuzz API (schemathesis run …) trên bản chạy cục bộ/staging
+# attack (T-582, ADR-0042): tấn công thử trên mã cục bộ, không mạng (PGlite) — BOLA/BFLA qua Server Action, CSRF/Origin,
+# XSS lưu trữ qua trang render, giả/phát lại webhook, SSRF, dò mật khẩu (tests/security/attack/). DAST ZAP chỉ khi có Docker.
+attack: "npx vitest run tests/security"
 # Job xt-field gọi lệnh dự án ở nhánh mặc định, đọc FIELD JSON tổng hợp trên stdout.
 field_export: ""
 # Với dữ liệu dạng ops-check, khai env và cả hai ngưỡng của dự án để đối chiếu DEPLOYS.json.
