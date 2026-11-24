@@ -9,13 +9,13 @@ const pkg = JSON.parse(read("package.json")) as {
 };
 
 describe("runtime và package manager ghim trong repo (PRF-WEB-010, BASE-DEP-003)", () => {
-  it(".nvmrc là bản LTS còn hỗ trợ (22 hoặc 24)", () => {
+  it(".nvmrc là bản LTS còn hỗ trợ (22, 24 hoặc 26)", () => {
     expect(existsSync(".nvmrc")).toBe(true);
-    expect(read(".nvmrc").trim()).toMatch(/^(22|24)(\.\d+){0,2}$/);
+    expect(read(".nvmrc").trim()).toMatch(/^(22|24|26)(\.\d+){0,2}$/);
   });
 
   it("engines.node chặn bản không hỗ trợ và chứa bản trong .nvmrc", () => {
-    expect(pkg.engines?.node).toBe(">=22 <25");
+    expect(pkg.engines?.node).toBe(">=22 <27");
     expect(Number(read(".nvmrc").trim().split(".")[0])).toBeGreaterThanOrEqual(
       22,
     );

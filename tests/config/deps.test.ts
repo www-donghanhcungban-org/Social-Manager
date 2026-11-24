@@ -38,9 +38,9 @@ describe("phụ thuộc (BASE-DEP-001/002/003/007)", () => {
     expect(loose).toEqual([]);
   });
 
-  it("Node theo .nvmrc là bản LTS còn hỗ trợ (22 hoặc 24) (BASE-DEP-003)", () => {
+  it("Node theo .nvmrc là bản LTS còn hỗ trợ (22, 24 hoặc 26) (BASE-DEP-003)", () => {
     const major = Number(read(".nvmrc").trim().split(".")[0]);
-    expect([22, 24]).toContain(major);
+    expect([22, 24, 26]).toContain(major);
   });
 
   it("CI quét lỗ hổng mỗi PR và hằng tuần, quyền tối thiểu, ngoại lệ có hạn (BASE-DEP-004)", () => {

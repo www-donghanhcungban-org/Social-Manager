@@ -8,7 +8,7 @@ Nguồn dữ liệu **cắm được nhiều nhà cung cấp** (`src/providers/`
 
 ## Yêu cầu môi trường
 
-- Node.js 22 hoặc 24 LTS (`.nvmrc`)
+- Node.js 22, 24 hoặc 26 LTS (`.nvmrc` ghim 26)
 - PostgreSQL 15+
 - Python 3.15 (chỉ cho công cụ quy trình `.xtemplates/`)
 
