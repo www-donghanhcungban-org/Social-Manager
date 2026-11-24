@@ -1,5 +1,7 @@
 import type { ZodType } from "zod";
 
+import { secondsToMs } from "@/src/format/units";
+
 export const SOCIALAPI_BASE_URL = "https://api.social-api.ai/v1";
 
 /** Lỗi từ SocialAPI hoặc từ phía client (mã bắt đầu bằng `client.`). */
@@ -132,7 +134,7 @@ export function createSocialApiClient(
           err.retryAfter !== undefined &&
           attempt < maxRetries
         ) {
-          await sleep(Math.min(err.retryAfter * 1000, maxWaitMs));
+          await sleep(Math.min(secondsToMs(err.retryAfter), maxWaitMs));
           continue;
         }
         throw err;

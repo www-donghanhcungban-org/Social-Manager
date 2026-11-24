@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatDateTime } from "@/src/format/intl";
 import { ValidationError } from "@/src/providers/types";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
@@ -55,7 +56,7 @@ export default async function ConversationsPage({
                 <span className="text-sm text-muted-foreground">
                   {c.accountName} ({c.platform}) ·{" "}
                   {c.lastMessageAt
-                    ? `${c.lastMessageAt.toISOString().replace("T", " ").slice(0, 16)} UTC`
+                    ? formatDateTime(c.lastMessageAt)
                     : "chưa có tin"}
                 </span>
               </Link>

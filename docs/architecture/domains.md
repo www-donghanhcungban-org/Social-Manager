@@ -12,6 +12,7 @@ Mỗi thư mục cấp một của `src/` là một dòng `- \`<tên>\``dưới 
 - `posts` — bài đăng, hẹn giờ, idempotency (F-004)
 - `actions` — nháp, sổ hành động gửi tin, chính sách gửi (ADR-0006)
 - `evidence` — kho bằng chứng theo băm (ADR-0004)
+- `format` — định dạng số/tiền/ngày giờ bằng Intl theo locale và hằng số đổi đơn vị tập trung
 - `knowledge` — dự án, bí danh, sổ quyết định, dòng thời gian (xw-4e)
 - `search` — tìm kiếm trong workspace
 - `retention` — hạn lưu và xoá dữ liệu (D-010)

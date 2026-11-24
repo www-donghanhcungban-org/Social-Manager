@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { STATE_LABEL, blockLabel, errorLabel } from "@/src/actions/labels";
 import { NotFoundError } from "@/src/auth/errors";
 import { can } from "@/src/auth/permissions";
+import { formatDateTime } from "@/src/format/intl";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
 import {
@@ -18,8 +19,7 @@ import {
 
 export const metadata = { title: "Hội thoại — X-Workspace" };
 
-const utc = (d: Date) =>
-  `${d.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+const utc = formatDateTime;
 
 export default async function ConversationPage({
   params,

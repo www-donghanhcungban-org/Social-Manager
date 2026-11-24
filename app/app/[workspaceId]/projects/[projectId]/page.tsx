@@ -3,14 +3,14 @@ import { notFound } from "next/navigation";
 
 import { NotFoundError } from "@/src/auth/errors";
 import { can } from "@/src/auth/permissions";
+import { formatDateTime } from "@/src/format/intl";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
 import { AliasForm, DecisionForm, RemoveAliasButton } from "./forms";
 
 export const metadata = { title: "Dự án — X-Workspace" };
 
-const utc = (d: Date) =>
-  `${d.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+const utc = formatDateTime;
 
 const shorten = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
