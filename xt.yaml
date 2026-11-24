@@ -55,8 +55,12 @@ field_export: ""
 # field_max_p95_ms: 250
 # field_max_error_pct: 1
 perf: "" # kiểm tải có ngưỡng, đỏ khi vượt ngân sách (vd k6 run với thresholds)
-migration_check: "" # cổng production (ADR-0062): migration tiến + lùi trên bản sao dữ liệu/staging
-rollback: "" # cổng production: diễn tập quay về bản trước (tag/artifact cũ + migration lùi)
+# migration_check (T-580, ADR-0062 cổng production): chưa có staging/bản sao dữ liệu thật nên chạy trên PGlite với
+# migrator thật — schema tiến/lùi từng migration + lùi/tiến trên dữ liệu tổng hợp ở mọi bảng (bảng cũ giữ nguyên dòng).
+migration_check: "npx vitest run tests/db/schema.test.ts tests/db/conversations.test.ts tests/db/migration-data.test.ts"
+# rollback (T-581, ADR-0062 cổng production): phần CSDL — lùi các migration mới hơn khoá v1.0.0 trên dữ liệu, so schema
+# với bản trước, migrator dựng lại. Phần artifact (image/tag cũ) chờ đích deploy T-541 (docs/RUNBOOK.md §Rollback).
+rollback: "npx vitest run tests/db/rollback-drill.test.ts"
 acceptance: "" # cổng production: kiểm thử nghiệm thu theo tiêu chí chấp nhận (UAT tự động)
 # Hợp đồng phát hành có kiểu (ADR-0068 lát A, tuỳ chọn; trống = như cũ): `<khoá>_report` của attack/perf/migration_check/
 # rollback/acceptance = report lệnh đó sinh (JUnit XML · SARIF · pip-audit JSON) — thiếu, cũ hơn lần chạy, 0 test, scan chưa xong = FAIL.

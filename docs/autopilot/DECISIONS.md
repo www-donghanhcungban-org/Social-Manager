@@ -232,3 +232,10 @@
 - Chọn: Tick STD-API-001 và BE-API-008 (không áp dụng có điều kiện kiểm được); defer 4 mục cần oasdiff/redocly cho người
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: test chỉ so thao tác và mã trạng thái, không so từng trường, nên không thể khai là chặn thay đổi phá vỡ theo đúng chữ MUST; thêm phụ thuộc CI là việc cần duyệt
 - Đường lùi: Bỏ tick hai mục và xoá dòng defer; hợp đồng và test vẫn giữ
+
+### D-034 · 2026-11-24T04:17:17+00:00 · 0011.down.sql không tiến lại được khi còn bằng chứng nguồn message (T-580)
+
+- Phương án: (1) Sửa 0011.down.sql tại chỗ và cập nhật khoá băm · (2) Giữ migration, thêm bước dọn dữ liệu vào quy trình lùi và test ghi nhận lỗi đã biết; người duyệt việc sửa · (3) Thu hẹp migration_check về migration sau v1.0.0
+- Chọn: Giữ migration, thêm bước dọn dữ liệu vào quy trình lùi và test ghi nhận lỗi đã biết; người duyệt việc sửa
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: migration đã phát hành không sửa tại chỗ; không làm yếu test; lỗi chỉ lộ khi lùi 0011 trên dữ liệu có bằng chứng message, và v1.0.0 là bản đầu nên chưa có đường lùi về trạng thái trước đó
+- Đường lùi: Bỏ bước dọn trong tests/db/migration-data.test.ts và ca lỗi đã biết; test đỏ trở lại ở ca 0011

@@ -1,6 +1,6 @@
 # RUNBOOK — X-Workspace · cập nhật 2026-11-22 · chủ: chủ dự án
 
-> Mọi lệnh chạy ở thư mục gốc repo trên máy chủ chạy Docker Compose. Không ghi giá trị bí mật ở đây, chỉ ghi nơi đặt chúng. Chưa diễn tập: backup/restore và rollback (đánh dấu "chưa diễn tập" bên dưới) — diễn tập một lần trước khi chạy thật.
+> Mọi lệnh chạy ở thư mục gốc repo trên máy chủ chạy Docker Compose. Không ghi giá trị bí mật ở đây, chỉ ghi nơi đặt chúng. Chưa diễn tập: các mục ghi `chưa` ở bảng "Diễn tập và hạn", gồm rollback ứng dụng (image/tag cũ; phần lùi migration CSDL đã diễn tập 2026-11-24) (đánh dấu "chưa diễn tập" bên dưới) — diễn tập một lần trước khi chạy thật.
 
 ## 0. Thông tin nhanh
 
@@ -77,7 +77,15 @@ APP_VERSION=<phiên-bản-trước> docker compose up -d --build
 3. Chạy smoke (mục trên) với phiên bản trước.
 4. Migration đi kèm bản bị lùi: giữ nguyên (tương thích ngược); chỉ chạy `.down.sql` khi bản trước **không** chạy được trên schema mới, sau khi backup.
 
-Rollback **chưa diễn tập** trên môi trường thật (phiên phát triển không có Docker). Diễn tập trước lần chạy thật đầu tiên và sau mỗi thay đổi cách deploy.
+Phần **ứng dụng** (image/tag cũ, `docker compose up` bản trước) **chưa diễn tập** trên môi trường thật (phiên phát triển không có Docker; chờ đích deploy T-541). Diễn tập trước lần chạy thật đầu tiên và sau mỗi thay đổi cách deploy.
+
+Phần **CSDL** đã diễn tập ngày 2026-11-24 (PGlite, migrator thật, dữ liệu tổng hợp ở mọi bảng): lùi các migration mới hơn mốc v1.0.0 (`drizzle/applied.sha256`; hiện là `drizzle/0021_consents.down.sql` rồi `drizzle/0020_audit_events.down.sql`) → sổ `drizzle.__drizzle_migrations` khớp, schema trùng bản dựng từ đầu tới mốc, dữ liệu bảng cũ còn nguyên, migrator tiến lại được. Chạy lại:
+
+```bash
+npx vitest run tests/db/rollback-drill.test.ts
+```
+
+Lưu ý (phát hiện T-580, chờ quyết cách xử lý): lùi sâu hơn mốc, tới `0011_evidence_message_link`, khi còn bằng chứng nguồn `message` thì migrator **không tiến lại được** (ràng buộc `evidence_items_message_check` đỏ vì cột `message_id` đã bị xoá); kiểm ở `tests/db/migration-data.test.ts`.
 
 ### Migration CSDL
 
@@ -123,15 +131,16 @@ Bản ghi các lần diễn tập: [`ops/restore-drills.md`](ops/restore-drills.
 
 Trường `last_drilled` của từng mục vận hành: `tests/config/runbook.test.ts` đỏ khi một ngày quá 183 ngày. Mục **chưa diễn tập** ghi `chưa` và vẫn nằm ở danh sách việc chủ dự án.
 
-| Mục                                              | Lệnh/nơi                        | last_drilled | Người                                          |
-| ------------------------------------------------ | ------------------------------- | ------------ | ---------------------------------------------- |
-| Sao lưu (script chạy được, thất bại có tín hiệu) | `scripts/backup.sh`             | 2026-11-24   | agent (phiên autopilot)                        |
-| Khôi phục CSDL vào CSDL tách biệt                | `scripts/restore-drill.sh`      | 2026-11-24   | agent (phiên autopilot)                        |
-| Khôi phục kho blob                               | `ops/runbooks/restore-blobs.md` | chưa         | —                                              |
-| Deploy lần đầu và nâng bản (Docker)              | mục Deploy                      | chưa         | —                                              |
-| Rollback ứng dụng                                | mục Rollback                    | chưa         | —                                              |
-| Xoay bí mật                                      | mục Xoay bí mật                 | chưa         | —                                              |
-| Smoke sau deploy                                 | `scripts/smoke.mjs`             | 2026-11-24   | agent (phiên autopilot, trên bản build cục bộ) |
+| Mục                                              | Lệnh/nơi                          | last_drilled | Người                                          |
+| ------------------------------------------------ | --------------------------------- | ------------ | ---------------------------------------------- |
+| Sao lưu (script chạy được, thất bại có tín hiệu) | `scripts/backup.sh`               | 2026-11-24   | agent (phiên autopilot)                        |
+| Khôi phục CSDL vào CSDL tách biệt                | `scripts/restore-drill.sh`        | 2026-11-24   | agent (phiên autopilot)                        |
+| Khôi phục kho blob                               | `ops/runbooks/restore-blobs.md`   | chưa         | —                                              |
+| Deploy lần đầu và nâng bản (Docker)              | mục Deploy                        | chưa         | —                                              |
+| Rollback ứng dụng                                | mục Rollback                      | chưa         | —                                              |
+| Lùi migration CSDL về mốc phát hành trước        | `tests/db/rollback-drill.test.ts` | 2026-11-24   | agent (phiên autopilot, PGlite)                |
+| Xoay bí mật                                      | mục Xoay bí mật                   | chưa         | —                                              |
+| Smoke sau deploy                                 | `scripts/smoke.mjs`               | 2026-11-24   | agent (phiên autopilot, trên bản build cục bộ) |
 
 ### Xoay bí mật
 
@@ -195,6 +204,7 @@ Job nền thử lại tối đa 4 lần (cách nhau mũ có jitter, trần 1 gi�
 
 ## Lịch sử
 
-| Ngày       | Thay đổi     | Lý do                         |
-| ---------- | ------------ | ----------------------------- |
-| 2026-11-22 | bản đầu tiên | MUST BASE-DOC-004 trước đợt 2 |
+| Ngày       | Thay đổi                            | Lý do                         |
+| ---------- | ----------------------------------- | ----------------------------- |
+| 2026-11-22 | bản đầu tiên                        | MUST BASE-DOC-004 trước đợt 2 |
+| 2026-11-24 | diễn tập lùi migration CSDL (T-581) | cổng rollback ADR-0062        |
