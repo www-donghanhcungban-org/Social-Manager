@@ -36,6 +36,17 @@ describe("coverage nhánh + ratchet (QA-COV-001, QA-COV-002, QA-COV-008)", () =>
     expect(ci).toMatch(/name:\s*coverage\b[\s\S]{0,200}path:\s*coverage\//);
   });
 
+  it("QA-COV-001 (AUD-CI-004): bước tải coverage nằm SAU bước sinh coverage, không thì artifact luôn rỗng", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const gen = ci.indexOf("xt.py floor --run");
+    const upload = ci.search(
+      /name:\s*coverage\b[\s\S]{0,200}path:\s*coverage\//,
+    );
+    expect(gen, "bước sinh coverage (xt.py floor --run)").toBeGreaterThan(-1);
+    expect(upload, "bước tải artifact coverage").toBeGreaterThan(-1);
+    expect(upload).toBeGreaterThan(gen);
+  });
+
   it("QA-COV-002: ngưỡng lines và branches là số, không thấp hơn baseline đã đạt", () => {
     for (const [k, min] of Object.entries(BASELINE)) {
       const m = new RegExp(`${k}:\\s*(\\d+)`).exec(cfg);
