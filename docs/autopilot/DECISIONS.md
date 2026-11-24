@@ -274,3 +274,10 @@
 - Chọn: thu hẹp về tests/ai
 - Lý do (tiêu chí chất lượng cuối): test được dẫn làm bằng chứng đều nằm ở tests/ai; không nới ngưỡng, không bỏ test; lệnh vẫn chạy lại được
 - Đường lùi: đổi lại chuỗi Kiểm trong BLUEPRINT.md (7 dòng)
+
+### D-040 · 2026-11-24T13:41:52+00:00 · AUD-DATA-008: trang tài khoản hứa xuất theo dự án ở trang dự án nhưng không có UI/route gọi exportProject
+
+- Phương án: (1) thêm route và nút xuất theo dự án (kéo theo OpenAPI, ROUTES, test hợp đồng, spec) · (2) sửa câu chữ cho khớp thực tế, test chặn hứa suông, mở việc UI xuất thành mục 🟢 có chủ
+- Chọn: sửa câu chữ cho khớp thực tế, test chặn hứa suông, mở việc UI xuất thành mục 🟢 có chủ
+- Lý do (tiêu chí chất lượng cuối): đúng và an toàn trước: bỏ ngay lời hứa sai; tính năng xuất theo dự án cần thiết kế quyền và hợp đồng API riêng, không nhét vào đợt sửa lỗi
+- Đường lùi: hoàn câu chữ ở app/app/account/page.tsx và gỡ test; hoặc thêm route xuất
