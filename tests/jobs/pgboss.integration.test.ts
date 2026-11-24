@@ -146,4 +146,51 @@ d("pg-boss trên Postgres thật", () => {
       await boss.stop({ graceful: false, timeout: 2000 });
     }
   }, 30_000);
+
+  // AUD-CODE-009: `createQueue` của pg-boss là INSERT … ON CONFLICT DO NOTHING, nên hàng đợi đã có từ bản cũ
+  // (tạo không kèm tuỳ chọn) giữ cấu hình cũ khi nâng cấp: không retry theo JOB_RETRY, không hàng chết.
+  it("nâng cấp: hàng đợi cũ tạo không kèm tuỳ chọn được áp retry và hàng chết khi runner khởi động", async () => {
+    const boss = await startBoss(url);
+    try {
+      for (const name of Object.values(QUEUES)) {
+        await boss.deleteQueue(name);
+        await boss.deleteQueue(dlqName(name));
+        await boss.createQueue(name); // đúng như bản cũ: không retry, không deadLetter
+      }
+      const before = await boss.getQueue(QUEUES.actionsDispatch);
+      expect(before?.deadLetter ?? null).toBeNull();
+
+      const runner = createJobRunner({
+        queue: pgBossQueue(boss),
+        posts: {
+          runDue: async () => ({ published: 0, failed: 0 }),
+          recoverStuck: async () => 0,
+          confirmSubmitted: async () => ({}),
+        },
+        actions: noActions,
+        inbox: { syncAsSystem: async () => ({ inserted: 0 }) },
+        retention: noRetention,
+        listAccounts: async () => [],
+        log: createLogger({
+          service: "t",
+          version: "0",
+          env: "test",
+          write: () => {},
+        }),
+      });
+      await runner.start();
+
+      for (const name of Object.values(QUEUES)) {
+        expect(await boss.getQueue(name), name).toMatchObject({
+          retryLimit: JOB_RETRY.retryLimit,
+          retryDelay: JOB_RETRY.retryDelay,
+          retryBackoff: true,
+          retryDelayMax: JOB_RETRY.retryDelayMax,
+          deadLetter: dlqName(name),
+        });
+      }
+    } finally {
+      await boss.stop({ graceful: false, timeout: 2000 });
+    }
+  }, 30_000);
 });
