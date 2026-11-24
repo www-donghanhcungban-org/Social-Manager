@@ -8,7 +8,13 @@ export function pgBossQueue(
   opts: { pollingIntervalSeconds?: number } = {},
 ): JobQueue {
   return {
-    createQueue: (name, options) => boss.createQueue(name, options),
+    // `createQueue` của pg-boss là INSERT … ON CONFLICT DO NOTHING: hàng đợi đã có (tạo ở bản cũ, không kèm tuỳ chọn)
+    // giữ nguyên cấu hình cũ, nên nâng cấp không nhận retry/hàng chết mới (AUD-CODE-009). `updateQueue` áp lại tuỳ
+    // chọn cho hàng đợi đã tồn tại; lũy đẳng, chạy mỗi lần khởi động.
+    createQueue: async (name, options) => {
+      await boss.createQueue(name, options);
+      if (options) await boss.updateQueue(name, options);
+    },
     schedule: (name, cron) => boss.schedule(name, cron),
     work: async (name, handler) => {
       await boss.work(
