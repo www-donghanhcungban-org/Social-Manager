@@ -342,6 +342,29 @@ function breakingChanges(
 }
 
 /** Hàm Server Action được export từ các tệp `'use server'` trong `app/` và `src/`. */
+/** Escape đủ ký tự đặc biệt của regex, kể cả backslash. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&");
+}
+
+/** Tệp bắt đầu bằng chỉ thị "use server" (bỏ qua khoảng trắng và chú thích đầu tệp); quét tuyến tính, không regex lồng. */
+function startsWithUseServer(src: string): boolean {
+  let i = 0;
+  for (;;) {
+    while (i < src.length && /\s/.test(src[i]!)) i++;
+    if (src.startsWith("//", i)) {
+      const nl = src.indexOf("\n", i);
+      if (nl < 0) return false;
+      i = nl + 1;
+    } else if (src.startsWith("/*", i)) {
+      const end = src.indexOf("*/", i + 2);
+      if (end < 0) return false;
+      i = end + 2;
+    } else break;
+  }
+  return src.startsWith('"use server"', i) || src.startsWith("'use server'", i);
+}
+
 function serverActions(): { file: string; name: string }[] {
   return ["app", "src"]
     .flatMap((d) => walk(d))
@@ -350,9 +373,7 @@ function serverActions(): { file: string; name: string }[] {
       file: f.split("\\").join("/"),
       src: readFileSync(f, "utf-8"),
     }))
-    .filter(({ src }) =>
-      /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use server["']/.test(src),
-    )
+    .filter(({ src }) => startsWithUseServer(src))
     .flatMap(({ file, src }) =>
       [
         ...src.matchAll(
@@ -586,7 +607,7 @@ describe("API-CONTRACT.md (BE-API-008, STD-API-008)", () => {
   it("mỗi thao tác OpenAPI có một dòng trong bảng endpoint", () => {
     for (const o of spec.operations) {
       const row = new RegExp(
-        `^\\|\\s*${o.method}\\s*\\|\\s*\`${o.path.replace(/[{}/]/g, "\\$&")}\`\\s*\\|`,
+        `^\\|\\s*${escapeRegExp(o.method)}\\s*\\|\\s*\`${escapeRegExp(o.path)}\`\\s*\\|`,
         "m",
       );
       expect(contract, `${o.method} ${o.path}`).toMatch(row);
