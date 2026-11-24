@@ -225,3 +225,10 @@
 - Chọn: Viết lại theo mẫu khung, theo code thật, phiên chính tự duyệt
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: spec phải mô tả hành vi thật, kiểm được bằng test truy vết AC; ADR-0008 cho phiên chính tự duyệt
 - Đường lùi: Khôi phục docs/specs từ commit 48013e9
+
+### D-033 · 2026-11-24T04:09:11+00:00 · Hợp đồng API T-561: thay oasdiff/redocly bằng test so khớp, và phạm vi tick MUST
+
+- Phương án: (1) Tick cả 6 MUST bằng test api-contract · (2) Tick STD-API-001 và BE-API-008 (không áp dụng có điều kiện kiểm được); defer 4 mục cần oasdiff/redocly cho người
+- Chọn: Tick STD-API-001 và BE-API-008 (không áp dụng có điều kiện kiểm được); defer 4 mục cần oasdiff/redocly cho người
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: test chỉ so thao tác và mã trạng thái, không so từng trường, nên không thể khai là chặn thay đổi phá vỡ theo đúng chữ MUST; thêm phụ thuộc CI là việc cần duyệt
+- Đường lùi: Bỏ tick hai mục và xoá dòng defer; hợp đồng và test vẫn giữ

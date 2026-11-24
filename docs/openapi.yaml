@@ -1,0 +1,431 @@
+openapi: 3.1.1
+info:
+  title: X-Workspace HTTP API
+  version: 1.0.0
+  summary: Route handler HTTP của X-Workspace (không gồm Server Action).
+  description: >-
+    Hợp đồng máy đọc cho mọi route handler trong `app/**/route.ts`. Tóm tắt, quy tắc phiên bản, mô hình lỗi,
+    idempotency và bảng Server Action ở `docs/API-CONTRACT.md`. `tests/config/api-contract.test.ts` so khớp file
+    này với handler thật (thiếu hoặc thừa path/method là đỏ). Mọi phản hồi đi qua `proxy.ts`: header bảo mật, CSP
+    và `Cache-Control: private, no-store` cho tiền tố `/api` và `/app`; POST/PUT/PATCH/DELETE cross-site (theo
+    `Sec-Fetch-Site`, thiếu thì so `Origin` với `Host`, thiếu cả hai mà có cookie) bị chặn 403 trước khi tới handler.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /
+    description: Cùng origin với ứng dụng tự host (không có tiền tố phiên bản trong URL).
+tags:
+  - name: ops
+    description: Giám sát và vận hành.
+  - name: webhooks
+    description: Sự kiện từ nhà cung cấp, xác thực bằng chữ ký.
+  - name: auth
+    description: Đăng nhập (Better Auth).
+  - name: account
+    description: Quyền của chủ dữ liệu.
+security: []
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [ops]
+      summary: Readiness (kiểm CSDL)
+      description: >-
+        Công khai, chỉ đọc. Ping CSDL `select 1` với thời hạn 2000 ms. Đang tắt êm (draining) thì 503 ngay, không chạm
+        CSDL. Thân không lộ nguyên nhân lỗi. Không giới hạn tần suất trong mã.
+      security: []
+      responses:
+        "200":
+          description: Sẵn sàng.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: CSDL lỗi, quá thời hạn hoặc đang tắt êm.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/health/live:
+    get:
+      operationId: getHealthLive
+      tags: [ops]
+      summary: Liveness (không gọi phụ thuộc nào)
+      security: []
+      responses:
+        "200":
+          description: Tiến trình còn chạy.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Live"
+  /api/metrics:
+    get:
+      operationId: getMetrics
+      tags: [ops]
+      summary: Metric Prometheus
+      description: >-
+        Đóng mặc định: chưa đặt `METRICS_TOKEN` (hoặc ngắn hơn 24 ký tự) thì 404 như route không tồn tại. Đã đặt thì
+        đòi `Authorization: Bearer <token>`, so sánh thời gian hằng. Nhãn chỉ là route mẫu và mã trạng thái, không có
+        dữ liệu người dùng.
+      security:
+        - metricsBearer: []
+      responses:
+        "200":
+          description: Bản ghi metric dạng văn bản Prometheus 0.0.4.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            text/plain; version=0.0.4; charset=utf-8:
+              schema:
+                type: string
+        "401":
+          description: Thiếu hoặc sai Bearer token. Thân văn bản `Unauthorized`.
+          headers:
+            WWW-Authenticate:
+              description: Luôn là `Bearer`.
+              schema:
+                type: string
+                const: Bearer
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: Unauthorized
+        "404":
+          description: Metric chưa bật (không đặt `METRICS_TOKEN`). Thân văn bản `Not Found`.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: Not Found
+  /api/webhooks/socialapi/{connectionId}:
+    parameters:
+      - name: connectionId
+        in: path
+        required: true
+        description: Id kết nối nhà cung cấp (UUID). Id sai định dạng cho cùng 401 như sai chữ ký.
+        schema:
+          type: string
+    post:
+      operationId: postSocialApiWebhook
+      tags: [webhooks]
+      summary: Nhận sự kiện webhook SocialAPI cho một kết nối
+      description: >-
+        Không dùng phiên đăng nhập. Xác thực bằng HMAC-SHA256 của `<timestamp>.<thân thô>` với secret webhook của kết
+        nối (lưu mã hoá), header `x-socialapi-signature-v2: sha256=<hex 64>` và `x-socialapi-timestamp` (giây, lệch
+        tối đa 300 s). Mọi lý do xác thực thất bại (kết nối không có, chưa đặt secret, sai nhà cung cấp, sai chữ ký,
+        timestamp cũ) cho cùng một 401. Lũy đẳng: cùng sự kiện gửi lại không tạo bản ghi thứ hai (khoá duy nhất
+        `inbox_items(social_account_id, kind, external_id)` và `messages(social_account_id, external_id)`, chèn
+        `ON CONFLICT DO NOTHING`); phát lại ngoài cửa sổ 300 s bị 401. Không dùng header `Idempotency-Key`. Lỗi
+        CSDL hoặc bất ngờ → 500 để nhà cung cấp thử lại theo lịch của họ. Không giới hạn tần suất trong mã.
+      security:
+        - socialApiSignature: []
+          socialApiTimestamp: []
+      parameters:
+        - name: x-socialapi-signature-v2
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^sha256=[0-9a-f]{64}$"
+        - name: x-socialapi-timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]{1,12}$"
+      requestBody:
+        required: true
+        description: Thân thô tối đa 262144 byte (256 KiB); chữ ký tính trên byte thô.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SocialApiWebhookEvent"
+      responses:
+        "200":
+          description: >-
+            Đã nhận. `ok` kèm `inserted` (số bản ghi mới; 0 khi là bản gửi lại), hoặc `ignored` (sự kiện không thuộc hộp
+            thư, hoặc tài khoản chưa được thêm vào app).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAck"
+        "400":
+          description: Chữ ký đúng nhưng thân không phải JSON hoặc sai cấu trúc sự kiện (`status = invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAck"
+        "401":
+          description: Xác thực thất bại (`status = unauthorized`), một phản hồi cho mọi lý do.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAck"
+        "403":
+          $ref: "#/components/responses/CrossSiteForbidden"
+        "413":
+          description: >-
+            Thân vượt 262144 byte (`status = too_large`); kiểm theo `Content-Length` trước khi đọc và theo độ dài thân
+            thật sau khi đọc.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookAck"
+        "500":
+          description: Lỗi CSDL hoặc bất ngờ; thân lỗi chung, chi tiết chỉ ở log nội bộ.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/auth/{all}:
+    parameters:
+      - name: all
+        in: path
+        required: true
+        description: >-
+          Catch-all `[...all]` của Next.js (có thể chứa `/`), chuyển nguyên cho Better Auth 1.7.27 qua
+          `toNextJsHandler`. Đường dẫn app đang dùng: `POST sign-up/email`, `POST sign-in/email`, `POST sign-out`,
+          `GET get-session`. Hợp đồng chi tiết của từng đường dẫn thuộc Better Auth, không lặp lại ở đây.
+        schema:
+          type: string
+    x-catch-all: true
+    get:
+      operationId: getAuth
+      tags: [auth]
+      summary: Đường dẫn GET của Better Auth (ví dụ get-session)
+      security: []
+      responses:
+        "200":
+          description: Phản hồi thành công theo Better Auth.
+        "429":
+          $ref: "#/components/responses/AuthRateLimited"
+        default:
+          description: Lỗi theo Better Auth (JSON `{code?, message}`).
+    post:
+      operationId: postAuth
+      tags: [auth]
+      summary: Đường dẫn POST của Better Auth (sign-in/email, sign-up/email, sign-out)
+      description: >-
+        Giới hạn theo IP (bộ nhớ tiến trình, cửa sổ 60 s): mặc định 100 request; `sign-in/email` và `sign-up/email`
+        theo `AUTH_RATE_LIMIT_PER_MIN` (mặc định 10). Khoá theo tài khoản khi đăng nhập sai nhiều lần: 429 với
+        `code = TOO_MANY_ATTEMPTS`, cùng phản hồi cho email có hay chưa có đăng ký. Đăng ký không tự đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Phản hồi thành công theo Better Auth; đăng nhập đặt cookie phiên.
+        "403":
+          $ref: "#/components/responses/CrossSiteForbidden"
+        "429":
+          $ref: "#/components/responses/AuthRateLimited"
+        default:
+          description: Lỗi theo Better Auth (JSON `{code?, message}`).
+  /app/account/export:
+    post:
+      operationId: exportMyData
+      tags: [account]
+      summary: Tải dữ liệu cá nhân của chính người đang đăng nhập
+      description: >-
+        Id người dùng lấy từ phiên, không từ request. POST vì ghi một dòng kiểm toán. Chưa đăng nhập → 401 JSON, không
+        chuyển hướng. Không thân request. Không giới hạn tần suất trong mã.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Tệp JSON đính kèm `du-lieu-cua-toi.json`.
+          headers:
+            Content-Disposition:
+              description: '`attachment; filename="du-lieu-cua-toi.json"`'
+              schema:
+                type: string
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            X-Content-Type-Options:
+              schema:
+                type: string
+                const: nosniff
+          content:
+            application/json; charset=utf-8:
+              schema:
+                type: object
+        "401":
+          description: Chưa đăng nhập.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unauthorized"
+        "403":
+          $ref: "#/components/responses/CrossSiteForbidden"
+components:
+  securitySchemes:
+    metricsBearer:
+      type: http
+      scheme: bearer
+      description: Giá trị `METRICS_TOKEN` (tối thiểu 24 ký tự).
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: >-
+        Cookie phiên Better Auth (SameSite=Lax, hạn 7 ngày). Trên https tên có tiền tố `__Host-sm`
+        (`__Host-sm.session_token`), Secure, Path=/.
+    socialApiSignature:
+      type: apiKey
+      in: header
+      name: x-socialapi-signature-v2
+      description: "`sha256=` + HMAC-SHA256 hex của `<timestamp>.<thân thô>`, khoá là secret webhook của kết nối."
+    socialApiTimestamp:
+      type: apiKey
+      in: header
+      name: x-socialapi-timestamp
+      description: Thời điểm ký (giây Unix); lệch quá 300 s so với đồng hồ server thì từ chối.
+  headers:
+    NoStore:
+      description: Không cache.
+      schema:
+        type: string
+    PrivateNoStore:
+      description: "`private, no-store`."
+      schema:
+        type: string
+        const: private, no-store
+  responses:
+    CrossSiteForbidden:
+      description: >-
+        Bị `proxy.ts` chặn trước handler vì là request đổi trạng thái cross-site. Thân văn bản `Forbidden`,
+        `Cache-Control: private, no-store`.
+      content:
+        text/plain:
+          schema:
+            type: string
+            const: Forbidden
+    AuthRateLimited:
+      description: >-
+        Vượt hạn mức của Better Auth: thân `{"message": "..."}` và header `X-Retry-After` (giây); hoặc tài khoản bị
+        khoá tạm do đăng nhập sai: thân `{"code": "TOO_MANY_ATTEMPTS", "message": "..."}`.
+      headers:
+        X-Retry-After:
+          description: Số giây chờ (chỉ khi vượt hạn mức theo IP).
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AuthError"
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        version:
+          type: string
+          description: Có khi image dựng với `APP_VERSION` (số phát hành công khai).
+      additionalProperties: false
+    Live:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+      additionalProperties: false
+    SocialApiWebhookEvent:
+      type: object
+      description: >-
+        Phong bì sự kiện SocialAPI. Chỉ `comment.received`, `dm.received`, `mention.received`, `review.received` được
+        xử lý; `event` khác → 200 `ignored`. Trường không nêu ở đây bị bỏ qua.
+      required: [event]
+      properties:
+        event:
+          type: string
+        data:
+          type: object
+          properties:
+            account_id:
+              type: string
+              maxLength: 200
+            id:
+              type: string
+              maxLength: 200
+            conversation_id:
+              type: [string, "null"]
+            platform_id:
+              type: [string, "null"]
+            received_at:
+              type: string
+              description: ISO 8601 đầy đủ kèm múi giờ.
+            author:
+              type: object
+            content:
+              type: object
+            review:
+              type: object
+    WebhookAck:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, ignored, unauthorized, invalid, too_large]
+        inserted:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    ErrorBody:
+      type: object
+      description: Mô hình lỗi chung của `src/http/errors.ts` (`handleError`).
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              description: >-
+                `forbidden` (403), `not_found` (404), `validation`/`unsupported` (422), `not_implemented` (501),
+                `upstream_error` (502), `upstream_timeout` (504), `internal` (500); 409 dùng `reason` của
+                ConflictError (ví dụ `idempotency_conflict`).
+            message:
+              type: string
+              description: Thông điệp tĩnh do mã viết; không stack, đường dẫn, chuỗi kết nối.
+            request_id:
+              type: string
+              format: uuid
+          additionalProperties: false
+      additionalProperties: false
+    Unauthorized:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          const: unauthorized
+      additionalProperties: false
+    AuthError:
+      type: object
+      required: [message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
