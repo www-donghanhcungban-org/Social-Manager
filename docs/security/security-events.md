@@ -6,16 +6,16 @@ Nguồn sự thật: `src/log/security-events.ts` (log có cấu trúc) và `src
 
 Trường bắt buộc (schema: `docs/security/security-event.schema.json`): `timestamp` (UTC ISO-8601), `event`, `actor`, `target_type`, `target_id`, `outcome` (`success`/`denied`/`error`), `source_ip`, `user_agent`, `request_id`. Không ghi nội dung người dùng, mật khẩu, token, email thô (logger che email và số điện thoại; `actor` là id).
 
-| Sự kiện                     | Khi nào                                           | Nơi phát                                  |
-| --------------------------- | ------------------------------------------------- | ----------------------------------------- |
-| `auth.login_succeeded`      | đăng nhập email/mật khẩu thành công               | `src/auth/auth.ts` (hook after)           |
-| `auth.login_failed`         | sai email hoặc mật khẩu                           | `src/auth/auth.ts` (hook after)           |
-| `auth.login_locked`         | tài khoản bị khoá tạm vì thử quá nhiều            | `src/auth/auth.ts` (hook before)          |
-| `authz.denied`              | thao tác bị từ chối vì thiếu quyền (403)          | `src/http/errors.ts`                      |
-| `input.invalid`             | đầu vào không hợp lệ bị từ chối (422)             | `src/http/errors.ts`                      |
-| `webhook.signature_invalid` | webhook sai chữ ký/timestamp (401)                | `app/api/webhooks/socialapi/.../route.ts` |
-| `ai.blocked`                | gọi AI đám mây khi workspace chưa cho phép        | `src/ai/gateway.ts`                       |
-| `ai.budget_exceeded`        | gọi AI vượt ngân sách 24 giờ của workspace (100%) | `src/ai/gateway.ts`                       |
+| Sự kiện                     | Khi nào                                                                                           | Nơi phát                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `auth.login_succeeded`      | đăng nhập email/mật khẩu thành công                                                               | `src/auth/auth.ts` (hook after)                              |
+| `auth.login_failed`         | sai email hoặc mật khẩu; sai mật khẩu khi xác nhận xoá tài khoản (`target_type` `account_delete`) | `src/auth/auth.ts` (hook after); `src/retention/account.ts`  |
+| `auth.login_locked`         | tài khoản bị khoá tạm vì thử quá nhiều (đăng nhập hoặc xác nhận xoá tài khoản)                    | `src/auth/auth.ts` (hook before); `src/retention/account.ts` |
+| `authz.denied`              | thao tác bị từ chối vì thiếu quyền (403)                                                          | `src/http/errors.ts`                                         |
+| `input.invalid`             | đầu vào không hợp lệ bị từ chối (422)                                                             | `src/http/errors.ts`                                         |
+| `webhook.signature_invalid` | webhook sai chữ ký/timestamp (401)                                                                | `app/api/webhooks/socialapi/.../route.ts`                    |
+| `ai.blocked`                | gọi AI đám mây khi workspace chưa cho phép                                                        | `src/ai/gateway.ts`                                          |
+| `ai.budget_exceeded`        | gọi AI vượt ngân sách 24 giờ của workspace (100%)                                                 | `src/ai/gateway.ts`                                          |
 
 Chưa có (ghi nhận, không phải lỗ hổng): đăng xuất, đổi mật khẩu, MFA, token — ứng dụng chưa có chức năng đó (Better Auth dùng phiên cookie, chưa bật MFA). Lỗi TLS backend: Postgres/nhà cung cấp trong cùng mạng, lỗi kết nối vào log lỗi chung.
 

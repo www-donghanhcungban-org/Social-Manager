@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 
-import { ConflictError, ForbiddenError } from "@/src/auth/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  TooManyAttemptsError,
+} from "@/src/auth/errors";
 import { getContainer, requireUser } from "@/src/server/runtime";
 
 export interface DeleteAccountState {
@@ -26,6 +30,7 @@ export async function deleteAccountAction(
       password: String(form.get("password") ?? ""),
     });
   } catch (e) {
+    if (e instanceof TooManyAttemptsError) return { error: e.message };
     if (e instanceof ForbiddenError) return { error: "Mật khẩu không đúng." };
     if (e instanceof ConflictError) return { error: e.message };
     throw e;
