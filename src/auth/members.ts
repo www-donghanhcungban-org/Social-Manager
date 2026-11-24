@@ -1,13 +1,13 @@
 import { and, count, eq } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import { recordAudit } from "../audit/record";
-import * as schema from "../db/schema";
 import { members, workspaces, type Role } from "../db/schema";
+import type { Db } from "../db/types";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors";
 import { can } from "./permissions";
 
-export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
+// `Db` sống ở src/db/types; re-export để import cũ không vỡ.
+export type { Db };
 
 export async function getRole(
   db: Db,

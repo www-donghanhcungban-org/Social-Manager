@@ -135,7 +135,7 @@ mọi MUST tự làm được đã `[x] — Kiểm:` hoặc `[~] — Không áp 
 
 ### Lát E — Refactor có Gate (e)
 
-- [ ] `T-570` Refactor các phát hiện nhóm CODE/ARCH của sổ audit (trùng lặp, module quá lớn, vi phạm ranh giới từ T-518), mỗi thay đổi giữ hành vi bằng test có sẵn; không có phát hiện → `[~] — Bỏ: sổ không có mục CODE/ARCH` (H-070; sau: T-503, T-518; files: theo sổ) — Gate: `.xtemplates/scripts/dev-task.sh gate`
+- [x] `T-570` Refactor các phát hiện nhóm CODE/ARCH của sổ audit (trùng lặp, module quá lớn, vi phạm ranh giới từ T-518), mỗi thay đổi giữ hành vi bằng test có sẵn; không có phát hiện → `[~] — Bỏ: sổ không có mục CODE/ARCH` (H-070; sau: T-503, T-518; files: theo sổ) — Gate: `.xtemplates/scripts/dev-task.sh gate`
 
 ### Lát F — Hiệu năng (f)
 
