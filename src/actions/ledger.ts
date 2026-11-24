@@ -93,7 +93,16 @@ export const view = (r: typeof actionLedger.$inferSelect): ActionView => ({
 });
 
 export type DispatchStatus =
-  "sent" | "blocked" | "failed" | "send_unknown" | "skipped" | "deferred";
+  | "sent"
+  | "blocked"
+  | "failed"
+  | "send_unknown"
+  | "skipped"
+  | "deferred"
+  | "cancelled";
+
+/** Trạng thái "đang gửi dở": tiến trình gửi có thể đã chết ở đây mà không ghi được kết quả. */
+const IN_FLIGHT: ActionState[] = ["dispatching", "cancel_requested"];
 
 export interface ActionServiceDeps {
   db: Db;
@@ -201,6 +210,14 @@ export function createActionService(deps: ActionServiceDeps) {
       .where(and(eq(actionLedger.id, id), inArray(actionLedger.state, from)))
       .returning();
     return row ?? null;
+  }
+
+  async function draftStatus(draftId: string) {
+    const [d] = await db
+      .select({ status: drafts.status })
+      .from(drafts)
+      .where(eq(drafts.id, draftId));
+    return d?.status ?? null;
   }
 
   async function markDraftSent(draftId: string | null) {
@@ -365,7 +382,7 @@ export function createActionService(deps: ActionServiceDeps) {
         )
         .returning();
       if (!a) return { status: "skipped" };
-      const open: ActionState[] = ["dispatching", "cancel_requested"];
+      const open = IN_FLIGHT;
 
       const blocked = async (reason: BlockReason) => {
         await finish(a.id, open, "blocked", { blockedReason: reason });
@@ -375,48 +392,74 @@ export function createActionService(deps: ActionServiceDeps) {
         await finish(a.id, open, "failed", { errorCode: code });
         return { status: "failed" as const };
       };
+      // Nháp đã bị bỏ/đóng: người dùng không còn muốn gửi — huỷ, không gửi (ADR-0006: thà không gửi).
+      const cancelled = async () => {
+        await finish(a.id, open, "cancelled", { errorCode: "draft_closed" });
+        return { status: "cancelled" as const };
+      };
 
-      const [w] = await db
-        .select({
-          on: workspaces.outboundEnabled,
-          max: workspaces.outboundMaxPerHour,
-        })
-        .from(workspaces)
-        .where(eq(workspaces.id, a.workspaceId));
-      if (!w) return failed("workspace_missing");
-      const text = await draftText(a.draftId, a.draftVersion);
-      if (text === null) return failed("draft_missing");
-      // Phiên bản nháp bất biến: băm lệch nghĩa là dữ liệu bị đụng vào — không gửi thứ chưa được duyệt.
-      if (textHashOf(text) !== a.textHash) return failed("draft_changed");
-      if (a.conversationId === null) return failed("conversation_missing");
-      const tgt = await target(a.conversationId);
-      if (!tgt) return failed("conversation_missing");
+      /** Mọi kiểm tra chắc-chắn-chưa-gửi; trả nơi gửi khi được phép, hoặc kết quả cuối khi không. */
+      const precheck = async () => {
+        if (a.draftId === null) return failed("draft_missing");
+        const st = await draftStatus(a.draftId);
+        if (st === null) return failed("draft_missing");
+        if (st !== "open") return cancelled();
+        const [w] = await db
+          .select({
+            on: workspaces.outboundEnabled,
+            max: workspaces.outboundMaxPerHour,
+          })
+          .from(workspaces)
+          .where(eq(workspaces.id, a.workspaceId));
+        if (!w) return failed("workspace_missing");
+        const text = await draftText(a.draftId, a.draftVersion);
+        if (text === null) return failed("draft_missing");
+        // Phiên bản nháp bất biến: băm lệch nghĩa là dữ liệu bị đụng vào — không gửi thứ chưa được duyệt.
+        if (textHashOf(text) !== a.textHash) return failed("draft_changed");
+        if (a.conversationId === null) return failed("conversation_missing");
+        const tgt = await target(a.conversationId);
+        if (!tgt) return failed("conversation_missing");
 
-      // Kiểm lại chính sách lúc gửi (cờ workspace có thể đã tắt, cửa sổ có thể đã đóng). Hạn mức đã tính lúc xếp hàng.
-      const verdict = evaluateSendPolicy({
-        live: live(),
-        workspace: {
-          outboundEnabled: w.on,
-          maxPerHour: Number.MAX_SAFE_INTEGER,
-        },
-        platform: tgt.platform as Platform,
-        lastIncomingAt: await lastIncomingAt(tgt.conversationId),
-        text,
-        sentLastHour: 0,
-        now: now(),
-      });
-      if (!verdict.ok) return blocked(verdict.reason);
+        // Kiểm lại chính sách lúc gửi (cờ workspace có thể đã tắt, cửa sổ có thể đã đóng). Hạn mức đã tính lúc xếp hàng.
+        const verdict = evaluateSendPolicy({
+          live: live(),
+          workspace: {
+            outboundEnabled: w.on,
+            maxPerHour: Number.MAX_SAFE_INTEGER,
+          },
+          platform: tgt.platform as Platform,
+          lastIncomingAt: await lastIncomingAt(tgt.conversationId),
+          text,
+          sentLastHour: 0,
+          now: now(),
+        });
+        if (!verdict.ok) return blocked(verdict.reason);
 
-      let provider: SocialProvider | undefined;
+        let provider: SocialProvider | undefined;
+        try {
+          provider = resolveProvider(
+            tgt.provider,
+            box.decrypt(tgt.credentialsEnc),
+          );
+        } catch {
+          return failed("credentials_unreadable");
+        }
+        if (!provider) return failed("provider_unavailable");
+        // Đọc lại ngay trước khi gửi: nháp có thể vừa bị bỏ trong lúc kiểm tra.
+        if ((await draftStatus(a.draftId)) !== "open") return cancelled();
+        return { provider, tgt, text };
+      };
+
+      let ready: Awaited<ReturnType<typeof precheck>>;
       try {
-        provider = resolveProvider(
-          tgt.provider,
-          box.decrypt(tgt.credentialsEnc),
-        );
+        ready = await precheck();
       } catch {
-        return failed("credentials_unreadable");
+        // Lỗi (CSDL chập chờn…) TRƯỚC khi gọi nhà cung cấp: tin chắc chắn chưa đi → failed, không để kẹt `dispatching`.
+        // Ghi `failed` cũng lỗi thì ném lên; dòng kẹt sẽ được `recoverStuck` gỡ thành send_unknown.
+        return failed("precheck_failed");
       }
-      if (!provider) return failed("provider_unavailable");
+      if ("status" in ready) return ready;
+      const { provider, tgt, text } = ready;
 
       // ---- Từ đây mọi lỗi KHÔNG CHẮC (tin có thể đã đi) trừ khi nhà cung cấp từ chối chắc chắn. ----
       try {
@@ -645,6 +688,7 @@ export function createActionService(deps: ActionServiceDeps) {
         send_unknown: 0,
         skipped: 0,
         deferred: 0,
+        cancelled: 0,
       };
       if (!live()) return out;
       const due = await db
@@ -690,6 +734,34 @@ export function createActionService(deps: ActionServiceDeps) {
       for (const r of due)
         out[(await api.reconcile({ actionId: r.id })).status]++;
       return out;
+    },
+
+    /**
+     * Việc nền: hành động kẹt `dispatching`/`cancel_requested` quá `olderThanMs` kể từ lúc nhận việc (tiến trình chết quanh
+     * lúc gửi, hoặc CSDL lỗi khi ghi kết quả) → `send_unknown` (`interrupted`) để đối soát/người quyết. KHÔNG BAO GIỜ đưa về
+     * `queued` và không gửi lại: tin có thể đã đi. Theo khuôn `posts.recoverStuck`.
+     */
+    async recoverStuck({
+      olderThanMs,
+    }: {
+      olderThanMs: number;
+    }): Promise<number> {
+      const cutoff = new Date(now().getTime() - olderThanMs);
+      const rows = await db
+        .update(actionLedger)
+        .set({
+          state: "send_unknown",
+          errorCode: "interrupted",
+          finishedAt: now(),
+        })
+        .where(
+          and(
+            inArray(actionLedger.state, IN_FLIGHT),
+            lte(actionLedger.dispatchedAt, cutoff),
+          ),
+        )
+        .returning({ id: actionLedger.id });
+      return rows.length;
     },
 
     async get(input: {

@@ -5,7 +5,7 @@ import { ACTIONS, can, type Action } from "@/src/auth/permissions";
 const allowed = (role: "owner" | "admin" | "member" | null) =>
   ACTIONS.filter((a) => can(role, a)).sort();
 
-describe("can", () => {
+describe("can [F-001/AC-06]", () => {
   it("member chỉ đọc/trả lời hộp thư, đăng bài và đọc kho bằng chứng", () => {
     expect(allowed("member")).toEqual(
       [

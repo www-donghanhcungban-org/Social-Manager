@@ -1,0 +1,33 @@
+# Sổ nhà cung cấp/bên xử lý (CMP-AUDIT-007). Máy đọc: tests/config/repo-docs.test.ts.
+# Mỗi dịch vụ ngoài mà mã nguồn gọi phải có một dòng; thêm kết nối mới mà thiếu dòng = test đỏ.
+# `reviewed` quá 12 tháng = test đỏ. "(chưa xác minh)" là giá trị hợp lệ, không bịa.
+- id: socialapi
+  service: SocialAPI (kênh nhắn tin, webhook)
+  code: src/providers/socialapi
+  host: api.social-api.ai
+  data: tin nhắn và hồ sơ khách, tin trả lời
+  location: (chưa xác minh)
+  dpa: chưa có
+  certification: (chưa xác minh)
+  risk: trung bình — giữ nội dung tin của khách
+  reviewed: 2026-11-24
+- id: ai-endpoint
+  service: Dịch vụ AI tương thích OpenAI do chủ triển khai cấu hình (mặc định tắt)
+  code: src/ai
+  host: giá trị AI_BASE_URL
+  data: trích đoạn đã che PII, chỉ khi owner đồng ý
+  location: tuỳ nhà cung cấp; cục bộ thì không ra ngoài máy
+  dpa: chưa có (cần khi dùng đám mây)
+  certification: (chưa xác minh)
+  risk: cao khi dùng đám mây — dữ liệu rời máy; giảm bằng che PII, đồng ý riêng
+  reviewed: 2026-11-24
+- id: github
+  service: GitHub (nguồn dữ liệu issue/PR)
+  code: src/connectors/github
+  host: api.github.com
+  data: nội dung công khai hoặc repo pilot chỉ đọc
+  location: (chưa xác minh)
+  dpa: điều khoản GitHub
+  certification: (chưa xác minh)
+  risk: thấp — dữ liệu đi vào, token chỉ đọc
+  reviewed: 2026-11-24

@@ -5,6 +5,11 @@ import * as schema from "./schema";
 
 /** Timeout tường minh cho mọi lời gọi CSDL (BASE-ERR-004): không bao giờ chờ vô hạn. */
 export const DB_TIMEOUTS = {
+  /**
+   * Trần kết nối của pool app (DB-PERF-004); cộng pool pg-boss (src/jobs/pgboss.ts, 5) và dự phòng phải ≤
+   * `max_connections` của Postgres — bảng tính ở docs/db/connections.md. `connectionTimeoutMillis` là hạn chờ lấy kết nối.
+   */
+  max: 10,
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 30_000,
   statement_timeout: 30_000,

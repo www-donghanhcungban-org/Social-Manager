@@ -286,7 +286,9 @@ describe.each(providersUnderContract)(
         { ...base(p), scheduledAt: "2026-12-01T10:00:00+07:00" },
         clock,
       );
-      expect(spy.mock.calls[0][0].scheduledAt).toBe("2026-12-01T03:00:00.000Z");
+      expect(spy.mock.calls[0]?.[0].scheduledAt).toBe(
+        "2026-12-01T03:00:00.000Z",
+      );
     });
 
     it("tên nền tảng lạ (__proto__, toString) là UnsupportedError, không phải TypeError", async () => {
@@ -310,7 +312,7 @@ describe.each(providersUnderContract)(
 describe("actions với provider không hỗ trợ", () => {
   const noSupport: SocialProvider = { id: "none", label: "none", support: {} };
 
-  it("publishPost ném UnsupportedError kèm nền tảng và khả năng", async () => {
+  it("publishPost ném UnsupportedError kèm nền tảng và khả năng [F-002/AC-06]", async () => {
     const err = await publishPost(noSupport, {
       platform: "telegram",
       accountId: "a",
@@ -324,7 +326,7 @@ describe("actions với provider không hỗ trợ", () => {
     });
   });
 
-  it("listInbox ném UnsupportedError, không trả mảng rỗng giả", async () => {
+  it("listInbox ném UnsupportedError, không trả mảng rỗng giả [F-002/AC-06]", async () => {
     await expect(
       listInbox(noSupport, {
         platform: "facebook",
@@ -334,7 +336,7 @@ describe("actions với provider không hỗ trợ", () => {
     ).rejects.toBeInstanceOf(UnsupportedError);
   });
 
-  it("khai hỗ trợ nhưng thiếu cài đặt thì báo not_implemented, không nuốt lỗi", async () => {
+  it("khai hỗ trợ nhưng thiếu cài đặt thì báo not_implemented, không nuốt lỗi [F-002/AC-06]", async () => {
     const lazy: SocialProvider = {
       id: "lazy",
       label: "lazy",

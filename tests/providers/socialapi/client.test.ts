@@ -32,7 +32,7 @@ describe("createSocialApiClient", () => {
     expect(init.body).toBe(JSON.stringify({ text: "x" }));
   });
 
-  it("key rỗng hoặc chỉ khoảng trắng bị từ chối trước khi gọi mạng", async () => {
+  it("key rỗng hoặc chỉ khoảng trắng bị từ chối trước khi gọi mạng [F-002/AC-04]", async () => {
     const fetchMock = vi.fn();
     for (const apiKey of ["", "   "]) {
       const c = createSocialApiClient({ apiKey, fetch: fetchMock });
@@ -77,7 +77,7 @@ describe("createSocialApiClient", () => {
     });
   });
 
-  it("429 có Retry-After: chờ đúng số giây rồi thử lại và thành công", async () => {
+  it("429 có Retry-After: chờ đúng số giây rồi thử lại và thành công [F-002/AC-07]", async () => {
     const sleep = vi.fn(async () => {});
     const fetchMock = vi
       .fn()
@@ -91,7 +91,7 @@ describe("createSocialApiClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("Retry-After: 0 thử lại ngay; giá trị âm, không phải số hoặc dạng ngày thì không thử lại", async () => {
+  it("Retry-After: 0 thử lại ngay; giá trị âm, không phải số hoặc dạng ngày thì không thử lại [F-002/AC-07]", async () => {
     const sleep = vi.fn(async () => {});
     const retryZero = vi
       .fn()
@@ -119,7 +119,7 @@ describe("createSocialApiClient", () => {
     }
   });
 
-  it("mỗi lần gọi có timeout: fetch treo thì bị huỷ và báo client.timeout", async () => {
+  it("mỗi lần gọi có timeout: fetch treo thì bị huỷ và báo client.timeout [F-002/AC-08]", async () => {
     const hang = vi.fn(
       (_url: unknown, init?: RequestInit) =>
         new Promise<Response>((_, reject) => {
@@ -139,7 +139,7 @@ describe("createSocialApiClient", () => {
     expect(hang).toHaveBeenCalledTimes(1);
   });
 
-  it("429 không có Retry-After: không thử lại (không dội API)", async () => {
+  it("429 không có Retry-After: không thử lại (không dội API) [F-002/AC-07]", async () => {
     const sleep = vi.fn(async () => {});
     const fetchMock = vi.fn(async () => new Response("{}", { status: 429 }));
     const c = createSocialApiClient({ apiKey: "k", fetch: fetchMock, sleep });
@@ -148,7 +148,7 @@ describe("createSocialApiClient", () => {
     expect(sleep).not.toHaveBeenCalled();
   });
 
-  it("429 liên tục: dừng sau maxRetries rồi báo lỗi, không lặp vô hạn", async () => {
+  it("429 liên tục: dừng sau maxRetries rồi báo lỗi, không lặp vô hạn [F-002/AC-07]", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response("{}", { status: 429, headers: { "Retry-After": "1" } }),
@@ -166,7 +166,7 @@ describe("createSocialApiClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("Retry-After lớn hơn trần bị cắt để không treo tiến trình", async () => {
+  it("Retry-After lớn hơn trần bị cắt để không treo tiến trình [F-002/AC-07]", async () => {
     const sleep = vi.fn(async () => {});
     const fetchMock = vi
       .fn()
@@ -187,7 +187,7 @@ describe("createSocialApiClient", () => {
     expect(sleep).toHaveBeenCalledWith(5000);
   });
 
-  it("phản hồi 200 sai hình dạng hoặc không phải JSON → client.invalid_response", async () => {
+  it("phản hồi 200 sai hình dạng hoặc không phải JSON → client.invalid_response [F-002/AC-07]", async () => {
     const bad = createSocialApiClient({
       apiKey: "k",
       fetch: async () => json({ ok: "có" }),
@@ -204,7 +204,7 @@ describe("createSocialApiClient", () => {
     });
   });
 
-  it("lỗi mạng → client.network, không lộ key trong thông báo", async () => {
+  it("lỗi mạng → client.network, không lộ key trong thông báo [F-002/AC-08]", async () => {
     const c = createSocialApiClient({
       apiKey: "bi-mat-123",
       fetch: async () => {

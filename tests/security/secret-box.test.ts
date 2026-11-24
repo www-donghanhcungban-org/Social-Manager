@@ -23,14 +23,14 @@ describe("createSecretBox", () => {
     expect(box.encrypt("x")).not.toBe(box.encrypt("x"));
   });
 
-  it("bản mã không chứa bản rõ và có tiền tố phiên bản v1:", () => {
+  it("bản mã không chứa bản rõ và có tiền tố phiên bản v1: [F-002/AC-01]", () => {
     const box = createSecretBox(key());
     const token = box.encrypt("sk-rat-bi-mat");
     expect(token.startsWith("v1:")).toBe(true);
     expect(token).not.toContain("sk-rat-bi-mat");
   });
 
-  it("sửa 1 byte của bản mã (kể cả thẻ xác thực) thì giải mã lỗi", () => {
+  it("sửa 1 byte của bản mã (kể cả thẻ xác thực) thì giải mã lỗi [F-002/AC-09]", () => {
     const box = createSecretBox(key());
     const token = box.encrypt("du-lieu");
     const raw = Buffer.from(token.slice(3), "base64url");
@@ -43,7 +43,7 @@ describe("createSecretBox", () => {
     }
   });
 
-  it("sai khoá thì giải mã lỗi, không trả rác", () => {
+  it("sai khoá thì giải mã lỗi, không trả rác [F-002/AC-09]", () => {
     const token = createSecretBox(key()).encrypt("du-lieu");
     expect(() => createSecretBox(key()).decrypt(token)).toThrow(/giải mã/);
   });

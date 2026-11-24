@@ -1,12 +1,13 @@
 import { and, count, eq } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
-import * as schema from "../db/schema";
+import { recordAudit } from "../audit/record";
 import { members, workspaces, type Role } from "../db/schema";
+import type { Db } from "../db/types";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors";
 import { can } from "./permissions";
 
-export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
+// `Db` sống ở src/db/types; re-export để import cũ không vỡ.
+export type { Db };
 
 export async function getRole(
   db: Db,
@@ -70,6 +71,14 @@ export function addMember(
       userId: input.userId,
       role: input.role,
     });
+    await recordAudit(tx, {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      action: "member.added",
+      targetType: "user",
+      targetId: input.userId,
+      reason: `role=${input.role}`,
+    });
   });
 }
 
@@ -104,6 +113,14 @@ export function changeRole(
           eq(members.userId, input.targetUserId),
         ),
       );
+    await recordAudit(tx, {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      action: "member.role_changed",
+      targetType: "user",
+      targetId: input.targetUserId,
+      reason: `${target}->${input.newRole}`,
+    });
   });
 }
 
@@ -138,5 +155,13 @@ export function removeMember(
           eq(members.userId, input.targetUserId),
         ),
       );
+    await recordAudit(tx, {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      action: "member.removed",
+      targetType: "user",
+      targetId: input.targetUserId,
+      reason: isSelf ? "self" : `role=${target}`,
+    });
   });
 }

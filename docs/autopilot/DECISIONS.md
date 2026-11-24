@@ -127,3 +127,143 @@
 - Chọn: Sửa theo đợt: đường gửi tin trước (AUD-CODE-001, AUD-CODE-002), rồi CI Postgres, tài liệu, xoá/xuất dữ liệu, harness; hạ các lệch tài liệu và cấu hình không có hành vi sai xuống 🟢 nợ có chủ
 - Lý do (tiêu chí chất lượng cuối): Đúng và an toàn trước: hai lỗi trên đường gửi tin là hành động ra ngoài không đảo ngược nên sửa đầu tiên với test đỏ trước; các lệch tài liệu không có đường tái hiện dẫn tới hành vi sai nên xử lý theo task PLAN-harden đã có, không nới cổng, không hạ mức để biến mất phát hiện (mọi dòng vẫn giữ trong sổ)
 - Đường lùi: Kế hoạch chỉ là tài liệu: sửa AUDIT-STATUS.md và AUDIT-REPORT-2026-11-23.md rồi lập lại thứ tự đợt
+
+### D-019 · 2026-11-23T15:57:39+00:00 · AUD-DATA-001 (xoá/xuất dữ liệu người dùng): sửa trong đợt này hay chấp nhận có hạn?
+
+- Phương án: (1) Làm ngay trong T-503 · (2) Chấp nhận có hạn 2026-12-14, làm trọn ở T-529 cùng data-inventory và quyền chủ thể
+- Chọn: Chấp nhận có hạn 2026-12-14, làm trọn ở T-529 cùng data-inventory và quyền chủ thể
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: xoá tài khoản cần thiết kế quyền chủ thể đầy đủ (CMP-PRIV-005), làm vội dễ xoá nhầm dữ liệu; đã có task T-529 nhận việc, không phải lỗi hồi quy
+- Đường lùi: Không đổi mã; mở lại hàng sổ nếu T-529 trượt hạn
+
+### D-020 · 2026-11-23T21:02:39+00:00 · T-510: 31 MUST của blueprint không áp dụng cho X-Workspace — miễn bằng [~] Không áp dụng hay làm?
+
+- Phương án: (1) Làm đủ 31 mục (tiền, WebSocket, OAuth server, MCP, cache ngoài, analytics, IaC...) dù sản phẩm không có tính năng đó · (2) Đánh [~] Không áp dụng kèm điều kiện kiểm được bằng test (tests/config/baseline-floor.test.ts) đỏ khi sản phẩm thêm đúng thứ bị loại
+- Chọn: Đánh [~] Không áp dụng kèm điều kiện kiểm được bằng test (tests/config/baseline-floor.test.ts) đỏ khi sản phẩm thêm đúng thứ bị loại
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: làm cho tính năng không tồn tại là code chết, tăng bề mặt tấn công; điều kiện kiểm bằng máy nên miễn trừ không im lặng hết hạn; giữ đường lùi bằng cách bỏ [~] khi thêm tính năng
+- Đường lùi: Bỏ [~] và dòng Không áp dụng của mục tương ứng, làm MUST; test điều kiện sẽ đỏ trước
+
+### D-021 · 2026-11-23T21:14:43+00:00 · T-511: LOOP-OPT-* và các mục vướng di sản T-108 xử lý thế nào?
+
+- Phương án: (1) Tick/miễn hết dù chưa có bằng chứng · (2) LOOP-OPT-001/002/003/005 = Không áp dụng có điều kiện kiểm bằng test (chưa có task tối ưu); LOOP-ORCH-001/003, LOOP-STOP-001/002 (harness-check đỏ do di sản T-108) và LOOP-STOP-005 (nhãn risk PR) = loop defer cho người, giữ [ ]
+- Chọn: LOOP-OPT-001/002/003/005 = Không áp dụng có điều kiện kiểm bằng test (chưa có task tối ưu); LOOP-ORCH-001/003, LOOP-STOP-001/002 (harness-check đỏ do di sản T-108) và LOOP-STOP-005 (nhãn risk PR) = loop defer cho người, giữ [ ]
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: không khai xanh khi harness-check đỏ thật; gỡ cấu hình ask/agent coordinator là hạ hàng rào, guard cấm agent tự làm; OPT chỉ áp khi mở task tối ưu
+- Đường lùi: Bỏ [~] của OPT khi thêm perf/trial.json; hết defer khi người gỡ di sản T-108
+
+### D-022 · 2026-11-23T21:57:35+00:00 · T-514: giữ skipLibCheck=true trong tsconfig hay bỏ để đạt FE-BUILD-003/PRF-WEB-002?
+
+- Phương án: (1) Đặt skipLibCheck=false · (2) Giữ skipLibCheck=true: chỉ bỏ qua .d.ts của gói bên thứ ba, mã dự án vẫn strict + noUncheckedIndexedAccess
+- Chọn: Giữ skipLibCheck=true: chỉ bỏ qua .d.ts của gói bên thứ ba, mã dự án vẫn strict + noUncheckedIndexedAccess
+- Lý do (tiêu chí chất lượng cuối): Đo được: tsc --skipLibCheck false báo lỗi ở 4+ gói bên thứ ba (pglite, drizzle, next) không thuộc dự án và không sửa được; skipLibCheck không che lỗi mã dự án. Đúng và đơn giản; test khoá strict
+- Đường lùi: Đặt lại skipLibCheck=false khi gói bên thứ ba sạch kiểu
+
+### D-023 · 2026-11-23T22:08:43+00:00 · T-515: license copyleft yếu (MPL-2.0, LGPL-3.0, CC-BY-4.0) trong cây phụ thuộc — chấp nhận hay thay thế?
+
+- Phương án: (1) Thay thế/loại bỏ các gói đó · (2) Cho phép qua ngoại lệ có hạn 2027-06-30 trong license-policy.json (dùng nguyên bản, không sửa), ghi công ở THIRD_PARTY_NOTICES.md
+- Chọn: Cho phép qua ngoại lệ có hạn 2027-06-30 trong license-policy.json (dùng nguyên bản, không sửa), ghi công ở THIRD_PARTY_NOTICES.md
+- Lý do (tiêu chí chất lượng cuối): Đo được: 14 gói LGPL là nhị phân native tuỳ chọn của sharp, MPL là lightningcss/axe-core (bộ công cụ build/dev), CC-BY là dữ liệu caniuse; không thay được vì thuộc Next/Tailwind; dùng nguyên bản thì tuân thủ; ngoại lệ có hạn, test đỏ khi hết hạn hoặc thêm gói mới ngoài danh sách
+- Đường lùi: Xoá ngoại lệ tương ứng; test license đỏ cho tới khi gỡ gói
+
+### D-024 · 2026-11-23T23:10:25+00:00 · Kiểu kiến trúc và cách kiểm ranh giới module (ADR-0007)
+
+- Phương án: (1) Modular monolith một deployable, ranh giới kiểm bằng test tự viết (không thêm phụ thuộc) · (2) Tách dịch vụ (web/worker/connector) ngay · (3) Thêm dependency-cruiser/import-linter làm công cụ kiểm
+- Chọn: Modular monolith một deployable, ranh giới kiểm bằng test tự viết (không thêm phụ thuộc)
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: một nơi triển khai/sao lưu, giao dịch chung dữ liệu+job; ranh giới có máy canh mà không thêm phụ thuộc dev chưa xác minh; ORM trong service là đánh đổi chấp nhận có điều kiện đọc lại
+- Đường lùi: Viết ADR mới thay ADR-0007: đổi test sang dependency-cruiser hoặc tách deployable kèm mục Bằng chứng tách
+
+### D-025 · 2026-11-23T23:59:46+00:00 · DB-SEC-007: cô lập workspace bằng RLS Postgres hay bằng tầng ứng dụng?
+
+- Phương án: (1) RLS: ENABLE+FORCE trên mọi bảng có workspace_id, policy theo biến phiên SET LOCAL, cần vai trò app không phải owner và mọi truy vấn trong giao dịch · (2) Cô lập tầng ứng dụng: mọi truy vấn lọc workspace_id sau requireAction; test BOLA/BFLA khoá hành vi; DB-SEC-007 Không áp dụng có điều kiện kiểm được
+- Chọn: Cô lập tầng ứng dụng: mọi truy vấn lọc workspace_id sau requireAction; test BOLA/BFLA khoá hành vi; DB-SEC-007 Không áp dụng có điều kiện kiểm được
+- Lý do (tiêu chí chất lượng cuối): Ứng dụng hiện kết nối bằng một vai trò duy nhất (chủ dự án, DB-SEC-002 chưa tách) nên FORCE RLS không có hiệu lực bảo vệ thật nếu không tách vai trò và bọc mọi truy vấn vào giao dịch SET LOCAL; làm nửa vời tạo cảm giác an toàn giả. Chọn lọc ở tầng dịch vụ có test chéo workspace chạy trong CI; RLS để làm cùng DB-SEC-002 khi triển khai tách vai trò (cần người kiểm trên hạ tầng thật)
+- Đường lùi: Thêm migration bật RLS kèm vai trò app riêng; migration .down tắt RLS và thu hồi vai trò
+
+### D-026 · 2026-11-24T01:19:48+00:00 · Công cụ kiểm ngân sách bundle (FE-PERF-004)
+
+- Phương án: (1) Tự viết scripts/check-bundle.mjs đọc perf-budget.json, không thêm phụ thuộc · (2) Thêm size-limit và preset làm phụ thuộc dev
+- Chọn: Tự viết scripts/check-bundle.mjs đọc perf-budget.json, không thêm phụ thuộc
+- Lý do (tiêu chí chất lượng cuối): Không thêm phụ thuộc dev (chuỗi cung ứng), nhất quán ADR-0007; hàm violations có test cổng; đủ cho 3 mục ngân sách
+- Đường lùi: Đổi sang size-limit khi cần đo theo từng route hoặc import cost: giữ perf-budget.json làm nguồn số, thêm .size-limit.json
+
+### D-027 · 2026-11-24T01:19:49+00:00 · Chiến lược render và mục tiêu hiệu năng chính
+
+- Phương án: (1) Mọi route giao diện render động, không cache dùng chung; mục tiêu LCP 2,5 s, p95 máy chủ 800 ms · (2) Cache Components/PPR cho vỏ trang
+- Chọn: Mọi route giao diện render động, không cache dùng chung; mục tiêu LCP 2,5 s, p95 máy chủ 800 ms
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: dữ liệu người dùng không vào cache chia sẻ; giữ nonce CSP theo request (D-006); chưa có số đo cần cache; mục tiêu số là đề xuất chủ dự án đổi được ở T-542
+- Đường lùi: Viết ADR mới thay ADR-0008 khi có trang công khai cần tĩnh hoặc p95 vượt mục tiêu
+
+### D-028 · 2026-11-24T01:41:16+00:00 · T-527: dùng gì cho eval/dataset AI khi CI không có khoá mô hình, và FTS dùng cột tsvector hay chỉ mục biểu thức?
+
+- Phương án: (1) Khoá băm sha256 + chỉ số truy xuất tất định tự viết; GIN trên biểu thức to_tsvector('simple', text_folded) · (2) DVC/lakeFS + ragas/deepeval; cột tsvector GENERATED STORED
+- Chọn: Khoá băm sha256 + chỉ số truy xuất tất định tự viết; GIN trên biểu thức to_tsvector('simple', text_folded)
+- Lý do (tiêu chí chất lượng cuối): CI không được gọi model thật (AI-EVAL-002) nên ragas/deepeval (cần model judge) không chạy được; dataset 50 mẫu nằm trong git, khoá băm đủ để phát hiện lệch; chỉ mục biểu thức cho cùng EXPLAIN (Bitmap Index Scan) mà không thêm cột phải đồng bộ
+- Đường lùi: Thêm DVC/ragas khi có model judge hiệu chuẩn; thêm cột search_vector bằng migration expand/contract nếu bảng lớn
+
+### D-029 · 2026-11-24T02:03:28+00:00 · T-528: sản phẩm chưa có tác tử AI — làm đủ hạ tầng tác tử (registry tool, HITL, ngân sách 5 chiều, agent con) hay miễn có điều kiện kiểm được?
+
+- Phương án: (1) Miễn 11 mục tác tử kèm test ranh giới đỏ khi thêm tool-calling hoặc agent; làm thật phần đang có (minh bạch, nhãn AI, escape đầu ra, hành vi bị cấm, sổ hành động) · (2) Dựng khung tác tử đầy đủ trước khi có nhu cầu
+- Chọn: Miễn 11 mục tác tử kèm test ranh giới đỏ khi thêm tool-calling hoặc agent; làm thật phần đang có (minh bạch, nhãn AI, escape đầu ra, hành vi bị cấm, sổ hành động)
+- Lý do (tiêu chí chất lượng cuối): Mô hình chỉ nhận/trả chữ (H13), một nơi gọi duy nhất; khung tác tử không dùng là bề mặt tấn công và mã chết; test ranh giới buộc làm mục thật khi thêm tool
+- Đường lùi: Bỏ miễn trừ và làm các mục khi thêm tool-calling hoặc agent (test agent-boundary sẽ đỏ)
+
+### D-030 · 2026-11-24T02:22:33+00:00 · T-529: bản ghi đồng ý, quyền chủ thể và kiểm kê dữ liệu làm theo hình nào?
+
+- Phương án: (1) Bảng consents chỉ ghi thêm gắn cổng AI đám mây; dịch vụ xuất/xoá tài khoản tự phục vụ; một sổ kiểm kê data-inventory.csv khớp bảng phân loại; hàng chờ DSAR cho khách để người duyệt · (2) Dựng ngay hàng chờ DSAR đầy đủ cho cả khách không có tài khoản và data-map.yaml riêng
+- Chọn: Bảng consents chỉ ghi thêm gắn cổng AI đám mây; dịch vụ xuất/xoá tài khoản tự phục vụ; một sổ kiểm kê data-inventory.csv khớp bảng phân loại; hàng chờ DSAR cho khách để người duyệt
+- Lý do (tiêu chí chất lượng cuối): Cổng AI đám mây là xử lý duy nhất cần đồng ý; DSAR cho khách cần quyết định pháp lý về vai trò bên xử lý và mốc NĐ 356/2025 chưa đối chiếu bản gốc; hai sổ kiểm kê trùng nội dung dễ lệch
+- Đường lùi: Thêm mục đích vào CONSENT_PURPOSES khi có xử lý cần đồng ý mới; làm hàng chờ DSAR khi chủ dự án chốt vai trò và mốc
+
+### D-031 · 2026-11-24T02:42:30+00:00 · T-530: sản phẩm có phục vụ người dùng EU/UK để áp CMP-INTL (GDPR, SCC, hạn DSAR theo vùng) hay chỉ Việt Nam?
+
+- Phương án: (1) Chỉ phục vụ Việt Nam; CMP-INTL miễn có điều kiện kiểm được (test cấm cấu hình EU/UK) · (2) Làm đủ CMP-INTL cho EU/UK/SG/TH/CA ngay từ bây giờ
+- Chọn: Chỉ phục vụ Việt Nam; CMP-INTL miễn có điều kiện kiểm được (test cấm cấu hình EU/UK)
+- Lý do (tiêu chí chất lượng cuối): Sản phẩm là công cụ nội bộ của Chi nhánh Bình Khí tại Việt Nam, không có dữ liệu hay người dùng ngoài Việt Nam; làm đủ vùng khác là phạm vi không có người dùng, tăng bề mặt sai (số Điều chưa đối chiếu). Cách hiểu chặt: runbook vẫn lấy hạn 72 giờ của luật Việt Nam, và test đỏ nếu mã có cấu hình GDPR/EU.
+- Đường lùi: Mở cho người dùng nước khác: bỏ dấu miễn ở 4 MUST CMP-INTL, làm bảng hạn theo vùng ở data-breach.md, hồ sơ SCC/TIA.
+
+### D-032 · 2026-11-24T03:09:33+00:00 · Duyệt 5 spec F-001..F-005 và chỉnh theo hành vi đã triển khai (T-560)
+
+- Phương án: (1) Giữ spec cũ, chỉ thêm ID · (2) Viết lại theo mẫu khung, theo code thật, phiên chính tự duyệt
+- Chọn: Viết lại theo mẫu khung, theo code thật, phiên chính tự duyệt
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: spec phải mô tả hành vi thật, kiểm được bằng test truy vết AC; ADR-0008 cho phiên chính tự duyệt
+- Đường lùi: Khôi phục docs/specs từ commit 48013e9
+
+### D-033 · 2026-11-24T04:09:11+00:00 · Hợp đồng API T-561: thay oasdiff/redocly bằng test so khớp, và phạm vi tick MUST
+
+- Phương án: (1) Tick cả 6 MUST bằng test api-contract · (2) Tick STD-API-001 và BE-API-008 (không áp dụng có điều kiện kiểm được); defer 4 mục cần oasdiff/redocly cho người
+- Chọn: Tick STD-API-001 và BE-API-008 (không áp dụng có điều kiện kiểm được); defer 4 mục cần oasdiff/redocly cho người
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: test chỉ so thao tác và mã trạng thái, không so từng trường, nên không thể khai là chặn thay đổi phá vỡ theo đúng chữ MUST; thêm phụ thuộc CI là việc cần duyệt
+- Đường lùi: Bỏ tick hai mục và xoá dòng defer; hợp đồng và test vẫn giữ
+
+### D-034 · 2026-11-24T04:17:17+00:00 · 0011.down.sql không tiến lại được khi còn bằng chứng nguồn message (T-580)
+
+- Phương án: (1) Sửa 0011.down.sql tại chỗ và cập nhật khoá băm · (2) Giữ migration, thêm bước dọn dữ liệu vào quy trình lùi và test ghi nhận lỗi đã biết; người duyệt việc sửa · (3) Thu hẹp migration_check về migration sau v1.0.0
+- Chọn: Giữ migration, thêm bước dọn dữ liệu vào quy trình lùi và test ghi nhận lỗi đã biết; người duyệt việc sửa
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: migration đã phát hành không sửa tại chỗ; không làm yếu test; lỗi chỉ lộ khi lùi 0011 trên dữ liệu có bằng chứng message, và v1.0.0 là bản đầu nên chưa có đường lùi về trạng thái trước đó
+- Đường lùi: Bỏ bước dọn trong tests/db/migration-data.test.ts và ca lỗi đã biết; test đỏ trở lại ở ca 0011
+
+### D-035 · 2026-11-24T04:41:38+00:00 · T-582: đóng với 4/6 nhóm tấn công?
+
+- Phương án: (1) A: viết nốt SSRF và dò mật khẩu · (2) B: đóng 4 nhóm, ghi khoảng thiếu và phát hiện
+- Chọn: B: đóng 4 nhóm, ghi khoảng thiếu và phát hiện
+- Lý do (tiêu chí chất lượng cuối): Hết trần vòng; 111 test xanh; phần thiếu và phát hiện ghi vào PROGRESS cho phiên sau
+- Đường lùi: Viết nốt nhóm SSRF và dò mật khẩu, mở lại tick T-582
+
+### D-036 · 2026-11-24T05:55:29+00:00 · Khoá nghiệm thu: khung chỉ nhận ### S-NNN, spec dự án dùng AC-xx — sửa spec hay mở rộng công cụ?
+
+- Phương án: (1) A: đổi 46 tiêu đề AC thành S-NNN và mọi tên test, sửa spec-lint · (2) B: mở rộng xt_acceptance.py nhận F-NNN/AC-xx (ID có tiền tố spec)
+- Chọn: B: mở rộng xt_acceptance.py nhận F-NNN/AC-xx (ID có tiền tố spec)
+- Lý do (tiêu chí chất lượng cuối): Công cụ .xtemplates thuộc dự án (ADR-0003); B nhỏ, giữ truy vết đã có test (D-032), không đổi tên hàng loạt; ID có tiền tố nên duy nhất toàn dự án
+- Đường lùi: Hoàn tác 2 chỗ ở xt_acceptance.py, gỡ khoá khỏi docs/autopilot/ACCEPTANCE.json
+
+### D-037 · 2026-11-24T06:29:16+00:00 · Khoá nghiệm thu F-001..F-005 trên mã đã có (xanh ngay), không theo thứ tự nghiệm thu trước mã?
+
+- Phương án: (1) A: gỡ mã để test đỏ rồi viết lại · (2) B: khoá bằng --existing: bộ nghiệm thu viết độc lập từ SPEC bởi acceptance-author sau khi mã đã có, chốt hash để chặn sửa test cho vừa mã
+- Chọn: B: khoá bằng --existing: bộ nghiệm thu viết độc lập từ SPEC bởi acceptance-author sau khi mã đã có, chốt hash để chặn sửa test cho vừa mã
+- Lý do (tiêu chí chất lượng cuối): Mã F-001..F-005 đã phát hành 1.0.0; gỡ mã là phá sản phẩm. Lợi ích còn lại của khoá (chống sửa test cho xanh) giữ nguyên; tác giả test là agent không viết mã, chỉ đọc SPEC và hợp đồng công khai
+- Đường lùi: Gỡ 5 khoá khỏi docs/autopilot/ACCEPTANCE.json, khai acceptance trống
+
+### D-038 · 2026-11-24T06:53:28+00:00 · SOCIALAPI_BASE_URL/AI_BASE_URL có chặn loopback và mạng riêng không?
+
+- Phương án: (1) A: giữ cho phép (chỉ chặn link-local/metadata), it.fails ghi hành vi mong muốn · (2) B: chặn kèm biến env cho phép bật lại · (3) C: chặn hẳn
+- Chọn: A: giữ cho phép (chỉ chặn link-local/metadata), it.fails ghi hành vi mong muốn
+- Lý do (tiêu chí chất lượng cuối): URL do người vận hành đặt, không phải người dùng cuối; chặn mạng riêng làm hỏng triển khai tự host qua proxy nội bộ (mặc định tự host, AGENTS §5). Đã chặn 169.254/16 và IPv6 tương đương (đường lấy khoá đám mây); redirect:error chặn bật hơi sang nội bộ
+- Đường lùi: Đổi it.fails thành it và thêm kiểm loopback/riêng ở src/config/env.ts

@@ -33,6 +33,8 @@ export interface Env {
   conv: string;
   account: string;
   state: { live: boolean; now: Date; provider: SocialProvider | undefined };
+  /** Hộp khoá đã mã hoá khoá kết nối: dựng service thứ hai (worker khác) trên cùng CSDL. */
+  box: ReturnType<typeof createSecretBox>;
   send: ReturnType<typeof vi.fn<Handler>>;
   /** Đọc lại tin của hội thoại (đối soát): mặc định không có tin nào. */
   list: ReturnType<typeof vi.fn<Lister>>;
@@ -119,6 +121,7 @@ export async function setup(
     conv: cv!.id,
     account: a!.id,
     state,
+    box,
     send,
     list,
     actions,
@@ -138,7 +141,7 @@ export async function setup(
         workspaceId: ws,
         conversationId: cv!.id,
         socialAccountId: a!.id,
-        externalId: `m-${Math.random()}`,
+        externalId: `m-${crypto.randomUUID()}`,
         direction: "incoming",
         author: "Lan",
         text: "Còn hàng không?",

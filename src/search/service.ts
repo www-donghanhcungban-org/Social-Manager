@@ -2,7 +2,6 @@ import { and, desc, eq, exists, notExists, or, sql } from "drizzle-orm";
 
 import { requireAction, UUID } from "../auth/access";
 import { NotFoundError } from "../auth/errors";
-import type { Db } from "../auth/members";
 import {
   evidenceItems,
   messages,
@@ -11,9 +10,10 @@ import {
   searchDocuments,
   type EvidenceSource,
 } from "../db/schema";
-import type { EvidenceService } from "../evidence/service";
+import type { Db } from "../db/types";
 import { ValidationError } from "../providers/types";
 import { fold, queryTokens } from "./fold";
+import type { EvidenceContentReader } from "./types";
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
@@ -53,7 +53,7 @@ export function createSearchService({
   evidence,
 }: {
   db: Db;
-  evidence: Pick<EvidenceService, "getContent">;
+  evidence: EvidenceContentReader;
 }) {
   return {
     /**

@@ -222,7 +222,7 @@ describe("listInbox (dm) qua SocialAPI", () => {
     expect(url).toContain("account_id=acc1");
   });
 
-  it("data null → mảng rỗng; tên người gửi rỗng → dùng participant_id", async () => {
+  it("data null → mảng rỗng; tên người gửi rỗng → dùng participant_id [F-002/AC-07]", async () => {
     const empty = createSocialApiProvider({
       apiKey: "k",
       fetch: async () => json(page(null)),

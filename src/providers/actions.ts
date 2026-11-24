@@ -165,8 +165,16 @@ const ISO_WITH_OFFSET =
 export function parseIsoWithOffset(value: string): number | undefined {
   const m = ISO_WITH_OFFSET.exec(value);
   if (!m) return undefined;
-  const [y, mo, d, h, mi, s = 0] = m.slice(1, 7).map(Number);
-  const off = m[7];
+  // Nhóm 1–5 và 7 luôn có khi regex khớp; nhóm 6 (giây) tuỳ chọn.
+  const [y, mo, d, h, mi] = [1, 2, 3, 4, 5].map((i) => Number(m[i])) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  const s = m[6] === undefined ? 0 : Number(m[6]);
+  const off = m[7] as string;
   if (h > 23 || mi > 59 || s > 59) return undefined;
   if (
     off !== "Z" &&

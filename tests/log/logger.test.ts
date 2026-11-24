@@ -12,7 +12,7 @@ function setup() {
     now: () => new Date("2026-11-22T03:04:05.678Z"),
   });
   const last = () =>
-    JSON.parse(lines[lines.length - 1]) as Record<string, unknown>;
+    JSON.parse(lines[lines.length - 1] ?? "null") as Record<string, unknown>;
   return { log, lines, last };
 }
 
@@ -88,6 +88,21 @@ describe("che bí mật (BASE-ERR-007)", () => {
     expect(lines[0]).toContain("postgres://app:[REDACTED]@db:5432/x");
   });
 
+  it("SEC-SECRET-007: che giá trị bí mật trong query string của URL và object chứa password/token", () => {
+    const { log, lines } = setup();
+    log.error(
+      "gọi https://api.example.com/v1/x?id=7&api_key=abc123&token=tok456 lỗi",
+    );
+    expect(lines[0]).not.toContain("abc123");
+    expect(lines[0]).not.toContain("tok456");
+    expect(lines[0]).toContain("id=7");
+    expect(lines[0]).toContain("api_key=[REDACTED]");
+    log.info("đăng nhập", { password: "hunter2", token: "t0k", user: "a" });
+    expect(lines[1]).not.toContain("hunter2");
+    expect(lines[1]).not.toContain("t0k");
+    expect(lines[1]).toContain("[REDACTED]");
+  });
+
   it("chịu được tham chiếu vòng và cây quá sâu mà không ném", () => {
     const { log, last } = setup();
     const a: Record<string, unknown> = { name: "a" };
@@ -102,7 +117,7 @@ describe("chống log injection (BASE-ERR-008)", () => {
     const { log, lines, last } = setup();
     log.info("đăng nhập\n[ERROR] fake\r\n", { user: "a\nb\u0007" });
     expect(lines).toHaveLength(1);
-    expect(lines[0].split("\n")).toHaveLength(1);
+    expect(lines[0]?.split("\n")).toHaveLength(1);
     expect(last().message).toBe("đăng nhập\\n[ERROR] fake\\r\\n");
     expect(last().user).toBe("a\\nb\\u0007");
   });
@@ -131,8 +146,8 @@ describe("ngoại lệ (BASE-ERR-009)", () => {
     const cause2 = (
       cause1 as unknown as Record<string, Record<string, string>>
     )["exception.cause"];
-    expect(cause2["exception.type"]).toBe("TypeError");
-    expect(cause2["exception.message"]).toBe("gốc");
+    expect(cause2?.["exception.type"]).toBe("TypeError");
+    expect(cause2?.["exception.message"]).toBe("gốc");
     expect(rec.error).toBeUndefined();
   });
 

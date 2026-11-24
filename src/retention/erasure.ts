@@ -1,5 +1,6 @@
 import { and, count, eq, inArray } from "drizzle-orm";
 
+import { recordAudit } from "../audit/record";
 import { requireAction, UUID } from "../auth/access";
 import { NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
@@ -102,11 +103,11 @@ export function createErasureService({
         ),
       );
     if (!conv) throw new NotFoundError();
-    const [{ n: msgs }] = await tx
+    const [{ n: msgs } = { n: 0 }] = await tx
       .select({ n: count() })
       .from(messages)
       .where(eq(messages.conversationId, conv.id));
-    const [{ n: evs }] = await tx
+    const [{ n: evs } = { n: 0 }] = await tx
       .select({ n: count() })
       .from(evidenceItems)
       .innerJoin(messages, eq(evidenceItems.messageId, messages.id))
@@ -155,6 +156,13 @@ export function createErasureService({
           { left: maxRows },
           out,
         );
+        await recordAudit(tx as unknown as Db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "data.erased",
+          targetType: "conversation",
+          targetId: input.conversationId,
+        });
       });
       return sweep(out);
     },
@@ -188,6 +196,13 @@ export function createErasureService({
           );
         await tx.delete(evidenceItems).where(eq(evidenceItems.id, item.id));
         out.evidenceItems = 1;
+        await recordAudit(tx as unknown as Db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "data.erased",
+          targetType: "evidence_item",
+          targetId: input.itemId,
+        });
       });
       return sweep(out);
     },
@@ -259,7 +274,7 @@ export function createErasureService({
             out.evidenceItems += gone.length;
           }
         }
-        const [{ n: aliasN }] = await tx
+        const [{ n: aliasN } = { n: 0 }] = await tx
           .select({ n: count() })
           .from(projectAliases)
           .where(eq(projectAliases.projectId, p.id));
@@ -270,6 +285,14 @@ export function createErasureService({
           );
         await tx.delete(projects).where(eq(projects.id, p.id));
         out.projects = 1;
+        await recordAudit(tx, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "data.erased",
+          targetType: "project",
+          targetId: input.projectId,
+          reason: input.includeSources ? "with_sources" : "project_only",
+        });
       });
       return sweep(out);
     },
@@ -344,6 +367,14 @@ export function createErasureService({
         throw new ValidationError(
           `Dự án có ${ids.length} mục, vượt trần xuất ${maxItems}`,
         );
+      await recordAudit(db, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: "data.exported",
+        targetType: "project",
+        targetId: input.projectId,
+        reason: `items=${ids.length}`,
+      });
       const rows =
         ids.length === 0
           ? []

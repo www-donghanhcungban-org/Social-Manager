@@ -345,6 +345,31 @@ export function createEvidenceService({
       return { blobs, files };
     },
 
+    /**
+     * Xoá tệp nội dung theo hash khi không còn dòng blob nào (của bất kỳ workspace nào) trỏ tới. Dùng sau khi xoá cả
+     * workspace: khoá ngoại theo tầng xoá luôn dòng blob nên `sweepOrphanBlobs` không còn thấy chúng, tệp sẽ ở lại.
+     * Cùng khoá advisory với `ingest`. Lũy đẳng; chỉ cho mã server.
+     */
+    async releaseFiles(shas: string[]): Promise<{ files: number }> {
+      let files = 0;
+      for (const sha of new Set(shas)) {
+        await db.transaction(async (tx) => {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtextextended(${sha}, 0))`,
+          );
+          const [still] = await tx
+            .select({ id: evidenceBlobs.id })
+            .from(evidenceBlobs)
+            .where(eq(evidenceBlobs.sha256, sha))
+            .limit(1);
+          if (still) return;
+          await store.delete(sha);
+          files++;
+        });
+      }
+      return { files };
+    },
+
     /** Dành cho mã server nhập từ nguồn (đồng bộ, webhook, connector): không có người dùng; không đưa ra API. */
     ingestAsSystem: ingestRaw,
 

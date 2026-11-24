@@ -8,7 +8,7 @@ export function pgBossQueue(
   opts: { pollingIntervalSeconds?: number } = {},
 ): JobQueue {
   return {
-    createQueue: (name) => boss.createQueue(name),
+    createQueue: (name, options) => boss.createQueue(name, options),
     schedule: (name, cron) => boss.schedule(name, cron),
     work: async (name, handler) => {
       await boss.work(

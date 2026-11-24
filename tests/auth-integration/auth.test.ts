@@ -71,7 +71,7 @@ describe("cookie phiên (SEC-WEB-007)", () => {
 });
 
 describe("đăng ký", () => {
-  it("tạo người dùng và lưu mật khẩu đã băm, không lưu mật khẩu rõ", async () => {
+  it("tạo người dùng và lưu mật khẩu đã băm, không lưu mật khẩu rõ [F-001/AC-01]", async () => {
     await signUp();
     const rows = await t.client.query<{ password: string }>(
       `select password from account where provider_id = 'credential'`,
@@ -84,7 +84,7 @@ describe("đăng ký", () => {
     );
   });
 
-  it("đăng ký trùng email (kể cả khác hoa/thường) không tạo thêm người dùng, không đổi mật khẩu", async () => {
+  it("đăng ký trùng email (kể cả khác hoa/thường) không tạo thêm người dùng, không đổi mật khẩu [F-001/AC-03]", async () => {
     await signUp("lan@example.com");
     await signUp("lan@example.com", "mat-khau-khac-456789").catch(() => {});
     await signUp("LAN@Example.com", "mat-khau-khac-456789").catch(() => {});
@@ -98,7 +98,7 @@ describe("đăng ký", () => {
     ).rejects.toMatchObject({ body: { code: "INVALID_EMAIL_OR_PASSWORD" } });
   });
 
-  it("không lộ email đã đăng ký: email mới và email đã có cho phản hồi giống nhau, đều không cấp phiên", async () => {
+  it("không lộ email đã đăng ký: email mới và email đã có cho phản hồi giống nhau, đều không cấp phiên [F-001/AC-03]", async () => {
     await signUp("lan@example.com");
     const existing = await signUp("lan@example.com").catch((e: unknown) => e);
     const fresh = await signUp("moi@example.com");
@@ -111,7 +111,7 @@ describe("đăng ký", () => {
     expect(await t.db.select().from(session)).toHaveLength(0);
   });
 
-  it("từ chối mật khẩu ngắn hơn 12 ký tự", async () => {
+  it("từ chối mật khẩu ngắn hơn 12 ký tự [F-001/AC-03]", async () => {
     await expect(signUp("a@example.com", "ngan-qua")).rejects.toMatchObject({
       body: { code: "PASSWORD_TOO_SHORT" },
     });
@@ -132,7 +132,7 @@ describe("giới hạn tần suất đăng nhập (review 🟡 9)", () => {
       }),
     );
 
-  it("quá hạn mức trong cửa sổ thì 429; mỗi IP một bộ đếm riêng; IP lấy từ header đã cấu hình", async () => {
+  it("quá hạn mức trong cửa sổ thì 429; mỗi IP một bộ đếm riêng; IP lấy từ header đã cấu hình [F-001/AC-04]", async () => {
     const limited = createAuth({
       db: t.db,
       secret: SECRET,
@@ -185,7 +185,7 @@ describe("đăng nhập và phiên", () => {
     expect(await auth.api.getSession({ headers: new Headers() })).toBeNull();
   });
 
-  it("phiên hết hạn không còn dùng được", async () => {
+  it("phiên hết hạn không còn dùng được [F-001/AC-09]", async () => {
     await signUp();
     const headers = await login();
     expect((await auth.api.getSession({ headers }))?.user.email).toBe(
@@ -197,7 +197,7 @@ describe("đăng nhập và phiên", () => {
     expect(await auth.api.getSession({ headers })).toBeNull();
   });
 
-  it("đăng xuất xoá đúng phiên đang dùng, cookie cũ hết tác dụng", async () => {
+  it("đăng xuất xoá đúng phiên đang dùng, cookie cũ hết tác dụng [F-001/AC-09]", async () => {
     await signUp(); // tự đăng nhập: tạo phiên thứ nhất
     const headers = await login(); // phiên thứ hai
     const before = (await t.db.select().from(session)).length;
@@ -217,7 +217,7 @@ describe("khoá đăng nhập theo tài khoản (BE-AUTH-003)", () => {
         code: e.body?.code,
       }));
 
-  it("20 lần sai → bị chặn 429; email có thật và không có thật cho cùng một kiểu phản hồi", async () => {
+  it("20 lần sai → bị chặn 429; email có thật và không có thật cho cùng một kiểu phản hồi [F-001/AC-04]", async () => {
     await signUp();
     const run = async (email: string) => {
       const results = [];
@@ -235,7 +235,7 @@ describe("khoá đăng nhập theo tài khoản (BE-AUTH-003)", () => {
     expect(real.map((r) => r.status)).toEqual(fake.map((r) => r.status));
   });
 
-  it("đang bị khoá thì mật khẩu đúng cũng bị từ chối; hết hạn khoá thì đăng nhập được và bộ đếm về 0", async () => {
+  it("đang bị khoá thì mật khẩu đúng cũng bị từ chối; hết hạn khoá thì đăng nhập được và bộ đếm về 0 [F-001/AC-04]", async () => {
     await signUp();
     for (let i = 0; i < 8; i++)
       await attempt("lan@example.com", "sai-xxxxxxxx12");
@@ -251,7 +251,7 @@ describe("khoá đăng nhập theo tài khoản (BE-AUTH-003)", () => {
     expect(await t.db.select().from(loginThrottle)).toHaveLength(0);
   });
 
-  it("khoá một email không ảnh hưởng email khác", async () => {
+  it("khoá một email không ảnh hưởng email khác [F-001/AC-04]", async () => {
     await signUp("a@example.com");
     await signUp("b@example.com");
     for (let i = 0; i < 10; i++)

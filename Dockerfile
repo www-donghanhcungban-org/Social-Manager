@@ -1,13 +1,12 @@
 # X-Workspace — image production, nhiều tầng, chạy bằng người dùng không phải root (BASE-SEC-006).
-# DEBT: ảnh nền ghim theo thẻ phiên bản, chưa ghim digest | trần: build không tái lập tuyệt đối |
-# xem lại khi: có mạng tới registry để lấy digest (BASE-DEP-008) — thay `node:24-bookworm-slim` bằng `@sha256:…`.
+# Ảnh nền ghim theo digest (BASE-DEP-008; tra từ registry 2026-11-23); Dependabot (docker) nâng digest hằng tuần.
 
-FROM node:24-bookworm-slim AS deps
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
@@ -15,15 +14,19 @@ COPY . .
 # Build không cần bí mật thật: instrumentation bỏ qua kiểm cấu hình khi `next build`.
 RUN npm run build
 
-FROM node:24-bookworm-slim AS prod-deps
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS runtime
 WORKDIR /app
+# Phiên bản phát hành (WF-REL-007): smoke test sau deploy so `version` của /api/health với tag; compose truyền qua
+# `APP_VERSION` (build arg); không đặt thì health không nêu phiên bản.
+ARG APP_VERSION=""
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    APP_VERSION=${APP_VERSION}
 # Người dùng không phải root có sẵn trong image node (uid 1000).
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/.next ./.next

@@ -1,0 +1,65 @@
+{
+  "$comment": "Chính sách license phụ thuộc (CMP-LIC-002, BASE-DEP-005). Id SPDX. allow: dùng được. review: chỉ dùng khi có ngoại lệ ghi ở exceptions (có hạn). deny: cấm. Gói không có license hoặc id lạ = không xác định = cấm. Cổng: tests/config/licenses.test.ts.",
+  "allow": [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "BlueOak-1.0.0",
+    "CC0-1.0"
+  ],
+  "review": ["MPL-2.0", "LGPL-3.0-or-later", "CC-BY-4.0"],
+  "deny": [
+    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
+    "GPL-2.0-only",
+    "GPL-2.0-or-later",
+    "GPL-3.0-only",
+    "GPL-3.0-or-later",
+    "SSPL-1.0",
+    "BUSL-1.1",
+    "Elastic-2.0",
+    "Commons-Clause",
+    "UNLICENSED",
+    "UNKNOWN"
+  ],
+  "exceptions": [
+    {
+      "package": "@img/sharp-*",
+      "license": "LGPL-3.0-or-later",
+      "reason": "Nhị phân native tuỳ chọn của sharp (qua Next.js tối ưu ảnh), liên kết động, không sửa đổi, không phân phối lại riêng; LGPL cho phép dùng như thư viện.",
+      "approved_by": "phiên chính tự duyệt (D-023), chờ chủ dự án xác nhận",
+      "expires": "2027-06-30"
+    },
+    {
+      "package": "lightningcss*",
+      "license": "MPL-2.0",
+      "reason": "Bộ biên dịch CSS của Tailwind/Next; MPL-2.0 là copyleft cấp tệp, ta không sửa mã của nó.",
+      "approved_by": "phiên chính tự duyệt (D-023), chờ chủ dự án xác nhận",
+      "expires": "2027-06-30"
+    },
+    {
+      "package": "axe-core",
+      "license": "MPL-2.0",
+      "reason": "Chỉ devDependency cho kiểm a11y, không vào image runtime; không sửa mã.",
+      "approved_by": "phiên chính tự duyệt (D-023), chờ chủ dự án xác nhận",
+      "expires": "2027-06-30"
+    },
+    {
+      "package": "@axe-core/playwright",
+      "license": "MPL-2.0",
+      "reason": "Chỉ devDependency cho kiểm a11y, không vào image runtime; không sửa mã.",
+      "approved_by": "phiên chính tự duyệt (D-023), chờ chủ dự án xác nhận",
+      "expires": "2027-06-30"
+    },
+    {
+      "package": "caniuse-lite",
+      "license": "CC-BY-4.0",
+      "reason": "Dữ liệu tương thích trình duyệt (browserslist); CC-BY-4.0 đòi ghi công — ghi ở THIRD_PARTY_NOTICES.md.",
+      "approved_by": "phiên chính tự duyệt (D-023), chờ chủ dự án xác nhận",
+      "expires": "2027-06-30"
+    }
+  ]
+}

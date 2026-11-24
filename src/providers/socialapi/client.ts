@@ -1,5 +1,7 @@
 import type { ZodType } from "zod";
 
+import { secondsToMs } from "@/src/format/units";
+
 export const SOCIALAPI_BASE_URL = "https://api.social-api.ai/v1";
 
 /** Lỗi từ SocialAPI hoặc từ phía client (mã bắt đầu bằng `client.`). */
@@ -50,6 +52,12 @@ function toQuery(query: Query = {}) {
   return s ? `?${s}` : "";
 }
 
+/**
+ * Đoạn đường dẫn mà trình phân tích URL (WHATWG) coi là "." hoặc ".." — kể cả dạng `%2e`. `encodeURIComponent` để nguyên
+ * dấu chấm, nên mã định danh `..` từ nhà cung cấp sẽ biến `/inbox/conversations/../messages` thành `/inbox/messages`.
+ */
+const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
+
 async function toApiError(res: Response): Promise<SocialApiError> {
   let code = `http.${res.status}`;
   let message = `${res.status} ${res.statusText}`.trim();
@@ -93,6 +101,17 @@ export function createSocialApiClient(
     const key = opts.apiKey.trim();
     if (!key)
       throw new SocialApiError("Chưa nhập API key.", 0, "client.no_api_key");
+    if (
+      path
+        .split("?")[0]!
+        .split("/")
+        .some((s) => DOT_SEGMENT.test(s))
+    )
+      throw new SocialApiError(
+        "Đường dẫn chứa đoạn chấm (. hoặc ..).",
+        0,
+        "client.invalid_path",
+      );
 
     for (let attempt = 0; ; attempt++) {
       let res: Response;
@@ -107,6 +126,8 @@ export function createSocialApiClient(
           },
           body: body === undefined ? undefined : JSON.stringify(body),
           signal,
+          // Không theo chuyển hướng (SSRF): API trả 3xx là bất thường; theo nó có thể chạm dịch vụ nội bộ.
+          redirect: "error",
         });
       } catch {
         // Không đưa nội dung lỗi gốc vào thông báo: nó có thể chứa URL/header có khoá.
@@ -132,7 +153,7 @@ export function createSocialApiClient(
           err.retryAfter !== undefined &&
           attempt < maxRetries
         ) {
-          await sleep(Math.min(err.retryAfter * 1000, maxWaitMs));
+          await sleep(Math.min(secondsToMs(err.retryAfter), maxWaitMs));
           continue;
         }
         throw err;

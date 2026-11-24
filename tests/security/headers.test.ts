@@ -28,7 +28,8 @@ describe("buildCsp (PRF-WEB-007)", () => {
     expect(directive(csp, "default-src")).toBe("default-src 'self'");
     expect(directive(csp, "frame-ancestors")).toBe("frame-ancestors 'none'");
     expect(directive(csp, "object-src")).toBe("object-src 'none'");
-    expect(directive(csp, "base-uri")).toBe("base-uri 'self'");
+    // FE-SEC-003: không cho `<base>` đổi gốc URL tương đối (ứng dụng không dùng thẻ base).
+    expect(directive(csp, "base-uri")).toBe("base-uri 'none'");
     expect(directive(csp, "form-action")).toBe("form-action 'self'");
   });
 

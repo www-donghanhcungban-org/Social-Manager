@@ -85,7 +85,7 @@ describe("loadEnv", () => {
       );
   });
 
-  it("giá trị rỗng hoặc chỉ khoảng trắng coi như thiếu", () => {
+  it("giá trị rỗng hoặc chỉ khoảng trắng coi như thiếu [F-005/AC-04]", () => {
     for (const v of ["", "   "]) {
       expect(() => loadEnv({ ...valid(), BETTER_AUTH_URL: v })).toThrow(
         ConfigError,
@@ -93,7 +93,7 @@ describe("loadEnv", () => {
     }
   });
 
-  it("liệt kê MỌI biến sai cùng lúc, không dừng ở biến đầu tiên", () => {
+  it("liệt kê MỌI biến sai cùng lúc, không dừng ở biến đầu tiên [F-005/AC-04]", () => {
     try {
       loadEnv({});
       expect.unreachable();
@@ -109,7 +109,7 @@ describe("loadEnv", () => {
     }
   });
 
-  it("từ chối URL sai định dạng, DATABASE_URL không phải postgres, secret quá ngắn, khoá chủ sai độ dài", () => {
+  it("từ chối URL sai định dạng, DATABASE_URL không phải postgres, secret quá ngắn, khoá chủ sai độ dài [F-005/AC-04]", () => {
     for (const bad of [
       { BETTER_AUTH_URL: "không phải url" },
       { DATABASE_URL: "mysql://u:p@h/db" },
@@ -148,7 +148,7 @@ describe("loadEnv", () => {
     }
   });
 
-  it("thông báo lỗi không chứa giá trị bí mật dù giá trị đó là nguyên nhân gây lỗi", () => {
+  it("thông báo lỗi không chứa giá trị bí mật dù giá trị đó là nguyên nhân gây lỗi [F-005/AC-04]", () => {
     const secretLooking = "mat-khau-sieu-bi-mat-khong-duoc-lo";
     try {
       loadEnv({
@@ -166,7 +166,7 @@ describe("loadEnv", () => {
 });
 
 describe("loadEnvOrExit", () => {
-  it("cấu hình sai: in tên biến ra stderr, thoát mã 1, không in giá trị", () => {
+  it("cấu hình sai: in tên biến ra stderr, thoát mã 1, không in giá trị [F-005/AC-04]", () => {
     const stderr = vi.fn();
     const exit = vi.fn((code: number): never => {
       throw new Error(`exit ${code}`);

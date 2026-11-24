@@ -1,4 +1,12 @@
 import type { Logger } from "../log/logger";
+import {
+  deadLetterRecord,
+  DLQ_RETENTION_SECONDS,
+  dlqName,
+  isPermanentJobError,
+  JOB_RETRY,
+  parseSyncAccountPayload,
+} from "./policy";
 
 /** Tên hàng đợi; đổi tên = việc cũ trong hàng đợi mồ côi, nên coi như hợp đồng. */
 export const QUEUES = {
@@ -10,6 +18,7 @@ export const QUEUES = {
   purgeExpired: "maintenance.purge-expired",
   actionsDispatch: "actions.dispatch",
   actionsReconcile: "actions.reconcile",
+  actionsRecoverStuck: "actions.recover-stuck",
 } as const;
 
 /** Dọn dữ liệu quá hạn lưu mỗi ngày lúc 03:17 UTC (giờ ít người dùng, lệch khỏi phút tròn). */
@@ -26,12 +35,28 @@ const RECONCILE_LIMIT = 20;
 /** Đối soát send_unknown: chờ ít nhất chừng này kể từ lúc gửi/lần trước; quá hạn thì để người quyết. */
 export const RECONCILE_MIN_AGE_MS = 2 * 60_000;
 export const RECONCILE_MAX_AGE_MS = 24 * 3_600_000;
+/**
+ * Hành động gửi kẹt `dispatching`/`cancel_requested` quá chừng này → send_unknown. 10 phút ≫ hạn chờ HTTP của nhà cung cấp
+ * (15 giây) nên không đụng việc đang gửi thật; đủ ngắn để nháp không bị khoá lâu, và nằm trong cửa sổ đối soát
+ * [RECONCILE_MIN_AGE_MS, RECONCILE_MAX_AGE_MS] để đối soát tự động chạy tiếp được.
+ */
+export const ACTION_STUCK_AFTER_MS = 10 * 60_000;
 /** Bài gửi quá chừng này mà nhà cung cấp chưa báo kết quả cuối → send_unknown. */
 export const CONFIRM_DEADLINE_MS = 24 * 3_600_000;
 
 /** Cổng tối thiểu tới hàng đợi: adapter pg-boss thật và bản giả trong test cùng thoả. */
+export interface QueueOptions {
+  retryLimit?: number;
+  retryDelay?: number;
+  retryBackoff?: boolean;
+  retryDelayMax?: number;
+  /** Hàng chết nhận job hết lượt thử. */
+  deadLetter?: string;
+  retentionSeconds?: number;
+}
+
 export interface JobQueue {
-  createQueue(name: string): Promise<void>;
+  createQueue(name: string, options?: QueueOptions): Promise<void>;
   schedule(name: string, cron: string): Promise<void>;
   work(name: string, handler: (data: unknown) => Promise<void>): Promise<void>;
   send(
@@ -60,6 +85,7 @@ export interface JobRunnerDeps {
       minAgeMs: number;
       maxAgeMs: number;
     }): Promise<Record<string, number>>;
+    recoverStuck(i: { olderThanMs: number }): Promise<number>;
   };
   inbox: {
     syncAsSystem(i: {
@@ -83,22 +109,6 @@ export interface JobRunnerDeps {
   log: Logger;
 }
 
-function parseSyncData(data: unknown): {
-  workspaceId: string;
-  accountId: string;
-} {
-  const d = data as { workspaceId?: unknown; accountId?: unknown } | null;
-  if (
-    typeof d?.workspaceId !== "string" ||
-    typeof d.accountId !== "string" ||
-    d.workspaceId === "" ||
-    d.accountId === ""
-  ) {
-    throw new Error("dữ liệu job không hợp lệ");
-  }
-  return { workspaceId: d.workspaceId, accountId: d.accountId };
-}
-
 export function createJobRunner({
   queue,
   posts,
@@ -110,7 +120,11 @@ export function createJobRunner({
 }: JobRunnerDeps) {
   let started = false;
 
-  /** Lỗi: ghi log (đã che bí mật) rồi ném lại để hàng đợi tự thử lại theo chính sách của nó. */
+  /**
+   * Lỗi: ghi log (đã che bí mật). Lỗi vĩnh viễn (dữ liệu job sai, 4xx nghiệp vụ) → bản ghi vào hàng chết ngay và KHÔNG
+   * ném (thử lại vô ích, BE-JOB-003); lỗi tạm thời → ném lại để hàng đợi thử lại theo `JOB_RETRY`, hết lượt thì pg-boss
+   * chuyển sang hàng chết.
+   */
   const guarded =
     (name: string, fn: (data: unknown) => Promise<Record<string, unknown>>) =>
     async (data: unknown) => {
@@ -118,6 +132,13 @@ export function createJobRunner({
         log.info(`job ${name} xong`, { job: name, ...(await fn(data)) });
       } catch (error) {
         log.error(`job ${name} lỗi`, { job: name, error });
+        if (isPermanentJobError(error)) {
+          await queue.send(
+            dlqName(name),
+            deadLetterRecord({ queue: name, payload: data, error }),
+          );
+          return;
+        }
         throw error;
       }
     };
@@ -126,7 +147,16 @@ export function createJobRunner({
     async start() {
       if (started) return;
       started = true;
-      for (const name of Object.values(QUEUES)) await queue.createQueue(name);
+      // Hàng chết phải có trước hàng gốc (pg-boss kiểm `deadLetter` tồn tại); giữ lâu hơn hàng gốc.
+      for (const name of Object.values(QUEUES)) {
+        await queue.createQueue(dlqName(name), {
+          retentionSeconds: DLQ_RETENTION_SECONDS,
+        });
+        await queue.createQueue(name, {
+          ...JOB_RETRY,
+          deadLetter: dlqName(name),
+        });
+      }
 
       await queue.work(
         QUEUES.runDue,
@@ -163,7 +193,7 @@ export function createJobRunner({
       await queue.work(
         QUEUES.syncAccount,
         guarded(QUEUES.syncAccount, (data) =>
-          inbox.syncAsSystem(parseSyncData(data)),
+          inbox.syncAsSystem(parseSyncAccountPayload(data)),
         ),
       );
 
@@ -215,10 +245,20 @@ export function createJobRunner({
           }),
         ),
       );
+      // Gỡ hành động kẹt thành send_unknown (không gửi lại); đối soát/người quyết xử lý tiếp.
+      await queue.work(
+        QUEUES.actionsRecoverStuck,
+        guarded(QUEUES.actionsRecoverStuck, async () => ({
+          recovered: await actions.recoverStuck({
+            olderThanMs: ACTION_STUCK_AFTER_MS,
+          }),
+        })),
+      );
 
       await queue.schedule(QUEUES.purgeExpired, PURGE_CRON);
       await queue.schedule(QUEUES.actionsDispatch, "* * * * *");
       await queue.schedule(QUEUES.actionsReconcile, "*/2 * * * *");
+      await queue.schedule(QUEUES.actionsRecoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.runDue, "* * * * *");
       await queue.schedule(QUEUES.recoverStuck, "*/5 * * * *");
       await queue.schedule(QUEUES.confirmSubmitted, "*/2 * * * *");

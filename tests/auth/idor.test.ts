@@ -159,7 +159,7 @@ describe("người dùng B (chủ workspace B) dùng ID của workspace A", () =
           idempotencyKey: "k-1",
         }),
     ],
-  ])("%s → NotFound, dữ liệu không đổi", async (_name, op) => {
+  ])("%s → NotFound, dữ liệu không đổi [F-001/AC-05]", async (_name, op) => {
     const before = await snapshot();
     await expect(op(svc())).rejects.toBeInstanceOf(NotFoundError);
     expect(await snapshot()).toEqual(before);
@@ -167,7 +167,7 @@ describe("người dùng B (chủ workspace B) dùng ID của workspace A", () =
 
   // Hai tầng nhất quán: cổng workspace luôn 403 (người ngoài và thiếu quyền giống nhau, không lộ
   // workspace có tồn tại); lỗi theo ID trong workspace của mình luôn 404.
-  it("đọc danh sách ở workspace A (không phải thành viên) → Forbidden, không lộ gì", async () => {
+  it("đọc danh sách ở workspace A (không phải thành viên) → Forbidden, không lộ gì [F-001/AC-05]", async () => {
     const s = svc();
     const calls = [
       s.accounts.list({ actorId: "ownerB", workspaceId: wsA }),

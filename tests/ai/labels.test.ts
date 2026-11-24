@@ -16,9 +16,12 @@ describe("nhãn hỏi đáp", () => {
       [...EVIDENCE_SOURCES].sort(),
     );
     expect(Object.keys(UNANSWERED_LABEL).sort()).toEqual([
+      "blocked_input",
+      "human_required",
       "insufficient",
       "invalid_output",
       "no_evidence",
+      "refused",
     ]);
   });
 });

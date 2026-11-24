@@ -16,7 +16,7 @@ import {
 import {
   parseWebhookEvent,
   verifyWebhookSignature,
-} from "../providers/socialapi/webhook";
+} from "../providers/socialapi";
 import { ValidationError } from "../providers/types";
 import type { SecretBox } from "../security/secret-box";
 

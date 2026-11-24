@@ -19,7 +19,7 @@ import {
   parseIsoWithOffset,
   supportsConversations,
 } from "../providers/actions";
-import { SocialApiError } from "../providers/socialapi/client";
+import { SocialApiError } from "../providers/socialapi";
 import {
   UnsupportedError,
   ValidationError,

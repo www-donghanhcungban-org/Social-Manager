@@ -37,32 +37,54 @@ export function createLoginThrottle({
       .update(email.normalize("NFC").trim().toLowerCase())
       .digest("hex");
 
+  const lockedNow = sql`${loginThrottle.lockedUntil} > now()`;
+
+  /** Tăng đếm một lần sai trong MỘT câu lệnh; `onlyIfUnlocked` thì dòng đang khoá giữ nguyên và không trả gì. */
+  function bump(email: string, onlyIfUnlocked: boolean) {
+    const stale = sql`${loginThrottle.updatedAt} < now() - make_interval(hours => ${RESET_AFTER_HOURS})`;
+    const next = sql`(case when ${stale} then 1 else ${loginThrottle.failures} + 1 end)`;
+    return db
+      .insert(loginThrottle)
+      .values({ keyHash: keyOf(email), failures: 1 })
+      .onConflictDoUpdate({
+        target: loginThrottle.keyHash,
+        set: {
+          failures: next,
+          lockedUntil: sql`case when ${next} > ${FREE_FAILURES}
+              then now() + make_interval(secs => least(2 ^ least(${next} - ${FREE_FAILURES} - 1, 20), ${MAX_LOCK_SECONDS}))
+              else null end`,
+          updatedAt: sql`now()`,
+        },
+        ...(onlyIfUnlocked && {
+          setWhere: sql`not coalesce(${lockedNow}, false)`,
+        }),
+      })
+      .returning({ keyHash: loginThrottle.keyHash });
+  }
+
   return {
     async isLocked(email: string): Promise<boolean> {
       const [row] = await db
-        .select({ locked: sql<boolean>`${loginThrottle.lockedUntil} > now()` })
+        .select({ locked: sql<boolean>`${lockedNow}` })
         .from(loginThrottle)
         .where(eq(loginThrottle.keyHash, keyOf(email)));
       return row?.locked === true;
     },
 
-    /** Một câu lệnh nguyên tử: nhiều lần sai song song không làm mất lần đếm. */
+    /**
+     * Giữ chỗ một lần thử TRƯỚC khi kiểm mật khẩu: nếu chưa khoá thì tính ngay là một lần sai (đăng nhập đúng sẽ xoá bộ
+     * đếm qua `recordSuccess`) và trả `true`; đang khoá thì không đổi gì và trả `false`. Kiểm khoá và tăng đếm nằm trong
+     * MỘT câu `insert … on conflict do update … where`, nên N request song song (nhiều IP) chỉ có đúng số lần còn lại
+     * trước ngưỡng lọt qua — không còn khe "kiểm rồi mới ghi" giữa `isLocked` và `recordFailure`.
+     */
+    async tryAttempt(email: string): Promise<boolean> {
+      const rows = await bump(email, true);
+      return rows.length > 0;
+    },
+
+    /** Một câu lệnh nguyên tử: nhiều lần sai song song không làm mất lần đếm. Tăng cả khi đang khoá. */
     async recordFailure(email: string): Promise<void> {
-      const stale = sql`${loginThrottle.updatedAt} < now() - make_interval(hours => ${RESET_AFTER_HOURS})`;
-      const next = sql`(case when ${stale} then 1 else ${loginThrottle.failures} + 1 end)`;
-      await db
-        .insert(loginThrottle)
-        .values({ keyHash: keyOf(email), failures: 1 })
-        .onConflictDoUpdate({
-          target: loginThrottle.keyHash,
-          set: {
-            failures: next,
-            lockedUntil: sql`case when ${next} > ${FREE_FAILURES}
-              then now() + make_interval(secs => least(2 ^ least(${next} - ${FREE_FAILURES} - 1, 20), ${MAX_LOCK_SECONDS}))
-              else null end`,
-            updatedAt: sql`now()`,
-          },
-        });
+      await bump(email, false);
     },
 
     async recordSuccess(email: string): Promise<void> {

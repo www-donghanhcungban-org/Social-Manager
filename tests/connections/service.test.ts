@@ -58,7 +58,7 @@ const input = (over = {}) => ({
 });
 
 describe("create", () => {
-  it("lưu khoá đã mã hoá, không lộ khoá ở giá trị trả về hay trong DB", async () => {
+  it("lưu khoá đã mã hoá, không lộ khoá ở giá trị trả về hay trong DB [F-002/AC-01]", async () => {
     const c = await svc.create(input());
     expect(c).toEqual({
       id: expect.any(String),
@@ -74,7 +74,7 @@ describe("create", () => {
     expect(row!.credentialsEnc).not.toContain("sk-super-secret");
   });
 
-  it("chỉ owner/admin tạo được; member và người ngoài bị Forbidden, DB không đổi", async () => {
+  it("chỉ owner/admin tạo được; member và người ngoài bị Forbidden, DB không đổi [F-002/AC-03]", async () => {
     for (const actorId of ["member", "outsider", "không-ai"]) {
       await expect(svc.create(input({ actorId }))).rejects.toBeInstanceOf(
         ForbiddenError,
@@ -83,7 +83,7 @@ describe("create", () => {
     expect(await t.db.select().from(providerConnections)).toHaveLength(0);
   });
 
-  it("từ chối provider chưa đăng ký, nhãn rỗng, khoá rỗng bằng ValidationError", async () => {
+  it("từ chối provider chưa đăng ký, nhãn rỗng, khoá rỗng bằng ValidationError [F-002/AC-04]", async () => {
     for (const bad of [
       { provider: "khong-co" },
       { label: "   " },
@@ -96,7 +96,7 @@ describe("create", () => {
     }
   });
 
-  it("chuẩn hoá nhãn NFC và cắt khoảng trắng; nhãn trùng sau chuẩn hoá bị từ chối", async () => {
+  it("chuẩn hoá nhãn NFC và cắt khoảng trắng; nhãn trùng sau chuẩn hoá bị từ chối [F-002/AC-04]", async () => {
     const decomposed = "Café"; // e + dấu sắc rời
     const c = await svc.create(input({ label: `  ${decomposed} ` }));
     expect(c.label).toBe("Café");
@@ -106,6 +106,19 @@ describe("create", () => {
     await expect(svc.create(input({ label: "Café" }))).rejects.toBeInstanceOf(
       ConflictError,
     );
+  });
+
+  it("hai yêu cầu tạo cùng nhãn song song: đúng một bản ghi, yêu cầu kia duplicate_label [F-002/AC-04]", async () => {
+    const results = await Promise.allSettled([
+      svc.create(input()),
+      svc.create(input()),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((r) => r.status === "rejected");
+    expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({
+      reason: "duplicate_label",
+    });
+    expect(await t.db.select().from(providerConnections)).toHaveLength(1);
   });
 
   it("cùng nhãn ở workspace khác thì được", async () => {
@@ -122,7 +135,7 @@ describe("create", () => {
 });
 
 describe("list", () => {
-  it("mọi thành viên xem được danh sách, không có trường khoá; người ngoài bị Forbidden", async () => {
+  it("mọi thành viên xem được danh sách, không có trường khoá; người ngoài bị Forbidden [F-002/AC-02]", async () => {
     await svc.create(input());
     const list = await svc.list({ actorId: "member", workspaceId: ws });
     expect(list).toHaveLength(1);
@@ -141,7 +154,7 @@ describe("list", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("không thấy kết nối của workspace khác", async () => {
+  it("không thấy kết nối của workspace khác [F-002/AC-02]", async () => {
     await svc.create(input());
     expect(
       await svc.list({ actorId: "outsider", workspaceId: otherWs }),
@@ -150,7 +163,7 @@ describe("list", () => {
 });
 
 describe("remove", () => {
-  it("admin xoá được; member thì Forbidden; kết nối workspace khác là NotFound", async () => {
+  it("admin xoá được; member thì Forbidden; kết nối workspace khác là NotFound [F-002/AC-03]", async () => {
     const c = await svc.create(input());
     await expect(
       svc.remove({ actorId: "member", workspaceId: ws, connectionId: c.id }),
@@ -186,14 +199,14 @@ describe("credentialsFor (dùng nội bộ để gọi provider)", () => {
     ).resolves.toBe("sk-super-secret-123");
   });
 
-  it("không giải mã được kết nối của workspace khác", async () => {
+  it("không giải mã được kết nối của workspace khác [F-002/AC-09]", async () => {
     const c = await svc.create(input());
     await expect(
       svc.credentialsFor({ workspaceId: otherWs, connectionId: c.id }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it("dữ liệu bị sửa trong DB thì báo lỗi, không trả rác", async () => {
+  it("dữ liệu bị sửa trong DB thì báo lỗi, không trả rác [F-002/AC-09]", async () => {
     const c = await svc.create(input());
     await t.client.query(
       `update provider_connections set credentials_enc = 'v1:AAAA' where id = $1`,

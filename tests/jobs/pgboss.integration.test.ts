@@ -4,18 +4,19 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { pgBossQueue, startBoss } from "@/src/jobs/pgboss";
+import { dlqName, JOB_RETRY } from "@/src/jobs/policy";
 import { createJobRunner, QUEUES } from "@/src/jobs/runner";
 import { createLogger } from "@/src/log/logger";
 
 // Cần Postgres thật: đặt TEST_DATABASE_URL (kết nối tới một server, test tự tạo/xoá DB riêng).
-// Không đặt thì bỏ qua.
-// DEBT: CI chưa có service Postgres nên test này chưa chạy trong CI | trần: tích hợp pg-boss chỉ được kiểm
-// khi người chạy cục bộ đặt biến | xem lại khi: thêm service Postgres ghim digest vào ci.yml (BASE-DEP-008)
+// Không đặt thì bỏ qua cục bộ. Ở CI, job `gate` cấp service Postgres và biến này
+// (tests/config/ci-postgres.test.ts giữ điều đó), nên test không bị skip ngầm.
 const ADMIN_URL = process.env.TEST_DATABASE_URL;
 const d = ADMIN_URL ? describe : describe.skip;
 const noActions = {
   dispatchDue: async () => ({}),
   reconcileDue: async () => ({}),
+  recoverStuck: async () => 0,
 };
 const noRetention = {
   purgeExpired: async () => ({
@@ -92,7 +93,7 @@ d("pg-boss trên Postgres thật", () => {
     }
   }, 30_000);
 
-  it("lịch được đăng ký trong DB cho cả bảy việc định kỳ", async () => {
+  it("lịch được đăng ký trong DB cho cả tám việc định kỳ", async () => {
     const boss = await startBoss(url);
     try {
       const runner = createJobRunner({
@@ -124,8 +125,23 @@ d("pg-boss trên Postgres thật", () => {
           QUEUES.purgeExpired,
           QUEUES.actionsDispatch,
           QUEUES.actionsReconcile,
+          QUEUES.actionsRecoverStuck,
         ].sort(),
       );
+      // BE-JOB-003/004: chính sách retry và hàng chết thật sự được pg-boss lưu cho từng hàng đợi.
+      for (const name of Object.values(QUEUES)) {
+        const q = await boss.getQueue(name);
+        expect(q, name).toMatchObject({
+          retryLimit: JOB_RETRY.retryLimit,
+          retryDelay: JOB_RETRY.retryDelay,
+          retryBackoff: true,
+          deadLetter: dlqName(name),
+        });
+        expect(
+          await boss.getQueue(dlqName(name)),
+          dlqName(name),
+        ).not.toBeNull();
+      }
     } finally {
       await boss.stop({ graceful: false, timeout: 2000 });
     }

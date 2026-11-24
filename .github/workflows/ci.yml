@@ -42,6 +42,22 @@ jobs:
     name: gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Postgres thật cho test tích hợp (race khoá workspace, pg-boss) — trước đây thiếu biến này nên chúng tự `describe.skip`
+    # mà CI vẫn xanh (AUD-HAR-005, QA-INT-001). Test tự tạo/xoá DB riêng trên server này. Image ghim digest (BASE-DEP-008);
+    # mật khẩu chỉ dùng cho container dùng một lần trong job, không phải bí mật.
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test-ci-only
+          POSTGRES_DB: xw_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test -d xw_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://test:test-ci-only@localhost:5432/xw_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,6 +82,26 @@ jobs:
         uses: ./.github/actions/xt-ci-tools
       - name: setup — khoá `setup:` của xt.yaml (vắng = bỏ qua)
         run: bash .xtemplates/scripts/dev-task.sh setup
+      # QA-COV-001: báo cáo coverage (kèm nhánh) lưu artifact kể cả khi cổng đỏ để xem chỗ hụt.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 30
+      # SEC-SUPPLY-003: cài khoá đúng lockfile (`npm ci`); lockfile đổi sau cài = đỏ.
+      - name: Lockfile không đổi sau cài
+        run: git diff --exit-code -- package-lock.json
+      # CMP-LIC-003: SBOM CycloneDX mỗi build, từ lockfile (không cần cây cài hợp lệ); lưu cùng artifact.
+      - name: SBOM CycloneDX (sbom.cdx.json)
+        run: npm sbom --sbom-format cyclonedx --package-lock-only --omit dev > sbom.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
       - name: gate-par — typecheck ∥ lint ∥ build → test (kèm ngưỡng coverage của `test`) đúng lệnh trong xt.yaml
         id: gate-checks
         run: |
@@ -82,6 +118,17 @@ jobs:
             echo 'flow_error=true' >> "$GITHUB_OUTPUT"
           fi
           exit "$gate_status"
+      # FE-PERF-004/XC-PERF-003: ngân sách bundle (perf-budget.json) đo trên bản build của gate-par; vượt = đỏ.
+      - name: Ngân sách bundle — node scripts/check-bundle.mjs
+        run: node scripts/check-bundle.mjs
+      # DB-MIG-003/008: migration đã phát hành bất biến (băm ở drizzle/applied.sha256, khoá chỉ thêm dòng so với main) và
+      # migration mới theo expand/contract. Lấy main để đối chiếu khoá; không lấy được thì bước đỏ, không bỏ qua im lặng.
+      - name: Migration bất biến, expand/contract — node scripts/check-migrations.mjs
+        run: |
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+          # Main chưa có khoá (PR đầu tiên thêm khoá) thì tệp rỗng: chỉ kiểm bất biến và lint.
+          git show origin/main:drizzle/applied.sha256 > "$RUNNER_TEMP/base.lock" || : > "$RUNNER_TEMP/base.lock"
+          node scripts/check-migrations.mjs "$RUNNER_TEMP/base.lock"
       # Sàn M/L (LOOP-HARNESS-023): khoá sàn khai riêng trong xt.yaml (`format_check`, `coverage`, kiểm kiểu theo stack) —
       # trước chỉ `loop verify` chạy nên CI xanh khi sàn đỏ (AUD-XFEAT-020). Lệnh trùng lệnh của gate-par bỏ qua; `e2e` có
       # job riêng; quy mô S/không blueprint → không áp; khoá thiếu chỉ cảnh báo (như doctor).

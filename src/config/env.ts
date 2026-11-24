@@ -17,13 +17,43 @@ const text = () =>
     z.string(),
   );
 
+/**
+ * URL trỏ vào dải link-local — 169.254.0.0/16, fe80::/10 (kể cả IPv4 ánh xạ IPv6 / NAT64) — nơi dịch vụ metadata đám mây
+ * nằm (SSRF). Kiểm trên hostname ĐÃ chuẩn hoá bởi trình phân tích URL, nên dạng thập phân/hex/IPv6 đều quy về một dạng.
+ * Không điểm cuối API hợp lệ nào nằm ở đây; loopback/mạng riêng KHÔNG chặn (Ollama cục bộ, proxy nội bộ là cấu hình hợp lệ).
+ * Chỉ chặn IP viết thẳng: tên miền phân giải ra link-local không bắt được ở đây.
+ */
+export function isLinkLocalUrl(value: string): boolean {
+  if (!URL.canParse(value)) return false;
+  const host = new URL(value).hostname.toLowerCase();
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(host);
+  if (v4) return v4[1] === "169" && v4[2] === "254";
+  if (!host.startsWith("[")) return false;
+  const v6 = host.slice(1, -1);
+  return (
+    /^fe[89ab][0-9a-f]:/.test(v6) ||
+    /^(?:::ffff:|64:ff9b::)a9fe:[0-9a-f]{1,4}$/.test(v6)
+  );
+}
+const LINK_LOCAL_MSG = "không được trỏ vào địa chỉ link-local/metadata";
+
 const baseSchema = z.object({
   DATABASE_URL: text().refine(
     (v) => URL.canParse(v) && /^postgres(ql)?:\/\//.test(v),
     "phải là URL postgres://",
   ),
   BETTER_AUTH_SECRET: text().pipe(z.string().min(32, "tối thiểu 32 ký tự")),
-  BETTER_AUTH_URL: text().pipe(z.url()),
+  // F-005/AC-04: URL công khai phải là https; http chỉ cho máy cục bộ (dev). Cookie phiên `__Host-` cần Secure.
+  BETTER_AUTH_URL: text()
+    .pipe(z.url({ protocol: /^https?$/ }))
+    .refine((v) => {
+      if (!URL.canParse(v)) return true; // định dạng sai đã bị z.url() báo
+      const u = new URL(v);
+      return (
+        u.protocol === "https:" ||
+        ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname)
+      );
+    }, "phải là https (http chỉ cho localhost)"),
   /** Khoá chủ của kho khoá nhà cung cấp: base64 của đúng 32 byte. */
   APP_SECRET_KEY: text().refine(
     isValidMasterKey,
@@ -70,7 +100,10 @@ const baseSchema = z.object({
    */
   AI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
-    z.url({ protocol: /^https?$/ }).optional(),
+    z
+      .url({ protocol: /^https?$/ })
+      .refine((v) => !isLinkLocalUrl(v), LINK_LOCAL_MSG)
+      .optional(),
   ),
   AI_MODEL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
@@ -84,7 +117,10 @@ const baseSchema = z.object({
   SOCIALAPI_BASE_URL: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined),
     // Chỉ https: khoá API không bao giờ được gửi qua kênh không mã hoá (BASE-SEC-004).
-    z.url({ protocol: /^https$/ }).default("https://api.social-api.ai/v1"),
+    z
+      .url({ protocol: /^https$/ })
+      .refine((v) => !isLinkLocalUrl(v), LINK_LOCAL_MSG)
+      .default("https://api.social-api.ai/v1"),
   ),
 });
 

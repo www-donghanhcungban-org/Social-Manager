@@ -37,7 +37,7 @@ describe("verifyWebhookSignature (V2: HMAC-SHA256 của `<timestamp>.<thân thô
     expect(ok({ timestamp: String(NOW / 1000 + 1) })).toBe(false);
   });
 
-  it("timestamp lệch quá 5 phút (cả hai phía) bị từ chối dù chữ ký khớp; sát 5 phút còn được", () => {
+  it("timestamp lệch quá 5 phút (cả hai phía) bị từ chối dù chữ ký khớp; sát 5 phút còn được [F-003/AC-07]", () => {
     for (const delta of [-301, 301]) {
       const t = String(NOW / 1000 + delta);
       expect(ok({ timestamp: t, signature: sign(t, body) })).toBe(false);

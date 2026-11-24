@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { expectNoA11yViolations } from "./helpers/a11y";
+
 // Cần DB đã migrate: đặt E2E_DATABASE_URL. Không đặt thì bỏ qua.
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
@@ -19,7 +21,7 @@ async function signUp(page: Page, email: string, password = PASSWORD) {
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
 }
 
-test("đăng ký → tạo workspace → đăng xuất → chặn truy cập → đăng nhập lại", async ({
+test("đăng ký → tạo workspace → đăng xuất → chặn truy cập → đăng nhập lại @smoke", async ({
   page,
 }) => {
   const email = `${unique()}@example.com`;
@@ -34,6 +36,7 @@ test("đăng ký → tạo workspace → đăng xuất → chặn truy cập →
   await expect(
     page.getByRole("heading", { name: "Cửa hàng thử" }),
   ).toBeVisible();
+  await expectNoA11yViolations(page, "tổng quan workspace");
   const workspaceUrl = page.url();
 
   await page.getByRole("button", { name: "Đăng xuất" }).click();
@@ -59,7 +62,7 @@ test("sai mật khẩu: báo lỗi chung, ở lại trang đăng nhập", async 
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("người khác không mở được workspace của mình (trang không tìm thấy, không lộ tên)", async ({
+test("người khác không mở được workspace của mình (trang không tìm thấy, không lộ tên) [F-001/AC-05]", async ({
   browser,
 }) => {
   const a = await (await browser.newContext()).newPage();
@@ -68,6 +71,9 @@ test("người khác không mở được workspace của mình (trang không t�
   await a.getByRole("button", { name: "Tạo workspace" }).click();
   await expect(a).toHaveURL(/\/app\/[0-9a-f-]{36}$/);
   const url = a.url();
+  // PRF-WEB-001: trang theo người dùng không dùng cache chia sẻ.
+  const reload = await a.goto(url);
+  expect(reload!.headers()["cache-control"]).toBe("private, no-store");
 
   const b = await (await browser.newContext()).newPage();
   await signUp(b, `${unique()}@example.com`);

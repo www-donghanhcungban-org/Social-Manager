@@ -1,4 +1,5 @@
-import { SOURCE_LABEL } from "@/src/ai/labels";
+import { AI_DISCLOSURE, SOURCE_LABEL } from "@/src/ai/labels";
+import { formatDate } from "@/src/format/intl";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
 import { AskForm } from "./ask-form";
@@ -81,7 +82,7 @@ export default async function SearchPage({
                   <div className="text-sm text-muted-foreground">
                     {SOURCE_LABEL[h.source]} · {h.externalId} ·{" "}
                     <time dateTime={h.observedAt.toISOString()}>
-                      {h.observedAt.toISOString().slice(0, 10)}
+                      {formatDate(h.observedAt)}
                     </time>
                   </div>
                   {/* Trích đoạn từ nội dung bên ngoài: văn bản thuần. */}
@@ -100,6 +101,12 @@ export default async function SearchPage({
         <h2 id="ask-title" className="text-lg font-medium">
           Hỏi đáp có trích dẫn
         </h2>
+        <p
+          data-ai-disclosure
+          className="rounded border border-border p-3 text-sm"
+        >
+          {AI_DISCLOSURE}
+        </p>
         {ai.enabled ? (
           <AskForm workspaceId={workspaceId} />
         ) : (

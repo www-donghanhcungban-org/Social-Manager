@@ -24,7 +24,10 @@ export function proxy(request: NextRequest) {
   // Next đọc nonce từ CSP của *request* để gắn vào script nó sinh ra.
   const forwarded = new Headers(request.headers);
   forwarded.set("x-nonce", nonce);
-  forwarded.set("Content-Security-Policy", headers["Content-Security-Policy"]);
+  const csp = headers["Content-Security-Policy"];
+  if (csp === undefined)
+    throw new Error("Thiếu header Content-Security-Policy");
+  forwarded.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: forwarded } });
   for (const [k, v] of Object.entries(headers)) response.headers.set(k, v);

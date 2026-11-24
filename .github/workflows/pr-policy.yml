@@ -1,0 +1,88 @@
+# Kiểm mô tả PR có đủ mục bắt buộc (WF-REVIEW-002): mục tiêu, cách đã xác minh (bằng chứng), rủi ro và đường lùi.
+# Thiếu mục → chưa đủ điều kiện review. Không phải required check (ruleset chỉ bắt `quality`, `gitleaks`); PR của bot được miễn.
+# Thêm ở T-512 (PLAN-harden) — chỉ đọc, không dùng bí mật; thân PR đi qua biến môi trường, không nội suy vào lệnh.
+name: pr-policy
+
+on:
+  pull_request:
+    { branches: [main], types: [opened, edited, synchronize, reopened] }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  body:
+    name: pr-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Cảnh báo (WF-DOC-001) — đổi cấu hình/giao diện công khai mà không chạm tài liệu
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          if printf '%s\n' "$changed" | grep -Eq '^(app/api/|src/config/env\.ts|xt\.yaml|docker-compose\.yml|Dockerfile)' \
+            && ! printf '%s\n' "$changed" | grep -Eq '^(docs/|README\.md|CHANGELOG\.md)'; then
+            echo "::warning::PR đổi cấu hình hoặc giao diện công khai nhưng không chạm docs/ hay README.md — cập nhật tài liệu cùng PR hoặc ghi lý do ở mục Docs."
+          fi
+      - name: Cảnh báo (QA-STRAT-005) — PR `fix:` không kèm thay đổi test
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$TITLE" == fix* ]] && ! git diff --name-only "$BASE" "$HEAD" | grep -Eq '(^|/)(tests?|e2e)/|\.(test|spec)\.[tj]sx?$'; then
+            echo "::warning::PR sửa lỗi (fix) nhưng không đổi file test nào — sửa lỗi cần test tái hiện (đỏ trước, xanh sau)."
+          fi
+      - name: ADR đã chấp nhận không bị sửa nội dung (ARC-ADR-004) — chỉ đổi dòng trạng thái hoặc liên kết thay thế
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bad=0
+          for f in $(git diff --name-only --diff-filter=M "$BASE" "$HEAD" -- 'docs/adr/*.md'); do
+            git show "$BASE:$f" | grep -qE '^status: accepted' || continue
+            extra=$(git diff -U0 "$BASE" "$HEAD" -- "$f" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' \
+              | grep -vE '^[+-](status|implementation-status|superseded-by|superseded_by):' \
+              | grep -viE 'superseded|đã thay thế|thay thế bởi' || true)
+            if [[ -n "$extra" ]]; then
+              echo "::error file=$f::ADR đã chấp nhận (status: accepted) bị sửa nội dung; viết ADR mới thay thế (chỉ được đổi status/liên kết):"
+              printf '%s\n' "$extra" | head -10
+              bad=1
+            fi
+          done
+          exit "$bad"
+      - name: Phụ thuộc mới (BASE-DEP-006) — lockfile thêm gói thì mục "Phụ thuộc mới" của PR phải điền
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [[ "$AUTHOR" == *"[bot]" ]]; then echo "Bỏ qua PR của bot."; exit 0; fi
+          added=$(git diff "$BASE" "$HEAD" -- package-lock.json | grep -E '^\+\s+"node_modules/' | sed -E 's/^\+\s+"node_modules\/(.*)": \{/\1/' || true)
+          if [[ -z "$added" ]]; then exit 0; fi
+          section=$(printf '%s\n' "$BODY" | awk '/^## Phụ thuộc mới/{f=1;next} /^## /{f=0} f' | grep -v '^<!--' | tr -d '[:space:]')
+          if [[ -z "$section" || "$section" =~ ^[Kk]hôngcó\.?$ ]]; then
+            echo "::error::Lockfile thêm gói mới nhưng mục 'Phụ thuộc mới' trống hoặc ghi 'không có':"; printf '%s\n' "$added"; exit 1
+          fi
+      - name: Mô tả PR có đủ Mục tiêu, Bằng chứng, Rủi ro và đường lùi
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [[ "$AUTHOR" == *"[bot]" ]]; then echo "Bỏ qua PR của bot."; exit 0; fi
+          missing=0
+          for h in "## Mục tiêu" "## Bằng chứng" "## Rủi ro"; do
+            if ! printf '%s' "$BODY" | grep -Fq "$h"; then echo "::error::Mô tả PR thiếu mục '$h'"; missing=1; fi
+          done
+          exit "$missing"

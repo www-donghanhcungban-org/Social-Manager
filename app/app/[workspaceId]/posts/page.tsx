@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { can } from "@/src/auth/permissions";
 import type { PostStatus } from "@/src/db/schema";
+import { formatDateTime } from "@/src/format/intl";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
 import { PostForm } from "./post-form";
@@ -101,11 +102,7 @@ export default async function PostsPage({
                   </span>
                   <span className="text-sm text-muted-foreground">
                     <time dateTime={p.scheduledAt.toISOString()}>
-                      {p.scheduledAt
-                        .toISOString()
-                        .replace("T", " ")
-                        .slice(0, 16)}{" "}
-                      UTC
+                      {formatDateTime(p.scheduledAt)}
                     </time>
                   </span>
                 </div>

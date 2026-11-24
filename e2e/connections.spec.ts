@@ -22,7 +22,7 @@ async function signUpAndCreateWorkspace(page: Page, name: string) {
   await expect(page).toHaveURL(/\/app\/[0-9a-f-]{36}$/);
 }
 
-test("thêm kết nối demo → thêm tài khoản → khoá không hiện lại → xoá", async ({
+test("thêm kết nối demo → thêm tài khoản → khoá không hiện lại → xoá [F-002/AC-02]", async ({
   page,
 }) => {
   await signUpAndCreateWorkspace(page, "Shop kết nối");

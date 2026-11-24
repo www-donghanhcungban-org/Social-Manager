@@ -195,11 +195,5 @@ export class UnsupportedError extends Error {
   }
 }
 
-/** Đầu vào sai; người gọi sửa được. */
-export class ValidationError extends Error {
-  readonly code = "validation";
-  constructor(message: string) {
-    super(message);
-    this.name = "ValidationError";
-  }
-}
+// `ValidationError` là lỗi miền dùng chung, sống ở auth/errors; re-export để import cũ không vỡ.
+export { ValidationError } from "../auth/errors";

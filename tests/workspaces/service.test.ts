@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 describe("create", () => {
-  it("tạo workspace và biến người tạo thành owner trong cùng một giao dịch", async () => {
+  it("tạo workspace và biến người tạo thành owner trong cùng một giao dịch [F-001/AC-02]", async () => {
     const ws = await svc().create({ actorId: "u1", name: "Cửa hàng A" });
     expect(ws).toEqual({
       id: expect.any(String),
@@ -35,7 +35,7 @@ describe("create", () => {
     ]);
   });
 
-  it("chuẩn hoá tên NFC, cắt khoảng trắng; từ chối tên rỗng hoặc dài quá 100 ký tự", async () => {
+  it("chuẩn hoá tên NFC, cắt khoảng trắng; từ chối tên rỗng hoặc dài quá 100 ký tự [F-001/AC-02]", async () => {
     const ok = await svc().create({ actorId: "u1", name: "  Café " });
     expect(ok.name).toBe("Café");
     for (const name of ["", "   ", "x".repeat(101)]) {
@@ -46,7 +46,7 @@ describe("create", () => {
     expect(await t.db.select().from(workspaces)).toHaveLength(1);
   });
 
-  it("từ chối khi người tạo đã có 20 workspace (chặn lạm dụng)", async () => {
+  it("từ chối khi người tạo đã có 20 workspace (chặn lạm dụng) [F-001/AC-02]", async () => {
     for (let i = 0; i < 20; i++)
       await svc().create({ actorId: "u1", name: `W${i}` });
     await expect(
@@ -84,7 +84,7 @@ describe("create", () => {
     expect(await t.db.select().from(members)).toHaveLength(0);
   });
 
-  it("actorId rỗng bị từ chối, không tạo gì", async () => {
+  it("actorId rỗng bị từ chối, không tạo gì [F-001/AC-02]", async () => {
     await expect(
       svc().create({ actorId: "", name: "W" }),
     ).rejects.toBeInstanceOf(ValidationError);

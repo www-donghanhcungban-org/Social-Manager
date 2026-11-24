@@ -92,7 +92,7 @@ const count = async (externalId: string) =>
     ).rows[0]!.n,
   );
 
-test("webhook ký đúng → tin vào hộp thư đúng một lần dù giao trùng; Unicode giữ nguyên", async () => {
+test("webhook ký đúng → tin vào hộp thư đúng một lần dù giao trùng; Unicode giữ nguyên [F-003/AC-06]", async () => {
   const id = `sapi_dm_${randomUUID()}`;
   const body = event(id);
   const ts = nowSec();

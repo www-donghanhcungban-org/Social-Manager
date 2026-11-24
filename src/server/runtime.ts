@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
+import { setAuditContextProvider } from "../audit/record";
 import { UUID } from "../auth/access";
 
 import { loadEnv, processEnv } from "../config/env";
@@ -11,7 +12,23 @@ let container: Container | undefined;
 
 /** Một container dùng chung trong tiến trình; dựng lúc có request đầu tiên, không phải lúc import. */
 export function getContainer(): Container {
-  container ??= createContainer(loadEnv(processEnv()));
+  if (!container) {
+    container = createContainer(loadEnv(processEnv()));
+    // Audit trail cần "ở đâu" (IP, user-agent) của request đang chạy; dịch vụ không biết framework nên đăng ký ở đây.
+    setAuditContextProvider(async () => {
+      try {
+        const h = await headers();
+        const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
+        return {
+          sourceIp: fwd === undefined || fwd === "" ? h.get("x-real-ip") : fwd,
+          userAgent: h.get("user-agent"),
+          requestId: h.get("x-request-id"),
+        };
+      } catch {
+        return undefined; // ngoài phạm vi request (job nền)
+      }
+    });
+  }
   return container;
 }
 

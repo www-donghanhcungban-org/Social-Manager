@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+# báo cáo JUnit của cổng production (acceptance_report trong xt.yaml)
+/reports
 
 # next.js
 /.next/

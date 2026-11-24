@@ -1,6 +1,7 @@
 import { ConflictError, ForbiddenError, NotFoundError } from "../auth/errors";
 import type { Logger } from "../log/logger";
-import { SocialApiError } from "../providers/socialapi/client";
+import { logSecurityEvent } from "../log/security-events";
+import { SocialApiError } from "../providers/socialapi";
 import { UnsupportedError, ValidationError } from "../providers/types";
 
 export interface ErrorBody {
@@ -21,9 +22,26 @@ export interface HttpErrorResult {
  */
 export function handleError(
   err: unknown,
-  ctx: { log: Logger; requestId: string },
+  ctx: {
+    log: Logger;
+    requestId: string;
+    /** Ngữ cảnh request cho sự kiện bảo mật (SEC-LOG-002); không có thì ghi null. */
+    who?: {
+      actor?: string;
+      sourceIp?: string | null;
+      userAgent?: string | null;
+    };
+  },
 ): HttpErrorResult {
   const known = classify(err);
+  if (err instanceof ForbiddenError || err instanceof ValidationError) {
+    logSecurityEvent(ctx.log, {
+      event: err instanceof ForbiddenError ? "authz.denied" : "input.invalid",
+      outcome: "denied",
+      requestId: ctx.requestId,
+      ...ctx.who,
+    });
+  }
   if (known.logLevel) {
     ctx.log[known.logLevel]("request failed", {
       request_id: ctx.requestId,

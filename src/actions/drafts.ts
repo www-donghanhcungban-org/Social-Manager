@@ -1,18 +1,26 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { requireAction, UUID } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
 import {
+  actionLedger,
   conversations,
   draftVersions,
   drafts,
+  type ActionState,
   type DraftSource,
   type DraftStatus,
 } from "../db/schema";
 import { ValidationError } from "../providers/types";
 
 export const MAX_DRAFT_CHARS = 4000;
+/** Hành động gửi đang dở hoặc chưa rõ kết quả: tin có thể đã đi, nên không cho bỏ nháp. */
+const PENDING_SEND: ActionState[] = [
+  "dispatching",
+  "cancel_requested",
+  "send_unknown",
+];
 
 export interface DraftVersionView {
   version: number;
@@ -181,7 +189,11 @@ export function createDraftService({
       return view(d);
     },
 
-    /** Bỏ nháp (không xoá lịch sử). Nháp đã gửi không bỏ được. */
+    /**
+     * Bỏ nháp (không xoá lịch sử). Nháp đã gửi không bỏ được. Cùng giao dịch: huỷ hành động gửi đang `queued` của nháp
+     * (chưa gửi gì); nháp có hành động đang gửi dở hoặc chưa rõ kết quả thì TỪ CHỐI — không thể bảo đảm tin chưa đi.
+     * Thứ tự huỷ-rồi-kiểm là cố ý: hành động nào bị nhận việc trước khi huỷ đều thấy được ở bước kiểm (ADR-0006).
+     */
     async discard(input: {
       actorId: string;
       workspaceId: string;
@@ -189,12 +201,44 @@ export function createDraftService({
     }): Promise<DraftView> {
       await requireAction(db, input.actorId, input.workspaceId, "inbox.reply");
       const current = await load(input.workspaceId, input.draftId);
-      const [row] = await db
-        .update(drafts)
-        .set({ status: "discarded", updatedAt: now() })
-        .where(and(eq(drafts.id, current.id), eq(drafts.status, "open")))
-        .returning();
-      if (!row) throw new ConflictError("draft_closed", "Bản nháp đã đóng");
+      const row = await db.transaction(async (tx) => {
+        const [d] = await tx
+          .update(drafts)
+          .set({ status: "discarded", updatedAt: now() })
+          .where(and(eq(drafts.id, current.id), eq(drafts.status, "open")))
+          .returning();
+        if (!d) throw new ConflictError("draft_closed", "Bản nháp đã đóng");
+        await tx
+          .update(actionLedger)
+          .set({
+            state: "cancelled",
+            errorCode: "draft_discarded",
+            finishedAt: now(),
+          })
+          .where(
+            and(
+              eq(actionLedger.draftId, d.id),
+              eq(actionLedger.state, "queued"),
+            ),
+          );
+        const [pending] = await tx
+          .select({ id: actionLedger.id })
+          .from(actionLedger)
+          .where(
+            and(
+              eq(actionLedger.draftId, d.id),
+              inArray(actionLedger.state, PENDING_SEND),
+            ),
+          )
+          .limit(1);
+        // Ném trong giao dịch = hoàn tác cả việc bỏ nháp lẫn việc huỷ ở trên.
+        if (pending)
+          throw new ConflictError(
+            "draft_send_pending",
+            "Nháp đang được gửi hoặc chưa rõ đã gửi hay chưa",
+          );
+        return d;
+      });
       return view(row);
     },
 

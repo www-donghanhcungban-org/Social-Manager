@@ -1,35 +1,28 @@
 # PROGRESS.md — X-Workspace
 
-> Giai đoạn hiện tại: G7 pha harden (`/complete`) — đã phát hành 1.0.0 (tag `v1.0.0`, PR #24) nhưng `release-check` vẫn NO-GO · Cập nhật: 2026-11-23 · Nhánh: claude/adoring-lamport-ajmn5l · Repo: www-donghanhcungban-org/X-Workspace
-
 ## Đang làm
 
-- Vòng harden bật (một phiên, trần 320 vòng, hạn 2026-12-14): `docs/autopilot/PLAN-harden-2026-11-23.md` (40 task, D-017, merge PR #35). Đang ở T-501 `/audit full`: ba cụm quét xong (SEC/CFG/DEP/CI, ARCH/CODE/TEST/PERF, A11Y/DATA), còn cụm DOC/HAR/XFEAT và xác minh đối kháng ba 🟠. Sổ nháp ở `docs/ops/AUDIT-STATUS.md`
-- 🟠 đang chờ xác minh: AUD-CODE-001 (hành động gửi kẹt ở `dispatching`), AUD-CODE-002 (bỏ nháp sau khi xếp hàng vẫn gửi), AUD-DATA-001 (chưa có đường người dùng tự xoá/xuất dữ liệu)
-- Trang dự án xw-4e đã merge (PR #32, #33): hồ sơ, bí danh, sổ quyết định, dòng thời gian bằng chứng. Gửi thật CHƯA bật (`OUTBOUND_LIVE=false`)
+- Vòng harden (một phiên, trần 320 vòng, hạn 2026-12-14): `docs/autopilot/PLAN-harden-2026-11-23.md` (40 task, D-017). Nhánh `fix/harden-batch-1`, PR #37 (đang "behind" `main`, chưa merge; CI chạy lại sau mỗi push)
+- Xong từ T-501 đến T-531, T-550 (floor xanh), T-560 (5 spec F-001..F-005 có AC truy vết test, lint spec), T-561 (API-CONTRACT + OpenAPI + test so khớp), T-580/T-581 (migration trên dữ liệu, diễn tập rollback DB)
+- Xong thêm T-582 (`tests/security/attack/`: 10 tệp, 111 test xanh; `attack` khai trong xt.yaml). Chưa làm: T-583, T-570, T-584
+
+- T-582 đóng với 4/6 nhóm (D-035): còn thiếu SSRF và dò mật khẩu bị 429. Phát hiện chưa có test: (1) khoá tài khoản kiểm-rồi-mới-ghi, request song song nhiều IP có thể vượt 5 lần (giả thuyết, chưa đo); (2) URL cấu hình qua env chỉ kiểm scheme nên `https://169.254.169.254` qua được; client SocialAPI/GitHub chưa đặt `redirect: "error"`; `conversationId` = `..` bị chuẩn hoá thành `/v1/inbox/messages` (cùng host, mức thấp); (3) Better Auth tắt kiểm Origin khi NODE_ENV=test, lớp này chỉ E2E kiểm. Viết nốt hai nhóm, phát hiện (1) dùng `it.fails`
 
 ## Tiếp theo
 
-1. Hoàn tất T-501 (sổ + báo cáo + `audit check` exit 0), rồi T-580/T-581/T-582 khai `migration_check`, `rollback`, `attack` trong `xt.yaml`
-2. Sửa 🟠 theo thứ tự: AUD-CODE-001, AUD-CODE-002 (test đỏ trước), rồi AUD-DATA-001 (UI xoá/xuất)
-3. Nhóm MUST blueprint còn mở (439, `xt.py blueprint-status BLUEPRINT.md --strict --json`) theo T-510..T-531; đầu tiên BASE-CFG-003 cần `.env.example` (T-009, cần người)
-4. Cuối vòng: `release-check` GO + `GO-NO-GO.md` (§5 người ký; hàng `perf` đề xuất ký "không áp dụng")
+1. T-583 (acceptance: `acceptance-author` viết `tests/acceptance` từ AC của spec, `acceptance lock`), T-570 (refactor CODE/ARCH, Gate `dev-task.sh gate`), T-584 (`blueprint-status --run` + `audit check --strict`)
+2. Sau đó: `/audit delta`, trả nợ review, `release-check --json` → `loop next-step`, GO-NO-GO (§5 người ký)
+3. PR #37: cập nhật nhánh theo `main`, chờ CI xanh rồi merge (hỏi chủ dự án một lần vì PR gộp nhiều task)
+4. Dọn: tắt/xoá Postgres tạm cổng 55433 (db xw_e2e) nếu còn
 
 ## Quyết định
 
-- D-001..D-017 ở `docs/autopilot/DECISIONS.md`; mới: D-017 duyệt PLAN-harden (không nới cổng)
-- ADR-0002..0006 (định hướng, công cụ thuộc dự án, kho bản gốc theo hash, cổng AI, sổ hành động gửi tin)
-- Nợ kỹ thuật chấp nhận: esbuild moderate qua drizzle-kit (hạn 2027-02-22) — audit phát hiện ghi chú ngoại lệ nêu sai (drizzle-kit vẫn vào image runtime qua peer của better-auth), xem AUD-DEP-001
-- Chưa xác minh: SocialAPI và GitHub với khoá thật; Dockerfile/compose (volume `blobdata`) chưa build thật vì môi trường không có Docker
+- D-001..D-034 ở `docs/autopilot/DECISIONS.md`. Mới: D-031 phạm vi VN-only, D-032 duyệt 5 spec theo code thật, D-033 hợp đồng API (oasdiff/redocly chưa có nên 4 MUST chuyển cho người), D-034 lỗi `0011.down.sql`
+- Lỗi thật: `drizzle/0011_evidence_message_link.down.sql` bỏ cột `message_id` nhưng để lại dòng `evidence_items.source='message'` → migrator không tiến lại được (CHECK 23514). Migration nằm trong khoá v1.0.0 nên không sửa tại chỗ; test `tests/db/migration-data.test.ts` ghi nhận, RUNBOOK ghi bước dọn. Người duyệt ngoại lệ sửa down + cập nhật khoá
 
 ## Bàn giao phiên
 
-- Nền: `main` @ `dbc1479` (PR #35) · Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` → xanh ở CI; coverage 92,07% câu lệnh (`npm run test:coverage` exit 0)
-- Đang chặn (cần người):
-  - T-009: tạo `.env.example` (agent không ghi `.env*`); biến cần có: `BLOB_DIR`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `OUTBOUND_LIVE` (mặc định `false`)
-  - T-108: gỡ di sản projects-template (guard chặn agent gỡ hook/agent/lệnh); người chạy `git rm` các hook/agent/`.claude/commands` đã liệt kê ở PLAN-harden T-108
-  - T-209: token GitHub chỉ đọc cho repo pilot; T-406: bật gửi thật với khoá SocialAPI thật; T-306: mô hình AI thật
-  - T-540..T-542: chữ ký GO-NO-GO §5 và hàng `perf` "không áp dụng"
-  - gitleaks toàn lịch sử bị guard chặn trong lúc audit — chạy ở CI `secret-scan.yml` hoặc người chạy
-- Triển khai: sao lưu volume `blobdata` cùng dump Postgres (RUNBOOK §Backup)
-- Việc dở chưa commit: `docs/ops/AUDIT-STATUS.md` (sổ audit nháp) và file này
+- Nền: `main` @ `43149a7`; nhánh làm việc `fix/harden-batch-1` đã push. Lệnh kiểm: `.xtemplates/scripts/dev-task.sh gate` (CI)
+- Chưa xác minh: SocialAPI và GitHub với khoá thật; Dockerfile/compose chưa build thật (không có Docker); các thẻ AC trong `e2e/` chưa chạy ở phiên này vì cần `E2E_DATABASE_URL`; luật VN (Luật 91/2025, NĐ 356/2025) mới đối chiếu nguồn thứ cấp, chưa với bản gốc
+- Cần người (đã `loop defer`): T-009 `.env.example`; T-108 gỡ di sản projects-template; T-209/T-306/T-406 khoá thật; T-540..T-542 chữ ký GO-NO-GO; CMP-VN-004/006/007, CMP-AUDIT-010 (hồ sơ chuyển dữ liệu, diễn tập vi phạm, DSAR có due_at, đối chiếu Luật 91/2025 với bản gốc); WF-REL-004/007, OPS-DEPLOY-003/004 (diễn tập rollback artifact, smoke ở pipeline deploy, N−1); DB-BACKUP-002, OPS-DR-008; BASE-REPO-006, WF-REL-003, XC-OSS-007 (tag chú thích, ruleset tag, SHA256SUMS/SBOM); STD-API-008, STD-PROC-003, QA-INT-007, BE-API-001 (thêm oasdiff/redocly vào CI)
+- Nâng Node 26 ("nâng luôn"): chưa làm, cần chủ dự án xác nhận nghĩa; chỉ làm sau CI xanh, commit riêng

@@ -13,9 +13,8 @@ import { members, workspaces } from "@/src/db/schema";
 import { MIGRATIONS } from "../db/helpers";
 
 // Cần Postgres thật vì PGlite chạy transaction tuần tự, không tái hiện được race. Đặt
-// TEST_DATABASE_URL để chạy; không đặt thì bỏ qua.
-// DEBT: CI chưa có service Postgres nên test này chưa chạy trong CI | trần: race khoá workspace chỉ được
-// kiểm khi người chạy cục bộ đặt biến | xem lại khi: thêm service Postgres ghim digest vào ci.yml (BASE-DEP-008)
+// TEST_DATABASE_URL để chạy; không đặt thì bỏ qua cục bộ. Ở CI, job `gate` cấp service Postgres và biến này
+// (tests/config/ci-postgres.test.ts giữ điều đó), nên test không bị skip ngầm.
 const ADMIN_URL = process.env.TEST_DATABASE_URL;
 const d = ADMIN_URL ? describe : describe.skip;
 
@@ -62,7 +61,7 @@ d("khoá workspace trên Postgres thật (invariant: luôn còn ≥ 1 owner)", (
         .where(and(eq(members.workspaceId, ws), eq(members.role, "owner")))
     ).length;
 
-  it("hai owner cùng hạ nhau song song: sau 30 lượt luôn còn đúng 1 owner", async () => {
+  it("hai owner cùng hạ nhau song song: sau 30 lượt luôn còn đúng 1 owner [F-001/AC-07]", async () => {
     for (let i = 0; i < 30; i++) {
       const ws = await freshWorkspace();
       const results = await Promise.allSettled([
@@ -84,7 +83,7 @@ d("khoá workspace trên Postgres thật (invariant: luôn còn ≥ 1 owner)", (
     }
   });
 
-  it("hai owner cùng tự rời song song: không bao giờ còn 0 owner", async () => {
+  it("hai owner cùng tự rời song song: không bao giờ còn 0 owner [F-001/AC-07]", async () => {
     for (let i = 0; i < 30; i++) {
       const ws = await freshWorkspace();
       await Promise.allSettled([

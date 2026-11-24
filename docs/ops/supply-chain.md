@@ -42,12 +42,12 @@ Với artifact đóng gói/container/binary:
 
 ## Maturity path
 
-| Level nội bộ | Evidence |
-| --- | --- |
-| SC-0 | CI + lock/dependency scan |
-| SC-1 | Release digest + SBOM |
-| SC-2 | Hosted build + signed provenance/attestation |
-| SC-3 | Verify-before-deploy, isolated builder, policy/exception audit |
+| Level nội bộ | Evidence                                                       |
+| ------------ | -------------------------------------------------------------- |
+| SC-0         | CI + lock/dependency scan                                      |
+| SC-1         | Release digest + SBOM                                          |
+| SC-2         | Hosted build + signed provenance/attestation                   |
+| SC-3         | Verify-before-deploy, isolated builder, policy/exception audit |
 
 Tên nội bộ không thay thế chứng nhận SLSA. Nếu claim SLSA, map và audit theo đúng phiên bản spec.
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { can } from "@/src/auth/permissions";
 import { INBOX_KINDS, INBOX_STATUSES, type InboxStatus } from "@/src/db/schema";
+import { formatDateTime } from "@/src/format/intl";
 import { ValidationError, type InboxKind } from "@/src/providers/types";
 import { getContainer, requireWorkspace } from "@/src/server/runtime";
 
@@ -181,8 +182,7 @@ export default async function InboxPage({
                   {KIND_LABEL[m.kind]} ·{" "}
                   {accountName.get(m.socialAccountId) ?? "tài khoản đã xoá"} ·{" "}
                   <time dateTime={m.receivedAt.toISOString()}>
-                    {m.receivedAt.toISOString().replace("T", " ").slice(0, 16)}{" "}
-                    UTC
+                    {formatDateTime(m.receivedAt)}
                   </time>
                 </span>
               </div>

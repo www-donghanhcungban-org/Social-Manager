@@ -1,20 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createJobRunner, QUEUES, type JobQueue } from "@/src/jobs/runner";
+import { dlqName, JOB_RETRY } from "@/src/jobs/policy";
+import {
+  createJobRunner,
+  QUEUES,
+  type JobQueue,
+  type QueueOptions,
+} from "@/src/jobs/runner";
 import { createLogger } from "@/src/log/logger";
+import { SocialApiError } from "@/src/providers/socialapi";
 
 function fakeQueue() {
   const handlers = new Map<string, (data: unknown) => Promise<void>>();
   const q: JobQueue & {
     created: string[];
+    options: Record<string, QueueOptions | undefined>;
     schedules: Record<string, string>;
     sent: { name: string; data: unknown; key?: string }[];
     run: (name: string, data?: unknown) => Promise<void>;
   } = {
     created: [],
+    options: {},
     schedules: {},
     sent: [],
-    createQueue: async (n) => void q.created.push(n),
+    createQueue: async (n, o) => {
+      q.created.push(n);
+      q.options[n] = o;
+    },
     schedule: async (n, cron) => void (q.schedules[n] = cron),
     work: async (n, h) => void handlers.set(n, h),
     send: async (name, data, opts) =>
@@ -75,6 +87,9 @@ function setup() {
         maxAgeMs: number;
       }) => Promise<Record<string, number>>
     >(async () => ({ confirmed: 1, not_found: 2 })),
+    recoverStuck: vi.fn<(i: { olderThanMs: number }) => Promise<number>>(
+      async () => 2,
+    ),
   };
   const log = createLogger({
     service: "t",
@@ -98,10 +113,13 @@ function setup() {
 }
 
 describe("createJobRunner", () => {
-  it("start tạo hàng đợi, đặt lịch và đăng ký worker cho mọi loại việc", async () => {
+  it("start tạo hàng đợi, đặt lịch và đăng ký worker cho mọi loại việc [F-003/AC-03] [F-004/AC-05]", async () => {
     const { q, runner } = setup();
     await runner.start();
-    expect([...q.created].sort()).toEqual(Object.values(QUEUES).sort());
+    // Mỗi hàng đợi có thêm một hàng chết `<tên>.dlq` (BE-JOB-004).
+    expect([...q.created].sort()).toEqual(
+      [...Object.values(QUEUES), ...Object.values(QUEUES).map(dlqName)].sort(),
+    );
     expect(q.schedules).toEqual({
       [QUEUES.runDue]: "* * * * *",
       [QUEUES.recoverStuck]: "*/5 * * * *",
@@ -110,6 +128,7 @@ describe("createJobRunner", () => {
       [QUEUES.purgeExpired]: "17 3 * * *",
       [QUEUES.actionsDispatch]: "* * * * *",
       [QUEUES.actionsReconcile]: "*/2 * * * *",
+      [QUEUES.actionsRecoverStuck]: "*/5 * * * *",
     });
   });
 
@@ -167,7 +186,7 @@ describe("createJobRunner", () => {
     expect(retention.purgeExpired).toHaveBeenCalledTimes(20);
   });
 
-  it("job runDue gọi dịch vụ đăng bài và ghi log kết quả", async () => {
+  it("job runDue gọi dịch vụ đăng bài và ghi log kết quả [F-004/AC-05]", async () => {
     const { q, runner, posts, lines } = setup();
     await runner.start();
     await q.run(QUEUES.runDue);
@@ -179,7 +198,7 @@ describe("createJobRunner", () => {
     });
   });
 
-  it("job confirmSubmitted xác nhận theo lô với hạn 24 giờ và ghi log kết quả", async () => {
+  it("job confirmSubmitted xác nhận theo lô với hạn 24 giờ và ghi log kết quả [F-004/AC-08]", async () => {
     const { q, runner, posts, lines } = setup();
     await runner.start();
     await q.run(QUEUES.confirmSubmitted);
@@ -223,7 +242,22 @@ describe("createJobRunner", () => {
     await expect(q.run(QUEUES.actionsDispatch)).rejects.toThrow("db down");
   });
 
-  it("job recoverStuck dùng ngưỡng 15 phút", async () => {
+  it("job actionsRecoverStuck gỡ hành động kẹt quá 10 phút và ghi log số dòng", async () => {
+    const { q, runner, actions, lines } = setup();
+    await runner.start();
+    await q.run(QUEUES.actionsRecoverStuck);
+    expect(QUEUES.actionsRecoverStuck).toBe("actions.recover-stuck");
+    expect(actions.recoverStuck).toHaveBeenCalledWith({
+      olderThanMs: 10 * 60_000,
+    });
+    expect(JSON.parse(lines.at(-1)!)).toMatchObject({
+      level: "info",
+      job: QUEUES.actionsRecoverStuck,
+      recovered: 2,
+    });
+  });
+
+  it("job recoverStuck dùng ngưỡng 15 phút [F-004/AC-07]", async () => {
     const { q, runner, posts } = setup();
     await runner.start();
     await q.run(QUEUES.recoverStuck);
@@ -232,7 +266,7 @@ describe("createJobRunner", () => {
     });
   });
 
-  it("syncAll rải mỗi tài khoản thành một job riêng, chống trùng bằng singletonKey", async () => {
+  it("syncAll rải mỗi tài khoản thành một job riêng, chống trùng bằng singletonKey [F-003/AC-03]", async () => {
     const { q, runner } = setup();
     await runner.start();
     await q.run(QUEUES.syncAll);
@@ -250,7 +284,7 @@ describe("createJobRunner", () => {
     ]);
   });
 
-  it("syncAccount gọi syncAsSystem đúng tài khoản; dữ liệu job sai bị từ chối, không gọi dịch vụ", async () => {
+  it("syncAccount gọi syncAsSystem đúng tài khoản; dữ liệu job sai bị từ chối, không gọi dịch vụ [F-003/AC-03]", async () => {
     const { q, runner, inbox } = setup();
     await runner.start();
     await q.run(QUEUES.syncAccount, { workspaceId: "w1", accountId: "a1" });
@@ -258,17 +292,62 @@ describe("createJobRunner", () => {
       workspaceId: "w1",
       accountId: "a1",
     });
-    for (const bad of [
+    const bads = [
       undefined,
       null,
       {},
       { workspaceId: 1, accountId: "a" },
-    ]) {
-      await expect(q.run(QUEUES.syncAccount, bad)).rejects.toThrow(
-        /dữ liệu job/,
-      );
+      { workspaceId: "w", accountId: "a", token: "lạ" },
+    ];
+    for (const bad of bads) {
+      // Lỗi vĩnh viễn (BE-JOB-003): không ném (không retry), vào hàng chết ngay.
+      await q.run(QUEUES.syncAccount, bad);
     }
     expect(inbox.syncAsSystem).toHaveBeenCalledTimes(1);
+    const dead = q.sent.filter((s) => s.name === dlqName(QUEUES.syncAccount));
+    expect(dead).toHaveLength(bads.length);
+    expect(dead[0]?.data).toMatchObject({
+      sourceQueue: QUEUES.syncAccount,
+      error: "dữ liệu job không hợp lệ",
+      permanent: true,
+    });
+  });
+
+  it("BE-JOB-003/004: mọi hàng đợi retry hữu hạn 3–5 lần, backoff mũ có trần, hàng chết giữ lâu hơn", async () => {
+    const { q, runner } = setup();
+    await runner.start();
+    for (const name of Object.values(QUEUES)) {
+      expect(q.options[name]).toMatchObject({
+        ...JOB_RETRY,
+        deadLetter: dlqName(name),
+      });
+      const dlq = q.options[dlqName(name)];
+      expect(dlq?.retentionSeconds).toBeGreaterThan(14 * 24 * 3600);
+    }
+    expect(JOB_RETRY.retryLimit).toBeGreaterThanOrEqual(3);
+    expect(JOB_RETRY.retryLimit).toBeLessThanOrEqual(5);
+  });
+
+  it("BE-JOB-003: lỗi 4xx nghiệp vụ vào hàng chết ngay, lỗi tạm thời (5xx/429) vẫn ném để thử lại", async () => {
+    const { q, runner, inbox } = setup();
+    await runner.start();
+    const data = { workspaceId: "w1", accountId: "a1" };
+    inbox.syncAsSystem.mockRejectedValueOnce(
+      new SocialApiError("không hợp lệ", 400, "bad_request"),
+    );
+    await q.run(QUEUES.syncAccount, data);
+    expect(q.sent.at(-1)).toMatchObject({
+      name: dlqName(QUEUES.syncAccount),
+      data: { payload: data, permanent: true },
+    });
+    const before = q.sent.length;
+    for (const status of [429, 500, 503]) {
+      inbox.syncAsSystem.mockRejectedValueOnce(
+        new SocialApiError("tạm thời", status, "x"),
+      );
+      await expect(q.run(QUEUES.syncAccount, data)).rejects.toThrow("tạm thời");
+    }
+    expect(q.sent).toHaveLength(before);
   });
 
   it("lỗi trong job được ghi log (không lộ bí mật) rồi ném lại để hàng đợi tự thử lại", async () => {
@@ -286,6 +365,6 @@ describe("createJobRunner", () => {
     const { q, runner } = setup();
     await runner.start();
     await runner.start();
-    expect(q.created).toHaveLength(Object.keys(QUEUES).length);
+    expect(q.created).toHaveLength(Object.keys(QUEUES).length * 2);
   });
 });

@@ -19,6 +19,13 @@ import { socialApiPlatformSupport } from "./matrix";
 
 export { socialApiPlatformSupport } from "./matrix";
 export { createSocialApiClient, SocialApiError } from "./client";
+// Điểm xuất công khai cho tầng HTTP (ARC-MOD-005): route webhook không import `./webhook` nội bộ.
+export {
+  parseWebhookEvent,
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
+  verifyWebhookSignature,
+} from "./webhook";
 
 /**
  * Hình dạng phản hồi theo kiểu của repo tham chiếu qthupro/socials-manager (các kiểu này tự dẫn
@@ -121,6 +128,14 @@ const isDefiniteRejection = (e: SocialApiError) =>
 const isWindowClosed = (code: string) => /window|expired|24/i.test(code);
 
 const MAX_PAGE = 100;
+
+/**
+ * Giá trị đầu tiên không thiếu và không rỗng (BASE-DATA-003): nhà cung cấp có thể trả `null`, thiếu hoặc `""` cho tên;
+ * ở đây chuỗi rỗng cố ý coi là thiếu (khác `||` mù với 0/false), cuối cùng là chuỗi rỗng.
+ */
+function firstNonEmpty(...values: (string | null | undefined)[]): string {
+  return values.find((v) => v !== undefined && v !== null && v !== "") ?? "";
+}
 
 /**
  * Trạng thái bài của SocialAPI (docs, đọc 2026-11-22): draft, scheduled, publishing, published, partial, failed,
@@ -226,7 +241,11 @@ export function createSocialApiProvider(
           messageIds: (res.message_ids ?? []).filter((id) => id !== ""),
         };
       } catch (e) {
-        if (e instanceof SocialApiError && isDefiniteRejection(e)) {
+        // `client.invalid_path`: bị chặn trước khi gọi mạng, nên chắc chắn chưa gửi gì.
+        if (
+          e instanceof SocialApiError &&
+          (isDefiniteRejection(e) || e.code === "client.invalid_path")
+        ) {
           const safe = /^[A-Za-z0-9_.-]{1,64}$/.test(e.code)
             ? e.code
             : `http.${e.status}`;
@@ -252,7 +271,10 @@ export function createSocialApiProvider(
           .map((c) => ({
             id: c.id,
             participantId: c.participant_id,
-            participantName: c.participant_name || c.participant_id,
+            participantName: firstNonEmpty(
+              c.participant_name,
+              c.participant_id,
+            ),
             lastMessageAt: c.last_message_at ?? null,
           })),
         nextCursor: nextCursorOf(res),
@@ -268,11 +290,14 @@ export function createSocialApiProvider(
       return {
         // Hướng lạ/ngày hỏng để tầng dịch vụ loại và đếm, không ném cả trang.
         items: (res.data ?? []).map((m) => ({
-          id: m.platform_id || m.id,
-          identityWeak: !m.platform_id,
+          id: firstNonEmpty(m.platform_id, m.id),
+          identityWeak:
+            m.platform_id === undefined ||
+            m.platform_id === null ||
+            m.platform_id === "",
           providerMessageId: m.id,
           direction: m.direction as "incoming" | "outgoing",
-          author: m.sender_name || m.sender_id || "",
+          author: firstNonEmpty(m.sender_name, m.sender_id),
           text: m.text ?? "",
           sentAt: m.created_at,
         })),
@@ -299,7 +324,7 @@ export function createSocialApiProvider(
           id: c.id,
           platform,
           kind: "dm",
-          author: c.participant_name || c.participant_id,
+          author: firstNonEmpty(c.participant_name, c.participant_id),
           text: c.last_message ?? "",
           receivedAt: new Date(c.last_message_at ?? c.created_at).toISOString(),
         }));

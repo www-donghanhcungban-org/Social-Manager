@@ -12,6 +12,8 @@ import { createActionService } from "../actions/ledger";
 import { createAnswerService } from "../ai/answer";
 import { createAiGateway } from "../ai/gateway";
 import { createOpenAiCompatModel } from "../ai/openai-compat";
+import { defaultLogger } from "../log/process";
+import { metrics } from "../observability/metrics";
 import { createThreadService } from "../conversations/threads";
 import { createCoverageService } from "../conversations/coverage";
 import { createFsBlobStore } from "../evidence/blob-store";
@@ -21,6 +23,7 @@ import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
 import { createSearchService } from "../search/service";
+import { createAccountRightsService } from "../retention/account";
 import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
 import { createDemoProvider } from "../providers/demo";
@@ -76,7 +79,7 @@ export function createContainer(cfg: Env) {
   registry.register(buildProvider("socialapi", "-")!);
 
   const search = createSearchService({ db, evidence });
-  const ai = createAiGateway({ db, model });
+  const ai = createAiGateway({ db, model, log: defaultLogger(), metrics });
 
   const services = {
     workspaces: createWorkspaceService({ db }),
@@ -94,6 +97,7 @@ export function createContainer(cfg: Env) {
     threads: createThreadService({ db }),
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
+    accountRights: createAccountRightsService({ db, evidence }),
     evidence,
     drafts: createDraftService({ db }),
     // `live` đọc mỗi lần gọi: cờ OUTBOUND_LIVE là khoá hệ thống, mặc định tắt.

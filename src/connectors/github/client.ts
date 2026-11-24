@@ -1,5 +1,7 @@
 import type { ZodType } from "zod";
 
+import { secondsToMs, unixSecondsToMs } from "@/src/format/units";
+
 /**
  * Client GitHub REST tối thiểu, chỉ đọc. Nguồn: https://docs.github.com/en/rest (đọc 2026-11-22, xem
  * docs/research/2026-11-22-x-workspace-research.md §4). Phiên bản API ghim `2022-11-28` (còn hỗ trợ tới 2028-03-10).
@@ -59,9 +61,9 @@ export function createGithubClient(opts: GithubClientOptions) {
     const reset = Number(res.headers.get("x-ratelimit-reset"));
     const at =
       Number.isFinite(retryAfter) && retryAfter > 0
-        ? now() + retryAfter * 1000
+        ? now() + secondsToMs(retryAfter)
         : Number.isFinite(reset) && reset > 0
-          ? reset * 1000
+          ? unixSecondsToMs(reset)
           : undefined;
     return new GithubError("rate_limited", "Hết hạn mức gọi GitHub", at);
   }
@@ -85,6 +87,8 @@ export function createGithubClient(opts: GithubClientOptions) {
           "User-Agent": "x-workspace",
         },
         signal,
+        // Không theo chuyển hướng (SSRF): kiểm cùng origin ở trên chỉ áp cho URL ta tự gọi, không cho đích của 3xx.
+        redirect: "error",
       });
     } catch {
       // Không đưa lỗi gốc vào thông báo: nó có thể chứa URL hay header.

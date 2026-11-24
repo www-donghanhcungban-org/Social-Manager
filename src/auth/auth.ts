@@ -3,6 +3,8 @@ import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import * as schema from "../db/schema";
+import { defaultLogger } from "../log/process";
+import { logSecurityEvent } from "../log/security-events";
 import type { Db } from "./members";
 import { hashPassword, verifyPassword } from "./password";
 import { createLoginThrottle } from "./throttle";
@@ -27,6 +29,20 @@ export interface AuthOptions {
 }
 
 const DEFAULT_AUTH_RATE_PER_MIN = 10;
+
+/** IP/user-agent/request id từ request gốc; IP theo header proxy tin cậy nếu cấu hình. Không bao giờ ném lỗi. */
+function requestInfo(req: Request | undefined, ipHeader?: string) {
+  const h = req?.headers;
+  const first = h
+    ?.get(ipHeader ?? "x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  return {
+    sourceIp: first === undefined || first === "" ? null : first,
+    userAgent: h?.get("user-agent") ?? null,
+    requestId: h?.get("x-request-id") ?? crypto.randomUUID(),
+  };
+}
 
 /**
  * Đăng nhập email + mật khẩu của Better Auth trên Postgres (Drizzle). Quyền theo workspace nằm ở
@@ -67,15 +83,23 @@ export function createAuth({
     session: { expiresIn: SESSION_DAYS * 24 * 60 * 60 },
     hooks: {
       // Khoá theo tài khoản (BE-AUTH-003), ngoài giới hạn theo IP. Cùng một phản hồi cho email có
-      // đăng ký lẫn chưa đăng ký.
+      // đăng ký lẫn chưa đăng ký. Giữ chỗ (tính là một lần sai) TRƯỚC khi kiểm mật khẩu, nguyên tử với
+      // việc kiểm khoá: request song song từ nhiều IP không vượt được ngưỡng (T-585). Đăng nhập đúng xoá
+      // bộ đếm ở `after`; lỗi khác (thân sai…) vẫn tính là một lần thử — nghiêng về an toàn.
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== "/sign-in/email") return;
         const email = emailOf(ctx.body);
-        if (email && (await throttle.isLocked(email)))
+        if (email && !(await throttle.tryAttempt(email))) {
+          logSecurityEvent(defaultLogger(), {
+            event: "auth.login_locked",
+            outcome: "denied",
+            ...requestInfo(ctx.request, clientIpHeader),
+          });
           throw new APIError("TOO_MANY_REQUESTS", {
             code: "TOO_MANY_ATTEMPTS",
             message: "Thử đăng nhập quá nhiều lần, hãy thử lại sau ít phút",
           });
+        }
       }),
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== "/sign-in/email") return;
@@ -84,10 +108,23 @@ export function createAuth({
         const returned = ctx.context.returned;
         if (isAPIError(returned)) {
           const code = (returned.body as { code?: string } | undefined)?.code;
-          if (code === "INVALID_EMAIL_OR_PASSWORD")
-            await throttle.recordFailure(email);
+          if (code === "INVALID_EMAIL_OR_PASSWORD") {
+            // Lần sai đã được đếm ở `before` (giữ chỗ); ở đây chỉ ghi sự kiện.
+            logSecurityEvent(defaultLogger(), {
+              event: "auth.login_failed",
+              outcome: "denied",
+              ...requestInfo(ctx.request, clientIpHeader),
+            });
+          }
         } else if (returned) {
           await throttle.recordSuccess(email);
+          const userId = (returned as { user?: { id?: unknown } }).user?.id;
+          logSecurityEvent(defaultLogger(), {
+            event: "auth.login_succeeded",
+            outcome: "success",
+            actor: typeof userId === "string" ? userId : undefined,
+            ...requestInfo(ctx.request, clientIpHeader),
+          });
         }
       }),
     },

@@ -1,5 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 
+import { recordAudit } from "../audit/record";
 import { requireAction, UUID } from "../auth/access";
 import { ConflictError, NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
@@ -101,6 +102,14 @@ export function createAccountService({
             displayName,
           })
           .returning();
+        await recordAudit(db, {
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
+          action: "account.added",
+          targetType: "account",
+          targetId: row!.id,
+          reason: `platform=${input.platform}`,
+        });
         return view(row!);
       } catch (e) {
         if (isUniqueViolation(e))
@@ -167,6 +176,13 @@ export function createAccountService({
       await db
         .delete(socialAccounts)
         .where(eq(socialAccounts.id, input.accountId));
+      await recordAudit(db, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: "account.removed",
+        targetType: "account",
+        targetId: input.accountId,
+      });
     },
   };
 }

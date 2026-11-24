@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+
+import { expectNoA11yViolations } from "./helpers/a11y";
 
 test.skip(!process.env.E2E_DATABASE_URL, "cần E2E_DATABASE_URL");
 
@@ -14,13 +15,7 @@ const VIEWPORTS = [
 ];
 
 async function checkPage(page: Page, label: string) {
-  const axe = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    axe.violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`),
-    `axe ${label}`,
-  ).toEqual([]);
+  await expectNoA11yViolations(page, label);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
