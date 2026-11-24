@@ -82,6 +82,30 @@ describe("createLoginThrottle", () => {
     expect(row!.failures).toBe(10);
   });
 
+  it("tryAttempt giữ chỗ nguyên tử: 20 lần thử song song chỉ 5 lần được phép, còn lại bị từ chối vì đã khoá", async () => {
+    const allowed = await Promise.all(
+      Array.from({ length: 20 }, () => th().tryAttempt("p@example.com")),
+    );
+    expect(allowed.filter(Boolean)).toHaveLength(5);
+    const [row] = await t.db.select().from(loginThrottle);
+    expect(row!.failures).toBe(5); // lần bị từ chối không tăng đếm, không kéo dài khoá
+    expect(await th().isLocked("p@example.com")).toBe(true);
+  });
+
+  it("tryAttempt: lần đầu (chưa có dòng) được phép; hết hạn khoá thì được phép lại và khoá lâu hơn", async () => {
+    expect(await th().tryAttempt("a@example.com")).toBe(true);
+    for (let i = 0; i < 4; i++)
+      expect(await th().tryAttempt("a@example.com")).toBe(true);
+    expect(await th().tryAttempt("a@example.com")).toBe(false);
+    await t.db
+      .update(loginThrottle)
+      .set({ lockedUntil: new Date(Date.now() - 1000) });
+    expect(await th().tryAttempt("a@example.com")).toBe(true);
+    const [row] = await t.db.select().from(loginThrottle);
+    expect(row!.failures).toBe(6);
+    expect(await th().isLocked("a@example.com")).toBe(true);
+  });
+
   it("bộ đếm cũ hơn 24 giờ bắt đầu lại từ đầu [F-001/AC-04]", async () => {
     for (let i = 0; i < 20; i++) await th().recordFailure("a@example.com");
     await t.db.update(loginThrottle).set({

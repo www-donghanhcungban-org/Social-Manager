@@ -83,11 +83,13 @@ export function createAuth({
     session: { expiresIn: SESSION_DAYS * 24 * 60 * 60 },
     hooks: {
       // Khoá theo tài khoản (BE-AUTH-003), ngoài giới hạn theo IP. Cùng một phản hồi cho email có
-      // đăng ký lẫn chưa đăng ký.
+      // đăng ký lẫn chưa đăng ký. Giữ chỗ (tính là một lần sai) TRƯỚC khi kiểm mật khẩu, nguyên tử với
+      // việc kiểm khoá: request song song từ nhiều IP không vượt được ngưỡng (T-585). Đăng nhập đúng xoá
+      // bộ đếm ở `after`; lỗi khác (thân sai…) vẫn tính là một lần thử — nghiêng về an toàn.
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== "/sign-in/email") return;
         const email = emailOf(ctx.body);
-        if (email && (await throttle.isLocked(email))) {
+        if (email && !(await throttle.tryAttempt(email))) {
           logSecurityEvent(defaultLogger(), {
             event: "auth.login_locked",
             outcome: "denied",
@@ -107,7 +109,7 @@ export function createAuth({
         if (isAPIError(returned)) {
           const code = (returned.body as { code?: string } | undefined)?.code;
           if (code === "INVALID_EMAIL_OR_PASSWORD") {
-            await throttle.recordFailure(email);
+            // Lần sai đã được đếm ở `before` (giữ chỗ); ở đây chỉ ghi sự kiện.
             logSecurityEvent(defaultLogger(), {
               event: "auth.login_failed",
               outcome: "denied",

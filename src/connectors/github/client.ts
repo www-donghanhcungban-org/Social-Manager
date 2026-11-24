@@ -87,6 +87,8 @@ export function createGithubClient(opts: GithubClientOptions) {
           "User-Agent": "x-workspace",
         },
         signal,
+        // Không theo chuyển hướng (SSRF): kiểm cùng origin ở trên chỉ áp cho URL ta tự gọi, không cho đích của 3xx.
+        redirect: "error",
       });
     } catch {
       // Không đưa lỗi gốc vào thông báo: nó có thể chứa URL hay header.

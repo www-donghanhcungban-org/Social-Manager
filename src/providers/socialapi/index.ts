@@ -241,7 +241,11 @@ export function createSocialApiProvider(
           messageIds: (res.message_ids ?? []).filter((id) => id !== ""),
         };
       } catch (e) {
-        if (e instanceof SocialApiError && isDefiniteRejection(e)) {
+        // `client.invalid_path`: bị chặn trước khi gọi mạng, nên chắc chắn chưa gửi gì.
+        if (
+          e instanceof SocialApiError &&
+          (isDefiniteRejection(e) || e.code === "client.invalid_path")
+        ) {
           const safe = /^[A-Za-z0-9_.-]{1,64}$/.test(e.code)
             ? e.code
             : `http.${e.status}`;
