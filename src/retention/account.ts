@@ -1,9 +1,14 @@
 import { and, count, desc, eq, inArray, ne } from "drizzle-orm";
 
 import { recordAudit } from "../audit/record";
-import { ConflictError, ForbiddenError } from "../auth/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  TooManyAttemptsError,
+} from "../auth/errors";
 import type { Db } from "../auth/members";
 import { verifyPassword } from "../auth/password";
+import type { createLoginThrottle } from "../auth/throttle";
 import {
   account,
   auditEvents,
@@ -15,6 +20,11 @@ import {
   workspaces,
 } from "../db/schema";
 import type { EvidenceService } from "../evidence/service";
+import type { Logger } from "../log/logger";
+import { defaultLogger } from "../log/process";
+import { logSecurityEvent } from "../log/security-events";
+
+type LoginThrottle = ReturnType<typeof createLoginThrottle>;
 
 export interface AccountExport {
   exportedAt: string;
@@ -70,10 +80,18 @@ const AUDIT_EXPORT_MAX = 10_000;
 export function createAccountRightsService({
   db,
   evidence,
+  throttle,
+  log = defaultLogger(),
   now = () => new Date(),
 }: {
   db: Db;
   evidence: Pick<EvidenceService, "sweepOrphanBlobs" | "releaseFiles">;
+  /**
+   * Giới hạn thử mật khẩu theo tài khoản, dùng chung cơ chế với đăng nhập (`createLoginThrottle`). Bước nhập lại mật
+   * khẩu để xoá tài khoản là một phép dò mật khẩu cho bất kỳ ai giữ được phiên (AUD-CODE-008), nên không để trống.
+   */
+  throttle: Pick<LoginThrottle, "tryAttempt" | "recordSuccess">;
+  log?: Logger;
   now?: () => Date;
 }) {
   return {
@@ -166,12 +184,28 @@ export function createAccountRightsService({
             eq(account.providerId, "credential"),
           ),
         );
+      // Giữ chỗ một lần thử TRƯỚC khi kiểm mật khẩu (nguyên tử với kiểm khoá, như đăng nhập): sai thì lần thử đã được
+      // tính, đúng thì xoá bộ đếm. Khoá riêng theo hành động và userId nên không đụng khoá đăng nhập theo email.
+      const gate = `reauth:delete-account:${input.userId}`;
+      const event = {
+        actor: input.userId,
+        targetType: "account_delete",
+        outcome: "denied",
+      } as const;
+      if (!(await throttle.tryAttempt(gate))) {
+        logSecurityEvent(log, { event: "auth.login_locked", ...event });
+        throw new TooManyAttemptsError();
+      }
       const ok =
         typeof input.password === "string" &&
         input.password.length > 0 &&
         cred?.hash != null &&
         (await verifyPassword({ hash: cred.hash, password: input.password }));
-      if (!ok) throw new ForbiddenError("Mật khẩu không đúng");
+      if (!ok) {
+        logSecurityEvent(log, { event: "auth.login_failed", ...event });
+        throw new ForbiddenError("Mật khẩu không đúng");
+      }
+      await throttle.recordSuccess(gate);
 
       const out: AccountErasure = {
         workspacesDeleted: 0,

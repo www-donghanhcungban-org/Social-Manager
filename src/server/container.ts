@@ -23,6 +23,7 @@ import { createKnowledgeService } from "../knowledge/service";
 import { createWebhookIngest } from "../inbox/webhook";
 import { createPostService } from "../posts/service";
 import { createSearchService } from "../search/service";
+import { createLoginThrottle } from "../auth/throttle";
 import { createAccountRightsService } from "../retention/account";
 import { createErasureService } from "../retention/erasure";
 import { createRetentionService } from "../retention/service";
@@ -97,7 +98,11 @@ export function createContainer(cfg: Env) {
     threads: createThreadService({ db }),
     retention: createRetentionService({ db, evidence }),
     erasure: createErasureService({ db, evidence }),
-    accountRights: createAccountRightsService({ db, evidence }),
+    accountRights: createAccountRightsService({
+      db,
+      evidence,
+      throttle: createLoginThrottle({ db, secret: cfg.BETTER_AUTH_SECRET }),
+    }),
     evidence,
     drafts: createDraftService({ db }),
     // `live` đọc mỗi lần gọi: cờ OUTBOUND_LIVE là khoá hệ thống, mặc định tắt.

@@ -4,8 +4,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createAiGateway } from "@/src/ai/gateway";
 import { AiNotAllowedError, type ModelPort } from "@/src/ai/port";
-import { ConflictError, ForbiddenError } from "@/src/auth/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  TooManyAttemptsError,
+} from "@/src/auth/errors";
 import { hashPassword } from "@/src/auth/password";
+import { createLoginThrottle } from "@/src/auth/throttle";
 import {
   account,
   auditEvents,
@@ -18,6 +23,7 @@ import {
 } from "@/src/db/schema";
 import { createMemoryBlobStore } from "@/src/evidence/blob-store";
 import { createEvidenceService } from "@/src/evidence/service";
+import { createLogger } from "@/src/log/logger";
 import { createAccountRightsService } from "@/src/retention/account";
 import {
   CONSENT_POLICY_VERSION,
@@ -35,8 +41,20 @@ let t: Awaited<ReturnType<typeof createTestDb>>;
 let store: ReturnType<typeof createMemoryBlobStore>;
 let evidence: ReturnType<typeof createEvidenceService>;
 
+let logLines: string[] = [];
 const rights = () =>
-  createAccountRightsService({ db: t.db, evidence, now: () => NOW });
+  createAccountRightsService({
+    db: t.db,
+    evidence,
+    now: () => NOW,
+    throttle: createLoginThrottle({ db: t.db, secret: "t".repeat(32) }),
+    log: createLogger({
+      service: "t",
+      version: "0",
+      env: "test",
+      write: (line) => logLines.push(line),
+    }),
+  });
 const wsSvc = () => createWorkspaceService({ db: t.db, now: () => NOW });
 
 async function makeUser(id: string, email: string) {
@@ -138,6 +156,60 @@ describe("rights-delete: xoá tài khoản tự phục vụ, lan mọi bản sao
         rights().deleteAccount({ userId: "u1", password }),
       ).rejects.toBeInstanceOf(ForbiddenError);
     expect(await t.db.select().from(user)).toHaveLength(2);
+  });
+
+  // AUD-CODE-008: bước nhập lại mật khẩu là một phép dò mật khẩu cho ai giữ phiên; phải bị giới hạn như đăng nhập.
+  it("dò mật khẩu: sai nhiều lần thì bị khoá, dù sau đó nhập đúng cũng không xoá được", async () => {
+    for (let i = 0; i < 5; i++)
+      await expect(
+        rights().deleteAccount({ userId: "u1", password: `sai-lan-${i}-xxxx` }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      rights().deleteAccount({ userId: "u1", password: PASSWORD }),
+    ).rejects.toBeInstanceOf(TooManyAttemptsError);
+    expect(
+      await t.db.select().from(user).where(eq(user.id, "u1")),
+    ).toHaveLength(1);
+  });
+
+  it("ghi sự kiện bảo mật khi sai mật khẩu và khi bị khoá, không lộ mật khẩu", async () => {
+    logLines = [];
+    for (let i = 0; i < 5; i++)
+      await rights()
+        .deleteAccount({ userId: "u1", password: `sai-lan-${i}-xxxx` })
+        .catch(() => {});
+    await rights()
+      .deleteAccount({ userId: "u1", password: PASSWORD })
+      .catch(() => {});
+    const events = logLines.map(
+      (l) => JSON.parse(l) as Record<string, unknown>,
+    );
+    expect(events.filter((e) => e.event === "auth.login_failed")).toHaveLength(
+      5,
+    );
+    expect(events.filter((e) => e.event === "auth.login_locked")).toHaveLength(
+      1,
+    );
+    for (const e of events) {
+      expect(e).toMatchObject({
+        actor: "u1",
+        target_type: "account_delete",
+        outcome: "denied",
+      });
+    }
+    expect(logLines.join("\n")).not.toContain(PASSWORD);
+    expect(logLines.join("\n")).not.toContain("sai-lan-");
+  });
+
+  it("đúng mật khẩu xoá bộ đếm: vài lần sai rồi đúng thì xoá được", async () => {
+    for (let i = 0; i < 3; i++)
+      await expect(
+        rights().deleteAccount({ userId: "u1", password: `sai-lan-${i}-xxxx` }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    await rights().deleteAccount({ userId: "u1", password: PASSWORD });
+    expect(
+      await t.db.select().from(user).where(eq(user.id, "u1")),
+    ).toHaveLength(0);
   });
 
   it("workspace chỉ có mình: xoá cùng bằng chứng, blob, đồng ý; workspace còn người khác: chỉ gỡ khỏi danh sách; audit còn", async () => {

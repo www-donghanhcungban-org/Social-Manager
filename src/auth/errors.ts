@@ -7,6 +7,15 @@ export class ForbiddenError extends Error {
   }
 }
 
+/** Thử lại quá nhiều lần trong thời gian ngắn (khoá tạm theo tài khoản); người dùng chờ rồi thử lại. */
+export class TooManyAttemptsError extends Error {
+  readonly code = "too_many_attempts";
+  constructor(message = "Thử quá nhiều lần, hãy thử lại sau ít phút") {
+    super(message);
+    this.name = "TooManyAttemptsError";
+  }
+}
+
 /** Đầu vào sai; người gọi sửa được. */
 export class ValidationError extends Error {
   readonly code = "validation";
