@@ -7,6 +7,7 @@ import {
   type ModelPort,
 } from "@/src/ai/port";
 import { aiDisclosures, members, workspaces } from "@/src/db/schema";
+import { recordGrant } from "@/src/workspaces/consent";
 import { createLogger } from "@/src/log/logger";
 import { createMetrics } from "@/src/observability/metrics";
 
@@ -157,6 +158,12 @@ describe("ngân sách AI (OPS-COST-004, AI-OBS-003)", () => {
     for (let i = 0; i < 8; i++)
       await expect(call(gw)).rejects.toBeInstanceOf(AiNotAllowedError);
     await t.db.update(workspaces).set({ aiCloudEnabled: true });
+    await recordGrant(t.db, {
+      workspaceId: ws,
+      subjectId: "member",
+      purpose: "ai_cloud",
+      now: new Date(),
+    });
     await expect(call(gw)).resolves.toBeDefined();
   });
 });

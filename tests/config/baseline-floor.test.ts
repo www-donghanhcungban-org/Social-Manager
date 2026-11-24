@@ -181,7 +181,9 @@ describe("điều kiện Không áp dụng của MUST ở BLUEPRINT.md (T-510)",
     expect(
       depHits(/nock|pollyjs|^polly|vcr|replay|talkback|msw-recorder/i),
     ).toEqual([]);
-    expect(tracked.filter((f) => /cassette|\.har$/i.test(f))).toEqual([]);
+    expect(
+      tracked.filter((f) => /cassette/i.test(f) || /\.har$/i.test(f)),
+    ).toEqual([]);
   });
 
   it("DB-SEARCH-002: không index tìm kiếm ngoài Postgres", () => {

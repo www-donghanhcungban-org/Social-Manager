@@ -5,7 +5,8 @@
  * - Chặn bùng nổ cardinality: mỗi metric tối đa `MAX_SERIES` tổ hợp nhãn; vượt thì gộp vào nhãn `other` thay vì tạo series mới.
  */
 export const MAX_SERIES = 500;
-const BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+// 0,8 là ngân sách p95 ở PROJECT.md: SLI latency của docs/ops/SLO.md đọc đúng cận này.
+const BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.8, 1, 2.5, 5, 10];
 
 type Labels = Record<string, string>;
 

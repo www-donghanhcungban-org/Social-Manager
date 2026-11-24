@@ -21,8 +21,12 @@ RUN npm ci --omit=dev --ignore-scripts
 
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS runtime
 WORKDIR /app
+# Phiên bản phát hành (WF-REL-007): smoke test sau deploy so `version` của /api/health với tag; compose truyền qua
+# `APP_VERSION` (build arg); không đặt thì health không nêu phiên bản.
+ARG APP_VERSION=""
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    APP_VERSION=${APP_VERSION}
 # Người dùng không phải root có sẵn trong image node (uid 1000).
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/.next ./.next

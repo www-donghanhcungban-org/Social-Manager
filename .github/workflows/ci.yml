@@ -121,6 +121,14 @@ jobs:
       # FE-PERF-004/XC-PERF-003: ngân sách bundle (perf-budget.json) đo trên bản build của gate-par; vượt = đỏ.
       - name: Ngân sách bundle — node scripts/check-bundle.mjs
         run: node scripts/check-bundle.mjs
+      # DB-MIG-003/008: migration đã phát hành bất biến (băm ở drizzle/applied.sha256, khoá chỉ thêm dòng so với main) và
+      # migration mới theo expand/contract. Lấy main để đối chiếu khoá; không lấy được thì bước đỏ, không bỏ qua im lặng.
+      - name: Migration bất biến, expand/contract — node scripts/check-migrations.mjs
+        run: |
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+          # Main chưa có khoá (PR đầu tiên thêm khoá) thì tệp rỗng: chỉ kiểm bất biến và lint.
+          git show origin/main:drizzle/applied.sha256 > "$RUNNER_TEMP/base.lock" || : > "$RUNNER_TEMP/base.lock"
+          node scripts/check-migrations.mjs "$RUNNER_TEMP/base.lock"
       # Sàn M/L (LOOP-HARNESS-023): khoá sàn khai riêng trong xt.yaml (`format_check`, `coverage`, kiểm kiểu theo stack) —
       # trước chỉ `loop verify` chạy nên CI xanh khi sàn đỏ (AUD-XFEAT-020). Lệnh trùng lệnh của gate-par bỏ qua; `e2e` có
       # job riêng; quy mô S/không blueprint → không áp; khoá thiếu chỉ cảnh báo (như doctor).

@@ -31,6 +31,9 @@ auth · mật mã · bí mật · `merge_risk_paths` trong xt.yaml: gắn nhãn 
 
 - [ ] Không có migration
 - [ ] Có migration: file mới (không sửa migration đã áp), có đường lùi, chạy được trên dữ liệu có sẵn
+- [ ] Expand/contract: không DROP/RENAME/đổi kiểu tại chỗ; nếu là contract thì có `-- contract: <phát-hành-trước>` và PR expand đã phát hành:
+- Backup trước migrate: <link bản sao lưu hoặc `scripts/backup.sh` mốc UTC; chạm dữ liệu production thì bắt buộc, `docs/RUNBOOK.md` §Backup>
+- Kế hoạch lùi: <`.down.sql` hay giữ nguyên vì tương thích ngược; xem `docs/RUNBOOK.md` §Rollback>
 
 ## Phụ thuộc mới
 

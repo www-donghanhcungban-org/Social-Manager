@@ -21,6 +21,7 @@ export class ConflictError extends Error {
   constructor(
     readonly reason:
       | "last_owner"
+      | "owner_has_members"
       | "already_member"
       | "duplicate_label"
       | "idempotency_conflict"

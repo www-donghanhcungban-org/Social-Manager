@@ -7,6 +7,7 @@ import type { Logger } from "../log/logger";
 import { logSecurityEvent } from "../log/security-events";
 import type { Metrics } from "../observability/metrics";
 import { ValidationError } from "../providers/types";
+import { currentConsent } from "../workspaces/consent";
 import {
   AiBudgetError,
   AiDisabledError,
@@ -186,7 +187,11 @@ export function createAiGateway({
           .select({ on: workspaces.aiCloudEnabled })
           .from(workspaces)
           .where(eq(workspaces.id, input.workspaceId));
-        if (!w?.on) {
+        // Cờ chưa đủ: phải có bản ghi đồng ý đang hiệu lực (CMP-VN-001). Thiếu bản ghi hoặc đã rút = không gửi.
+        const consented =
+          w?.on === true &&
+          (await currentConsent(db, input.workspaceId, "ai_cloud")).granted;
+        if (!consented) {
           await disclosure(input, model, counts, "blocked");
           if (log)
             logSecurityEvent(log, {

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 
+import { processEnv } from "@/src/config/env";
 import { timed } from "@/src/observability/instrument";
 import { checkHealth } from "@/src/http/health";
 import { getContainer } from "@/src/server/runtime";
@@ -16,7 +17,9 @@ export const GET = timed("GET", "/api/health", async () => {
     TIMEOUT_MS,
     { draining: isDraining() },
   );
-  return Response.json(body, {
+  // Phiên bản chỉ có khi image được dựng với APP_VERSION (số phát hành công khai, không phải bí mật).
+  const version = processEnv().APP_VERSION;
+  return Response.json(version ? { ...body, version } : body, {
     status,
     headers: { "Cache-Control": "no-store" },
   });

@@ -17,6 +17,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <span className="min-w-0 break-all text-sm text-muted-foreground">
             {user.email}
           </span>
+          <Link href="/app/account" className="text-sm text-primary underline">
+            Tài khoản
+          </Link>
           <SignOutButton />
         </div>
       </header>

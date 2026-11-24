@@ -11,6 +11,8 @@ Mọi phản hồi động đi qua `proxy.ts`, nơi đặt `Cache-Control: priva
 | `/`                                                 | động   | Chuyển hướng theo phiên đăng nhập; đọc cookie.            |
 | `/login`                                            | động   | Có nonce CSP theo request và trạng thái phiên.            |
 | `/app`                                              | động   | Danh sách workspace của người dùng hiện tại.              |
+| `/app/account`                                      | động   | Hồ sơ, xuất và xoá tài khoản của người đang đăng nhập.    |
+| `/app/account/export`                               | API    | Tải dữ liệu cá nhân của chính người dùng, `no-store`.     |
 | `/app/[workspaceId]`                                | động   | Dữ liệu theo workspace và quyền của người dùng.           |
 | `/app/[workspaceId]/connections`                    | động   | Kết nối và tài khoản theo workspace.                      |
 | `/app/[workspaceId]/conversations`                  | động   | Hội thoại theo workspace.                                 |

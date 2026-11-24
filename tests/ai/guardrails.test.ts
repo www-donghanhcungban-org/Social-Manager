@@ -6,6 +6,7 @@ import { createAiGateway } from "@/src/ai/gateway";
 import { createOpenAiCompatModel, stopReasonOf } from "@/src/ai/openai-compat";
 import type { ModelPort, ModelResponse } from "@/src/ai/port";
 import { aiDisclosures, members, workspaces } from "@/src/db/schema";
+import { recordGrant } from "@/src/workspaces/consent";
 import { createMemoryBlobStore } from "@/src/evidence/blob-store";
 import { createEvidenceService } from "@/src/evidence/service";
 import type { Logger } from "@/src/log/logger";
@@ -241,6 +242,12 @@ describe("che PII trước khi gửi ra ngoài (CMP-PRIV-010, AI-GUARD-004)", ()
       .update(workspaces)
       .set({ aiCloudEnabled: true })
       .where(eq(workspaces.id, ws));
+    await recordGrant(t.db, {
+      workspaceId: ws,
+      subjectId: "member",
+      purpose: "ai_cloud",
+      now: new Date(),
+    });
   });
 
   it("điểm cuối đám mây: SĐT, email, địa chỉ bị che trong lời nhắc; số byte ghi nhật ký là của bản đã che", async () => {

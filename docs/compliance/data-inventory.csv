@@ -1,0 +1,27 @@
+system,column,class,purpose,legal_basis,retention,copies,recipients
+Postgres,user.email,PII,định danh đăng nhập,hợp đồng (cung cấp dịch vụ),đến khi xoá tài khoản,không,không
+Postgres,user.name,PII,hiển thị tên người dùng,hợp đồng (cung cấp dịch vụ),đến khi xoá tài khoản,không,không
+Postgres,account.password,bí mật,xác thực,hợp đồng (cung cấp dịch vụ),đến khi xoá tài khoản,không (chỉ băm Argon2id),không
+Postgres,session.token,bí mật,duy trì phiên,hợp đồng (cung cấp dịch vụ),7 ngày kể từ lúc tạo; xoá hẳn sau 1 ngày hết hạn,cookie phiên ở trình duyệt,không
+Postgres,session.ip_address,PII,phát hiện lạm dụng,lợi ích chính đáng (an ninh),cùng vòng đời phiên,không,không
+Postgres,session.user_agent,PII,phát hiện lạm dụng,lợi ích chính đáng (an ninh),cùng vòng đời phiên,không,không
+Postgres,audit_events.source_ip,PII,audit trail: ai làm ở đâu (CMP-AUDIT-002),nghĩa vụ pháp lý và lợi ích chính đáng (an ninh),giữ ≥ 12 tháng; không xoá tự động,không,không
+Postgres,audit_events.user_agent,PII,audit trail: ai làm ở đâu (CMP-AUDIT-002),nghĩa vụ pháp lý và lợi ích chính đáng (an ninh),giữ ≥ 12 tháng; không xoá tự động,không,không
+Postgres,audit_events.actor_id,định danh,audit trail: ai làm gì,nghĩa vụ pháp lý và lợi ích chính đáng (an ninh),giữ ≥ 12 tháng; sau khi xoá tài khoản chỉ còn mã không gắn tên hay email,không,không
+Postgres,consents.subject_id,định danh,chứng minh đồng ý theo từng mục đích (CMP-RIGHTS-001),nghĩa vụ pháp lý (chứng minh đồng ý),đến khi xoá workspace hoặc tài khoản người cấp,không,không
+Postgres,provider_connections.credentials_enc,bí mật,gọi nhà cung cấp thay mặt người dùng,hợp đồng (cung cấp dịch vụ),đến khi xoá kết nối,không (mã hoá AES-256-GCM),nhà cung cấp mạng xã hội
+Postgres,provider_connections.webhook_secret_enc,bí mật,xác minh chữ ký webhook,hợp đồng (cung cấp dịch vụ),đến khi xoá kết nối hoặc gỡ secret,không (mã hoá AES-256-GCM),không
+Postgres,social_accounts.display_name,PII,hiển thị trang đã kết nối,hợp đồng (cung cấp dịch vụ),đến khi xoá tài khoản mạng xã hội,không,không
+Postgres,social_accounts.external_id,định danh,ánh xạ sang nhà cung cấp,hợp đồng (cung cấp dịch vụ),đến khi xoá tài khoản mạng xã hội,không,nhà cung cấp mạng xã hội
+Postgres,inbox_items.author,PII (bên thứ ba),hiển thị người gửi tin,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,365 ngày (tính từ received_at),messages.author; evidence_items,không
+Postgres,inbox_items.text,PII (bên thứ ba),nội dung cần trả lời,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,365 ngày (tính từ received_at),messages.text; blob nội dung trong BLOB_DIR; search_documents; trích đoạn gửi AI khi có đồng ý,AI đám mây (chỉ khi owner đồng ý; đã che SĐT/email/CCCD/địa chỉ)
+Postgres,conversations.participant_id,định danh,ghép tin về đúng người nhắn,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,xoá khi hết tin còn hạn (365 ngày),không,không
+Postgres,conversations.participant_name,PII (bên thứ ba),hiển thị người nhắn,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,xoá khi hết tin còn hạn (365 ngày),không,không
+Postgres,messages.author,PII (bên thứ ba),hiển thị người gửi từng tin,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,365 ngày (tính từ sent_at),inbox_items.author,không
+Postgres,messages.text,PII (bên thứ ba),lưu nguyên văn hội thoại để tra cứu,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,365 ngày (tính từ sent_at),inbox_items.text; blob nội dung trong BLOB_DIR; search_documents; trích đoạn gửi AI khi có đồng ý,AI đám mây (chỉ khi owner đồng ý; đã che SĐT/email/CCCD/địa chỉ)
+Postgres,evidence_items.external_id,định danh,trỏ về mục gốc ở nguồn,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,theo nguồn: tin nhắn cùng hạn messages (365 ngày mặc định),không,không
+Postgres,evidence_blobs.sha256,định danh,địa chỉ và kiểm toàn vẹn nội dung gốc,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,cùng vòng đời lần xuất hiện cuối trỏ tới nó,tệp nội dung trong BLOB_DIR (quyền 0600),không
+Postgres,decisions.text,PII (có thể chứa bên thứ ba),ghi quyết định của dự án kèm nguồn,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,đến khi xoá dự án hoặc workspace,không,không
+Postgres,draft_versions.text,PII (có thể chứa bên thứ ba),soạn trả lời khách; lưu mọi phiên bản để duyệt và đối soát,lợi ích chính đáng của chủ workspace (bên kiểm soát); dự án là bên xử lý,xoá cùng hội thoại (cascade) hoặc workspace,không,nhà cung cấp mạng xã hội (khi người dùng duyệt gửi)
+Postgres,members.user_id,định danh,quyền thành viên,hợp đồng (cung cấp dịch vụ),đến khi gỡ thành viên hoặc xoá tài khoản,không,không
+Postgres,login_throttle.key_hash,định danh,giới hạn đăng nhập theo tài khoản,lợi ích chính đáng (an ninh),24 giờ kể từ lần sai gần nhất,không (HMAC của email),không

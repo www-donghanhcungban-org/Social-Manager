@@ -19,6 +19,7 @@ function walk(dir: string): string[] {
 }
 const code = (dir: string) => walk(dir).filter((f) => /\.(ts|tsx)$/.test(f));
 const appSrc = [...code("app"), ...code("src"), "proxy.ts"];
+const OWN_DATA_EXPORT = "app/app/account/export/route.ts";
 
 describe("injection và DOM sink (SEC-WEB-001, SEC-WEB-004, FE-SEC-001)", () => {
   it("SEC-WEB-001: không SQL thô, không chạy lệnh hệ thống, không nối chuỗi vào câu SQL", () => {
@@ -80,7 +81,9 @@ describe("URL ngoài và CSP (FE-SEC-002, FE-SEC-003)", () => {
     expect(csp).toContain("frame-ancestors 'none'");
     // Nonce theo từng phản hồi: proxy sinh mới mỗi request; không có thẻ <script> tĩnh trong mã giao diện.
     expect(read("proxy.ts")).toMatch(/newNonce\(\)/);
-    expect(code("app").filter((f) => /<script[\s>]/.test(read(f)))).toEqual([]);
+    expect(code("app").filter((f) => /<script[\s>]/i.test(read(f)))).toEqual(
+      [],
+    );
   });
 });
 
@@ -185,6 +188,9 @@ describe("tệp và nội dung lưu (BE-FILE-001/003/004/005)", () => {
         )
       )
         bad.push(`${f}: tải lên`);
+      // Miễn hẹp có lý do: xuất DỮ LIỆU CỦA CHÍNH NGƯỜI ĐĂNG NHẬP (STD-PRIV-004) là JSON sinh tại chỗ, không phải tệp người
+      // dùng tải lên; kiểm riêng ở test kế.
+      if (f === OWN_DATA_EXPORT) continue;
       if (
         /Content-Disposition|new Response\([^)]*(Uint8Array|Buffer|blob)/i.test(
           t,
@@ -193,6 +199,18 @@ describe("tệp và nội dung lưu (BE-FILE-001/003/004/005)", () => {
         bad.push(`${f}: tải xuống`);
     }
     expect(bad).toEqual([]);
+  });
+
+  it("BE-FILE-005: miễn của xuất dữ liệu cá nhân chỉ cho JSON của chính người gọi, POST, không cache", () => {
+    const t = read(OWN_DATA_EXPORT);
+    expect(t).toMatch(/export const POST\b/);
+    expect(t).not.toMatch(/export const GET\b/);
+    expect(t).toMatch(/application\/json/);
+    expect(t).toMatch(/no-store/);
+    expect(t).toMatch(/userId:\s*user\.id/);
+    expect(t).not.toMatch(
+      /formData|searchParams|params\b|Uint8Array|Buffer|blob/i,
+    );
   });
 
   it("BE-FILE-003: khoá lưu do server sinh (sha256 hex), chặn .. và / (tests/evidence)", () => {

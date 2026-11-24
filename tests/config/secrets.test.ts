@@ -154,7 +154,7 @@ describe("hướng dẫn agent sạch (XC-DOCAI-005, LOOP-FB-003)", () => {
     const co = read(".github/CODEOWNERS");
     for (const p of ["/CLAUDE.md", "/AGENTS.md", "/.claude/"])
       expect(co, p).toMatch(
-        new RegExp(`^${p.replace(/[./]/g, "\\$&")}\\s+@`, "m"),
+        new RegExp(`^${p.replace(/[\\./]/g, "\\$&")}\\s+@`, "m"),
       );
   });
 

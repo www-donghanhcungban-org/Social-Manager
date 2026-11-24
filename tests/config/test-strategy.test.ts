@@ -86,7 +86,7 @@ describe("mọi test có assertion (QA-COV-004)", () => {
           const t = x.expression.getText(sf);
           if (
             /^(expect|assert|await expect)/.test(t) ||
-            /(^|\.)expect[A-Z\w]*$/.test(t)
+            /(^|\.)expect\w*$/.test(t)
           )
             found = true;
           if (/^(await )?(assert|fail)\b/.test(t)) found = true;
@@ -277,7 +277,9 @@ describe("dữ liệu test không PII thật (QA-DATA-001/002/007, FE-TEST-006)"
       ).map((p) => `${f}: ${p}`),
     );
     expect(phones).toEqual([]);
-    expect(read("docs/compliance/test-data-policy.md")).toMatch(/example\.com/);
+    expect(read("docs/compliance/test-data-policy.md")).toContain(
+      "example.com",
+    );
   });
 
   it("QA-DATA-007: không dùng bản sao ẩn danh hoá — không có scripts/anonymize, chính sách nói rõ", () => {

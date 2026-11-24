@@ -204,3 +204,17 @@
 - Chọn: Miễn 11 mục tác tử kèm test ranh giới đỏ khi thêm tool-calling hoặc agent; làm thật phần đang có (minh bạch, nhãn AI, escape đầu ra, hành vi bị cấm, sổ hành động)
 - Lý do (tiêu chí chất lượng cuối): Mô hình chỉ nhận/trả chữ (H13), một nơi gọi duy nhất; khung tác tử không dùng là bề mặt tấn công và mã chết; test ranh giới buộc làm mục thật khi thêm tool
 - Đường lùi: Bỏ miễn trừ và làm các mục khi thêm tool-calling hoặc agent (test agent-boundary sẽ đỏ)
+
+### D-030 · 2026-11-24T02:22:33+00:00 · T-529: bản ghi đồng ý, quyền chủ thể và kiểm kê dữ liệu làm theo hình nào?
+
+- Phương án: (1) Bảng consents chỉ ghi thêm gắn cổng AI đám mây; dịch vụ xuất/xoá tài khoản tự phục vụ; một sổ kiểm kê data-inventory.csv khớp bảng phân loại; hàng chờ DSAR cho khách để người duyệt · (2) Dựng ngay hàng chờ DSAR đầy đủ cho cả khách không có tài khoản và data-map.yaml riêng
+- Chọn: Bảng consents chỉ ghi thêm gắn cổng AI đám mây; dịch vụ xuất/xoá tài khoản tự phục vụ; một sổ kiểm kê data-inventory.csv khớp bảng phân loại; hàng chờ DSAR cho khách để người duyệt
+- Lý do (tiêu chí chất lượng cuối): Cổng AI đám mây là xử lý duy nhất cần đồng ý; DSAR cho khách cần quyết định pháp lý về vai trò bên xử lý và mốc NĐ 356/2025 chưa đối chiếu bản gốc; hai sổ kiểm kê trùng nội dung dễ lệch
+- Đường lùi: Thêm mục đích vào CONSENT_PURPOSES khi có xử lý cần đồng ý mới; làm hàng chờ DSAR khi chủ dự án chốt vai trò và mốc
+
+### D-031 · 2026-11-24T02:42:30+00:00 · T-530: sản phẩm có phục vụ người dùng EU/UK để áp CMP-INTL (GDPR, SCC, hạn DSAR theo vùng) hay chỉ Việt Nam?
+
+- Phương án: (1) Chỉ phục vụ Việt Nam; CMP-INTL miễn có điều kiện kiểm được (test cấm cấu hình EU/UK) · (2) Làm đủ CMP-INTL cho EU/UK/SG/TH/CA ngay từ bây giờ
+- Chọn: Chỉ phục vụ Việt Nam; CMP-INTL miễn có điều kiện kiểm được (test cấm cấu hình EU/UK)
+- Lý do (tiêu chí chất lượng cuối): Sản phẩm là công cụ nội bộ của Chi nhánh Bình Khí tại Việt Nam, không có dữ liệu hay người dùng ngoài Việt Nam; làm đủ vùng khác là phạm vi không có người dùng, tăng bề mặt sai (số Điều chưa đối chiếu). Cách hiểu chặt: runbook vẫn lấy hạn 72 giờ của luật Việt Nam, và test đỏ nếu mã có cấu hình GDPR/EU.
+- Đường lùi: Mở cho người dùng nước khác: bỏ dấu miễn ở 4 MUST CMP-INTL, làm bảng hạn theo vùng ở data-breach.md, hồ sơ SCC/TIA.

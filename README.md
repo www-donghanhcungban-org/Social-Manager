@@ -66,6 +66,7 @@ docker compose up -d --build
 - Container chạy bằng người dùng `node` (không root), tự chạy migration (`scripts/migrate.mjs`) trước khi nghe cổng.
 - App publish ở `127.0.0.1:3000` và CSDL không publish ra host. Đặt reverse proxy có TLS (Caddy, nginx) phía trước rồi đặt `CLIENT_IP_HEADER` theo header mà proxy đó ghi đè.
 - Ngoài container, `npm start` bind `127.0.0.1`; chỉ `CMD` của container bind `0.0.0.0` để Docker chuyển cổng được.
+- Vận hành: [`docs/RUNBOOK.md`](docs/RUNBOOK.md) (deploy, smoke, rollback, sao lưu và khôi phục, xoay bí mật), xử lý sự cố ở [`docs/ops/incident-response.md`](docs/ops/incident-response.md) — người mới nhận trực đọc hai tệp này trước.
 
 ## Đóng góp và liên hệ
 

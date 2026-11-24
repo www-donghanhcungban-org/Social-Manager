@@ -14,7 +14,6 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { PLATFORMS } from "../providers/types";
-
 export * from "./auth-schema";
 
 export const ROLES = ["owner", "admin", "member"] as const;
@@ -642,6 +641,56 @@ export const aiDisclosures = pgTable(
       sql`${t.errorCode} is null or ${t.errorCode} ~ '^[A-Za-z0-9_.-]{1,64}$'`,
     ),
     index("ai_disclosures_ws_created_idx").on(t.workspaceId, t.createdAt),
+  ],
+);
+
+/** Mục đích xử lý cần đồng ý (CMP-RIGHTS-001). Thêm mục đích mới = thêm giá trị ở đây và dòng trong kiểm kê dữ liệu. */
+export const CONSENT_PURPOSES = ["ai_cloud"] as const;
+export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
+
+/**
+ * Bản ghi đồng ý (CMP-RIGHTS-001, CMP-VN-001), CHỈ GHI THÊM: cấp đồng ý = một dòng `withdrawn_at` rỗng; rút = một dòng
+ * MỚI cùng `granted_at` của lần cấp và `withdrawn_at` có giá trị. Trạng thái hiện tại là dòng mới nhất theo
+ * (`created_at`, `id`) của cặp (workspace, mục đích). Dịch vụ không có đường UPDATE/DELETE (test); dòng chỉ biến mất khi
+ * xoá workspace (khoá ngoại theo tầng) hoặc xoá tài khoản người cấp (`deleteAccount`) — khi đó thiếu bản ghi đồng ý
+ * nghĩa là KHÔNG xử lý.
+ */
+export const consents = pgTable(
+  "consents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Người cấp/rút (`user.id`). Không có khoá ngoại (như `members.user_id`); xoá tài khoản xoá các dòng này ở dịch vụ. */
+    subjectId: text("subject_id").notNull(),
+    purposeId: text("purpose_id", { enum: CONSENT_PURPOSES }).notNull(),
+    /** Phiên bản văn bản đồng ý đã hiển thị (hằng `CONSENT_POLICY_VERSION`). */
+    policyVersion: text("policy_version").notNull(),
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull(),
+    /** Kênh thực hiện: `web` (giao diện), `migration` (dựng lại từ cờ có sẵn trước khi có bảng này). */
+    channel: text("channel").notNull(),
+    /** sha256 của đúng văn bản đồng ý đã hiển thị: chứng minh người dùng đã thấy gì. */
+    uiSnapshotHash: text("ui_snapshot_hash").notNull(),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "consents_purpose_check",
+      sql`${t.purposeId} in (${inList(CONSENT_PURPOSES)})`,
+    ),
+    check("consents_hash_check", sql`${t.uiSnapshotHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "consents_withdrawn_after_granted_check",
+      sql`${t.withdrawnAt} is null or ${t.withdrawnAt} >= ${t.grantedAt}`,
+    ),
+    index("consents_ws_purpose_created_idx").on(
+      t.workspaceId,
+      t.purposeId,
+      t.createdAt,
+    ),
+    index("consents_subject_idx").on(t.subjectId),
   ],
 );
 

@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 
 import { recordAudit } from "../audit/record";
 import { requireAction } from "../auth/access";
@@ -6,12 +6,14 @@ import { ConflictError, NotFoundError } from "../auth/errors";
 import type { Db } from "../auth/members";
 import {
   MAX_RETENTION_DAYS,
+  consents,
   members,
   workspaces,
   type Role,
 } from "../db/schema";
 import { ValidationError } from "../providers/types";
 import { DEFAULT_INBOX_DAYS } from "../retention/service";
+import { currentConsent, recordGrant, recordWithdrawal } from "./consent";
 
 export interface WorkspaceView {
   id: string;
@@ -37,7 +39,13 @@ const MAX_NAME = 100;
 /** Trần số workspace mỗi người tạo: chặn lạm dụng tạo hàng loạt. */
 export const MAX_WORKSPACES_PER_USER = 20;
 
-export function createWorkspaceService({ db }: { db: Db }) {
+export function createWorkspaceService({
+  db,
+  now = () => new Date(),
+}: {
+  db: Db;
+  now?: () => Date;
+}) {
   return {
     /** Tạo workspace và đặt người tạo làm owner trong một giao dịch: không có workspace mồ côi. */
     async create(input: {
@@ -173,6 +181,25 @@ export function createWorkspaceService({ db }: { db: Db }) {
           .where(eq(workspaces.id, input.workspaceId))
           .returning({ on: workspaces.aiCloudEnabled });
         if (!row) throw new NotFoundError();
+        // Cùng giao dịch với cờ: bật = bản ghi đồng ý mới; tắt = bản ghi rút mới (CMP-RIGHTS-001/004). Cổng AI đòi cả hai.
+        const args = {
+          workspaceId: input.workspaceId,
+          subjectId: input.actorId,
+          purpose: "ai_cloud" as const,
+          now: now(),
+        };
+        if (input.enabled) {
+          if (
+            !(
+              await currentConsent(
+                tx as unknown as Db,
+                args.workspaceId,
+                args.purpose,
+              )
+            ).granted
+          )
+            await recordGrant(tx as unknown as Db, args);
+        } else await recordWithdrawal(tx as unknown as Db, args);
         await recordAudit(tx as unknown as Db, {
           workspaceId: input.workspaceId,
           actorId: input.actorId,
@@ -183,6 +210,39 @@ export function createWorkspaceService({ db }: { db: Db }) {
         });
         return { enabled: row.on };
       });
+    },
+
+    /** Lịch sử đồng ý của một workspace (owner/admin), mới nhất trước: để người dùng xem lại mình đã đồng ý gì, khi nào. */
+    async consentHistory(input: {
+      actorId: string;
+      workspaceId: string;
+    }): Promise<
+      {
+        purpose: string;
+        policyVersion: string;
+        grantedAt: Date;
+        withdrawnAt: Date | null;
+        channel: string;
+      }[]
+    > {
+      await requireAction(
+        db,
+        input.actorId,
+        input.workspaceId,
+        "workspace.settings",
+      );
+      const rows = await db
+        .select()
+        .from(consents)
+        .where(eq(consents.workspaceId, input.workspaceId))
+        .orderBy(desc(consents.createdAt), desc(consents.id));
+      return rows.map((r) => ({
+        purpose: r.purposeId,
+        policyVersion: r.policyVersion,
+        grantedAt: r.grantedAt,
+        withdrawnAt: r.withdrawnAt,
+        channel: r.channel,
+      }));
     },
 
     /** Chính sách gửi tin của workspace (thành viên xem được để biết vì sao một yêu cầu gửi bị chặn). */

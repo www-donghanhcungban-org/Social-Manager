@@ -47,19 +47,41 @@ docker compose logs -f app
 
 Dấu hiệu thành công: dòng `migration xong` rồi `worker nền đã chạy`.
 
+### Smoke test sau deploy (WF-REL-007, OPS-DEPLOY-004)
+
+Chạy ngay sau `docker compose up -d` và sau mỗi rollback, trên URL thật. Kiểm: sống, sẵn sàng (CSDL), phiên bản khớp tag, header bảo mật, trang đăng nhập, `/api/metrics` đóng với người ngoài. Thoát khác 0 = **lùi** (mục Rollback), không báo "đã deploy xong".
+
+```bash
+node scripts/smoke.mjs https://<tên-miền-của-bạn> <X.Y.Z>
+```
+
+Phiên bản đối chiếu lấy từ `APP_VERSION` lúc dựng image (`APP_VERSION=1.0.0 docker compose up -d --build`); thiếu thì `/api/health` không nêu phiên bản và phép kiểm phiên bản đỏ khi bạn truyền `<X.Y.Z>`.
+
+**Cửa sổ theo dõi và ngưỡng lùi** (người quyết, 15 phút sau deploy): lùi nếu smoke đỏ, `/api/health` 503 quá 2 phút, hoặc tỉ lệ 5xx của `http_server_request_duration_seconds_count` vượt 2% trong cửa sổ (SLO ở `docs/ops/SLO.md`). Chưa có pipeline deploy tự động nên việc lùi là thủ công (chưa tự lùi).
+
 ### Rollback ứng dụng (chưa diễn tập)
 
-Quay về commit trước rồi dựng lại; CSDL giữ nguyên (migration chỉ thêm, xem mục dưới):
+Bản trước = tag phát hành gần nhất trước bản đang chạy (`git tag --list 'v*' --sort=-v:refname`). Dữ liệu giữ nguyên vì migration chỉ **mở rộng** (thêm cột/bảng; `scripts/check-migrations.mjs` chặn DROP/RENAME không kèm `-- contract:`), nên bản trước chạy được trên schema mới. Trình tự:
+
+1. Kiểm backup mới nhất hợp lệ (`docs/ops/restore-drills.md`), nếu bản cần lùi đã chạy migration chạm dữ liệu.
+2. Quay về tag trước rồi dựng lại:
 
 ```bash
-git checkout <commit-trước>
+git checkout v<phiên-bản-trước>
 ```
 
 ```bash
-docker compose up -d --build
+APP_VERSION=<phiên-bản-trước> docker compose up -d --build
 ```
+
+3. Chạy smoke (mục trên) với phiên bản trước.
+4. Migration đi kèm bản bị lùi: giữ nguyên (tương thích ngược); chỉ chạy `.down.sql` khi bản trước **không** chạy được trên schema mới, sau khi backup.
+
+Rollback **chưa diễn tập** trên môi trường thật (phiên phát triển không có Docker). Diễn tập trước lần chạy thật đầu tiên và sau mỗi thay đổi cách deploy.
 
 ### Migration CSDL
+
+**Trước migration chạm dữ liệu production (DB-MIG-011):** kiểm có bản sao lưu mới (`ls -t backups/db-*.dump | head -1`, mốc UTC trong vòng 24 giờ; không có thì chạy `scripts/backup.sh`), ghi link/mốc vào mục "Backup trước migrate" của PR, và ghi kế hoạch lùi (xem Rollback). Migration đã phát hành **bất biến** (băm ở `drizzle/applied.sha256`, `scripts/check-migrations.mjs` chạy ở CI); migration mới chỉ mở rộng, đổi/xoá cột theo hai bước expand rồi contract ở phát hành sau (`-- contract: <phát-hành-trước>`).
 
 Áp: tự động khi `app` khởi động; chạy tay:
 
@@ -73,24 +95,43 @@ Lùi một migration (MẤT dữ liệu của bảng đó, backup trước): ch�
 docker compose exec -T db psql -U social -d social < drizzle/0004_login_throttle.down.sql
 ```
 
-### Backup và khôi phục (chưa diễn tập)
+### Backup và khôi phục theo lịch (DB-BACKUP-002/003, OPS-DR-008)
+
+`scripts/backup.sh` dump Postgres (định dạng custom, kiểm đọc lại được), nén kho blob, ghi `SHA256SUMS-<mốc>`, giữ `BACKUP_KEEP` bản (mặc định 14). Thất bại: thoát khác 0, ghi `FAILED` vào thư mục sao lưu và gọi `BACKUP_ALERT_WEBHOOK` (https, kênh có người trực do bạn đặt) nếu có. Chạy theo lịch, không dựa vào người nhớ — cron trên máy chủ, mỗi ngày 02:30 UTC:
 
 ```bash
-docker compose exec -T db pg_dump -U social -d social -Fc > backup-$(date +%F).dump
+30 2 * * * cd /đường/dẫn/x-workspace && DATABASE_URL=postgres://… BLOB_DIR=/data/blobs BACKUP_DIR=/var/backups/xw BACKUP_ALERT_WEBHOOK=https://… scripts/backup.sh >> /var/log/xw-backup.log 2>&1
 ```
 
-Nội dung kho bằng chứng nằm ở volume `blobdata` (`BLOB_DIR=/data/blobs`), **không** nằm trong dump Postgres: sao lưu cả hai
-cùng lúc. Mất volume là mất nội dung dù metadata còn (đọc lại sẽ báo không tìm thấy). Sao lưu volume:
+Chạy tay một lần để thử:
 
 ```bash
-docker compose run --rm --no-deps -v "$PWD":/backup --entrypoint tar app czf /backup/blobs-$(date +%F).tgz -C /data blobs
+DATABASE_URL=postgres://… BACKUP_DIR=./backups scripts/backup.sh
 ```
 
-Khôi phục vào CSDL trống rồi kiểm (`/api/health`, đăng nhập thử):
+Nội dung kho bằng chứng nằm ở volume `blobdata` (`BLOB_DIR=/data/blobs`), **không** nằm trong dump Postgres: script sao lưu cả hai cùng mốc. Mất volume là mất nội dung dù metadata còn (đọc lại sẽ báo không tìm thấy). **Chưa có** kênh cảnh báo có người trực nối sẵn: `BACKUP_ALERT_WEBHOOK` do chủ triển khai đặt; chưa đặt thì chỉ có `FAILED` và exit code.
+
+Khôi phục từng kho, thứ tự, lệnh và cách kiểm: [`ops/runbooks/restore-database.md`](ops/runbooks/restore-database.md) (Postgres, tới mốc sao lưu; PITR chưa bật) và [`ops/runbooks/restore-blobs.md`](ops/runbooks/restore-blobs.md) (kho bằng chứng). Diễn tập vào CSDL tách biệt, đo RTO:
 
 ```bash
-docker compose exec -T db pg_restore -U social -d social --clean --if-exists < backup-YYYY-MM-DD.dump
+ADMIN_URL=postgres://… DRILL_BY="tên người chạy" scripts/restore-drill.sh backups/db-<mốc>.dump
 ```
+
+Bản ghi các lần diễn tập: [`ops/restore-drills.md`](ops/restore-drills.md).
+
+### Diễn tập và hạn (WF-DOC-008)
+
+Trường `last_drilled` của từng mục vận hành: `tests/config/runbook.test.ts` đỏ khi một ngày quá 183 ngày. Mục **chưa diễn tập** ghi `chưa` và vẫn nằm ở danh sách việc chủ dự án.
+
+| Mục                                              | Lệnh/nơi                        | last_drilled | Người                                          |
+| ------------------------------------------------ | ------------------------------- | ------------ | ---------------------------------------------- |
+| Sao lưu (script chạy được, thất bại có tín hiệu) | `scripts/backup.sh`             | 2026-11-24   | agent (phiên autopilot)                        |
+| Khôi phục CSDL vào CSDL tách biệt                | `scripts/restore-drill.sh`      | 2026-11-24   | agent (phiên autopilot)                        |
+| Khôi phục kho blob                               | `ops/runbooks/restore-blobs.md` | chưa         | —                                              |
+| Deploy lần đầu và nâng bản (Docker)              | mục Deploy                      | chưa         | —                                              |
+| Rollback ứng dụng                                | mục Rollback                    | chưa         | —                                              |
+| Xoay bí mật                                      | mục Xoay bí mật                 | chưa         | —                                              |
+| Smoke sau deploy                                 | `scripts/smoke.mjs`             | 2026-11-24   | agent (phiên autopilot, trên bản build cục bộ) |
 
 ### Xoay bí mật
 

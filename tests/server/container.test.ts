@@ -17,6 +17,7 @@ describe("createContainer", () => {
   it("dựng đủ dịch vụ mà không nối DB ngay (pool nối lười)", async () => {
     const c = createContainer(env());
     expect(Object.keys(c.services).sort()).toEqual([
+      "accountRights",
       "accounts",
       "actions",
       "ai",
