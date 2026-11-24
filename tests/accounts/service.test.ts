@@ -85,7 +85,7 @@ const add = (over = {}) =>
   });
 
 describe("add", () => {
-  it("thêm tài khoản vào kết nối; trả dạng xem không có khoá", async () => {
+  it("thêm tài khoản vào kết nối; trả dạng xem không có khoá [F-002/AC-05]", async () => {
     const a = await add();
     expect(a).toEqual({
       id: expect.any(String),
@@ -96,14 +96,14 @@ describe("add", () => {
     });
   });
 
-  it("chỉ owner/admin; member và người ngoài bị Forbidden", async () => {
+  it("chỉ owner/admin; member và người ngoài bị Forbidden [F-002/AC-03]", async () => {
     for (const actorId of ["member", "outsider", "ai-do"]) {
       await expect(add({ actorId })).rejects.toBeInstanceOf(ForbiddenError);
     }
     expect(await t.db.select().from(socialAccounts)).toHaveLength(0);
   });
 
-  it("kết nối của workspace khác hoặc id lạ là NotFound", async () => {
+  it("kết nối của workspace khác hoặc id lạ là NotFound [F-002/AC-05]", async () => {
     await expect(add({ connectionId: foreignConn })).rejects.toBeInstanceOf(
       NotFoundError,
     );
@@ -112,14 +112,14 @@ describe("add", () => {
     );
   });
 
-  it("nền tảng phải thuộc danh sách provider hỗ trợ; nền tảng lạ hoặc ngoài hỗ trợ là ValidationError", async () => {
+  it("nền tảng phải thuộc danh sách provider hỗ trợ; nền tảng lạ hoặc ngoài hỗ trợ là ValidationError [F-002/AC-06]", async () => {
     for (const platform of ["tiktok", "__proto__", "khong-co", "constructor"]) {
       await expect(add({ platform })).rejects.toBeInstanceOf(ValidationError);
     }
     await expect(add({ platform: "telegram" })).resolves.toBeDefined();
   });
 
-  it("từ chối externalId/tên rỗng; chuẩn hoá NFC và cắt khoảng trắng", async () => {
+  it("từ chối externalId/tên rỗng; chuẩn hoá NFC và cắt khoảng trắng [F-002/AC-05]", async () => {
     for (const bad of [
       { externalId: "  " },
       { displayName: "" },
@@ -133,7 +133,7 @@ describe("add", () => {
     expect(a.displayName).toBe("Café");
   });
 
-  it("trùng (kết nối, nền tảng, id ngoài) là ConflictError duplicate_account", async () => {
+  it("trùng (kết nối, nền tảng, id ngoài) là ConflictError duplicate_account [F-002/AC-05]", async () => {
     await add();
     await expect(add()).rejects.toMatchObject({ reason: "duplicate_account" });
     await expect(add()).rejects.toBeInstanceOf(ConflictError);
@@ -171,7 +171,7 @@ describe("list", () => {
 });
 
 describe("remove", () => {
-  it("admin xoá được; member Forbidden; id lạ hoặc workspace khác NotFound", async () => {
+  it("admin xoá được; member Forbidden; id lạ hoặc workspace khác NotFound [F-002/AC-03]", async () => {
     const a = await add();
     const svc = build().accounts;
     await expect(

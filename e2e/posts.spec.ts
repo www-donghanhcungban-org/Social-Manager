@@ -47,7 +47,7 @@ test("chưa có tài khoản: hướng dẫn thêm, không có form", async ({ p
   ).toHaveCount(0);
 });
 
-test("xếp lịch đăng ngay và hẹn giờ tương lai; giờ quá khứ bị từ chối rõ ràng", async ({
+test("xếp lịch đăng ngay và hẹn giờ tương lai; giờ quá khứ bị từ chối rõ ràng [F-004/AC-01] [F-004/AC-02]", async ({
   page,
 }) => {
   await setup(page);

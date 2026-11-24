@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { requireAction } from "@/src/auth/access";
 import { ForbiddenError } from "@/src/auth/errors";
 import {
   addMember,
@@ -62,7 +63,7 @@ describe("addMember", () => {
     expect(await roleOf("m2")).toBe("member");
   });
 
-  it("admin không thêm được admin hay owner", async () => {
+  it("admin không thêm được admin hay owner [F-001/AC-08]", async () => {
     for (const role of ["admin", "owner"] as const) {
       await expect(
         addMember(t.db, {
@@ -113,7 +114,7 @@ describe("changeRole", () => {
     expect(await roleOf("member1")).toBe("admin");
   });
 
-  it("admin, member và người ngoài không đổi được vai trò của ai (kể cả của mình)", async () => {
+  it("admin, member và người ngoài không đổi được vai trò của ai (kể cả của mình) [F-001/AC-08]", async () => {
     for (const [actorId, targetUserId] of [
       ["admin1", "member1"],
       ["admin1", "admin1"],
@@ -133,7 +134,7 @@ describe("changeRole", () => {
     expect(await roleOf("admin1")).toBe("admin");
   });
 
-  it("không hạ vai trò owner cuối cùng, kể cả tự hạ mình", async () => {
+  it("không hạ vai trò owner cuối cùng, kể cả tự hạ mình [F-001/AC-07]", async () => {
     await expect(
       changeRole(t.db, {
         actorId: "owner1",
@@ -179,7 +180,7 @@ describe("changeRole", () => {
     expect(await roleOf("member1")).toBe("member");
   });
 
-  it("hai owner cùng hạ nhau cùng lúc: luôn còn ít nhất một owner", async () => {
+  it("hai owner cùng hạ nhau cùng lúc: luôn còn ít nhất một owner [F-001/AC-07]", async () => {
     await changeRole(t.db, {
       actorId: "owner1",
       workspaceId: ws,
@@ -299,7 +300,7 @@ describe("removeMember", () => {
     expect(await roleOf("admin1")).toBeNull();
   });
 
-  it("admin không xoá được admin khác hay owner", async () => {
+  it("admin không xoá được admin khác hay owner [F-001/AC-08]", async () => {
     await t.db
       .insert(members)
       .values({ workspaceId: ws, userId: "admin2", role: "admin" });
@@ -330,7 +331,21 @@ describe("removeMember", () => {
     expect(await roleOf("member1")).toBeNull();
   });
 
-  it("owner cuối cùng không tự xoá mình; có owner khác thì được", async () => {
+  it("thành viên bị gỡ bị từ chối ngay ở lần gọi kế tiếp [F-001/AC-09]", async () => {
+    await expect(
+      requireAction(t.db, "member1", ws, "inbox.read"),
+    ).resolves.toBeUndefined();
+    await removeMember(t.db, {
+      actorId: "admin1",
+      workspaceId: ws,
+      targetUserId: "member1",
+    });
+    await expect(
+      requireAction(t.db, "member1", ws, "inbox.read"),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("owner cuối cùng không tự xoá mình; có owner khác thì được [F-001/AC-07]", async () => {
     await expect(
       removeMember(t.db, {
         actorId: "owner1",

@@ -120,7 +120,14 @@ describe("migration", () => {
     },
   );
 
-  it("mọi migration có file down", () => {
+  it("chạy migrator lần hai không áp lại gì: sổ và bảng giữ nguyên [F-005/AC-02]", async () => {
+    const before = await tableNames(t.client);
+    await migrate(t.db, { migrationsFolder: MIGRATIONS });
+    expect(await journalRows()).toBe(TAGS.length);
+    expect(await tableNames(t.client)).toEqual(before);
+  });
+
+  it("mọi migration có file down [F-005/AC-02]", () => {
     for (const tag of TAGS) expect(() => readDownSql(tag)).not.toThrow();
   });
 });

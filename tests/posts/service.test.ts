@@ -114,13 +114,13 @@ const input = (over = {}) => ({
 });
 
 describe("schedule", () => {
-  it("đăng ngay: tạo bài scheduled với giờ = bây giờ", async () => {
+  it("đăng ngay: tạo bài scheduled với giờ = bây giờ [F-004/AC-01]", async () => {
     const p = await make().schedule(input());
     expect(p).toMatchObject({ status: "scheduled", text: "Xin chào" });
     expect(p.scheduledAt.toISOString()).toBe(NOW.toISOString());
   });
 
-  it("hẹn giờ: lưu đúng thời điểm UTC kể cả khi nhập có offset", async () => {
+  it("hẹn giờ: lưu đúng thời điểm UTC kể cả khi nhập có offset [F-004/AC-01]", async () => {
     const p = await make().schedule(
       input({ scheduledAt: "2026-12-01T10:00:00+07:00" }),
     );
@@ -133,14 +133,14 @@ describe("schedule", () => {
     ["không phải ISO", "mai 8 giờ"],
     ["thiếu múi giờ", "2026-12-01T10:00"],
     ["ngày không có thật", "2027-02-30T10:00:00Z"],
-  ])("từ chối giờ hẹn %s", async (_n, scheduledAt) => {
+  ])("từ chối giờ hẹn %s [F-004/AC-02]", async (_n, scheduledAt) => {
     await expect(
       make().schedule(input({ scheduledAt })),
     ).rejects.toBeInstanceOf(ValidationError);
     expect(await t.db.select().from(posts)).toHaveLength(0);
   });
 
-  it("từ chối nội dung rỗng/khoảng trắng và khoá idempotency rỗng hoặc quá dài", async () => {
+  it("từ chối nội dung rỗng/khoảng trắng và khoá idempotency rỗng hoặc quá dài [F-004/AC-03]", async () => {
     for (const bad of [
       { text: "" },
       { text: "  \n " },
@@ -153,12 +153,12 @@ describe("schedule", () => {
     }
   });
 
-  it("chuẩn hoá nội dung NFC", async () => {
+  it("chuẩn hoá nội dung NFC [F-004/AC-01]", async () => {
     const p = await make().schedule(input({ text: "Café" }));
     expect(p.text).toBe("Café");
   });
 
-  it("người ngoài workspace bị Forbidden; tài khoản của workspace khác là NotFound", async () => {
+  it("người ngoài workspace bị Forbidden; tài khoản của workspace khác là NotFound [F-004/AC-09]", async () => {
     await expect(
       make().schedule(input({ actorId: "outsider" })),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -171,14 +171,14 @@ describe("schedule", () => {
     expect(await t.db.select().from(posts)).toHaveLength(0);
   });
 
-  it("gửi lại cùng khoá idempotency trả đúng bài cũ, không tạo bài thứ hai", async () => {
+  it("gửi lại cùng khoá idempotency trả đúng bài cũ, không tạo bài thứ hai [F-004/AC-04]", async () => {
     const a = await make().schedule(input());
     const b = await make().schedule(input());
     expect(b.id).toBe(a.id);
     expect(await t.db.select().from(posts)).toHaveLength(1);
   });
 
-  it("cùng khoá nhưng nội dung khác là xung đột, không ghi đè", async () => {
+  it("cùng khoá nhưng nội dung khác là xung đột, không ghi đè [F-004/AC-04]", async () => {
     await make().schedule(input());
     await expect(
       make().schedule(input({ text: "Nội dung khác" })),
@@ -188,7 +188,7 @@ describe("schedule", () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it("hai yêu cầu song song cùng khoá chỉ tạo một bài", async () => {
+  it("hai yêu cầu song song cùng khoá chỉ tạo một bài [F-004/AC-04]", async () => {
     const svc = make();
     const results = await Promise.allSettled([
       svc.schedule(input()),
@@ -200,7 +200,7 @@ describe("schedule", () => {
 });
 
 describe("runDue", () => {
-  it("đăng bài đến hạn bằng đúng khoá đã giải mã, ghi published + external id", async () => {
+  it("đăng bài đến hạn bằng đúng khoá đã giải mã, ghi published + external id [F-004/AC-05]", async () => {
     await make().schedule(input());
     const r = await make().runDue({ limit: 10 });
     expect(r).toEqual({ published: 1, failed: 0 });
@@ -222,7 +222,7 @@ describe("runDue", () => {
     );
   });
 
-  it("không đăng bài chưa đến hạn; bài đến hạn đúng ranh giới thì đăng", async () => {
+  it("không đăng bài chưa đến hạn; bài đến hạn đúng ranh giới thì đăng [F-004/AC-05]", async () => {
     await make().schedule(input({ scheduledAt: "2026-11-22T10:00:01Z" }));
     expect(await make().runDue({ limit: 10 })).toEqual({
       published: 0,
@@ -236,14 +236,14 @@ describe("runDue", () => {
     });
   });
 
-  it("chạy hai lần không đăng trùng", async () => {
+  it("chạy hai lần không đăng trùng [F-004/AC-05]", async () => {
     await make().schedule(input());
     await make().runDue({ limit: 10 });
     await make().runDue({ limit: 10 });
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  it("hai worker chạy song song không đăng trùng cùng một bài", async () => {
+  it("hai worker chạy song song không đăng trùng cùng một bài [F-004/AC-05]", async () => {
     await make().schedule(input());
     await Promise.all([
       make().runDue({ limit: 10 }),
@@ -252,7 +252,7 @@ describe("runDue", () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  it("tôn trọng limit và đăng theo thứ tự giờ hẹn", async () => {
+  it("tôn trọng limit và đăng theo thứ tự giờ hẹn [F-004/AC-05]", async () => {
     await make().schedule(
       input({
         idempotencyKey: "a",
@@ -275,7 +275,7 @@ describe("runDue", () => {
     expect(publish.mock.calls[0]![0].text).toBe("B");
   });
 
-  it("lỗi từ nhà cung cấp: đánh dấu failed với mã ngắn, KHÔNG lộ nội dung lỗi, không tự đăng lại", async () => {
+  it("lỗi từ nhà cung cấp: đánh dấu failed với mã ngắn, KHÔNG lộ nội dung lỗi, không tự đăng lại [F-004/AC-06]", async () => {
     publish.mockRejectedValueOnce(
       new SocialApiError("token sk-live-abc hết hạn", 401, "http.401"),
     );
@@ -291,7 +291,7 @@ describe("runDue", () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  it("lỗi không biết thành mã `internal`; một bài hỏng không chặn bài khác", async () => {
+  it("lỗi không biết thành mã `internal`; một bài hỏng không chặn bài khác [F-004/AC-06]", async () => {
     publish
       .mockRejectedValueOnce(new Error("postgres://u:pw@h/db sập"))
       .mockResolvedValueOnce({ id: "ok", status: "published" });
@@ -307,7 +307,7 @@ describe("runDue", () => {
     expect(JSON.stringify(failed)).not.toContain("pw@");
   });
 
-  it("nhà cung cấp trả submitted hoặc scheduled: bài ở submitted, chưa có publishedAt", async () => {
+  it("nhà cung cấp trả submitted hoặc scheduled: bài ở submitted, chưa có publishedAt [F-004/AC-06]", async () => {
     for (const [i, status] of (["submitted", "scheduled"] as const).entries()) {
       publish.mockResolvedValueOnce({ id: `x${i}`, status });
       await make().schedule(
@@ -329,7 +329,7 @@ describe("runDue", () => {
     ["http.502", 502],
     ["client.invalid_response", 200],
   ])(
-    "lỗi %s (có thể đã gửi) → send_unknown, không phải failed",
+    "lỗi %s (có thể đã gửi) → send_unknown, không phải failed [F-004/AC-06]",
     async (code, status) => {
       publish.mockRejectedValueOnce(new SocialApiError("x", status, code));
       await make().schedule(input());
@@ -339,7 +339,7 @@ describe("runDue", () => {
     },
   );
 
-  it("lỗi 4xx (chắc chắn bị từ chối) vẫn là failed", async () => {
+  it("lỗi 4xx (chắc chắn bị từ chối) vẫn là failed [F-004/AC-06]", async () => {
     publish.mockRejectedValueOnce(new SocialApiError("x", 422, "http.422"));
     await make().schedule(input());
     await make().runDue({ limit: 10 });
@@ -347,7 +347,7 @@ describe("runDue", () => {
     expect(row).toMatchObject({ status: "failed", errorCode: "http.422" });
   });
 
-  it("provider không còn đăng ký → failed `provider_unavailable`, không ném", async () => {
+  it("provider không còn đăng ký → failed `provider_unavailable`, không ném [F-004/AC-06]", async () => {
     const svc = createPostService({
       db: t.db,
       box,
@@ -365,7 +365,7 @@ describe("runDue", () => {
 });
 
 describe("recoverStuck", () => {
-  it("bài kẹt `publishing` quá hạn chuyển send_unknown `interrupted` (có thể đã lên mạng; không tự đăng lại)", async () => {
+  it("bài kẹt `publishing` quá hạn chuyển send_unknown `interrupted` (có thể đã lên mạng; không tự đăng lại) [F-004/AC-07]", async () => {
     await make().schedule(input());
     await t.db
       .update(posts)
@@ -395,7 +395,7 @@ describe("confirmSubmitted", () => {
     make(now).confirmSubmitted({ limit: 10, deadlineMs: DAY });
   const row = async () => (await t.db.select().from(posts))[0]!;
 
-  it("nhà cung cấp xác nhận published → published kèm publishedAt; hỏi đúng id bài", async () => {
+  it("nhà cung cấp xác nhận published → published kèm publishedAt; hỏi đúng id bài [F-004/AC-08]", async () => {
     await submitted();
     expect(await confirm()).toMatchObject({ published: 1 });
     expect(await row()).toMatchObject({ status: "published", errorCode: null });
@@ -407,7 +407,7 @@ describe("confirmSubmitted", () => {
     });
   });
 
-  it("partial → partial; failed → failed; cancelled → failed mã cancelled", async () => {
+  it("partial → partial; failed → failed; cancelled → failed mã cancelled [F-004/AC-08]", async () => {
     await submitted();
     remote.mockResolvedValueOnce({ status: "partial" });
     await confirm();
@@ -432,7 +432,7 @@ describe("confirmSubmitted", () => {
     });
   });
 
-  it("còn pending hoặc lỗi mạng khi xác nhận: giữ submitted", async () => {
+  it("còn pending hoặc lỗi mạng khi xác nhận: giữ submitted [F-004/AC-08]", async () => {
     await submitted();
     remote.mockResolvedValueOnce({ status: "pending" });
     expect(await confirm()).toMatchObject({ pending: 1 });
@@ -441,14 +441,14 @@ describe("confirmSubmitted", () => {
     expect((await row()).status).toBe("submitted");
   });
 
-  it("trạng thái lạ từ provider không bị coi là thành công", async () => {
+  it("trạng thái lạ từ provider không bị coi là thành công [F-004/AC-08]", async () => {
     await submitted();
     remote.mockResolvedValueOnce({ status: "teleported" });
     await confirm();
     expect((await row()).status).toBe("submitted");
   });
 
-  it("quá hạn xác nhận mà chưa có kết quả cuối → send_unknown confirm_timeout, không đăng lại", async () => {
+  it("quá hạn xác nhận mà chưa có kết quả cuối → send_unknown confirm_timeout, không đăng lại [F-004/AC-08]", async () => {
     await submitted();
     remote.mockResolvedValue({ status: "pending" });
     const later = new Date(NOW.getTime() + DAY + 1);
@@ -488,7 +488,7 @@ describe("confirmSubmitted", () => {
 });
 
 describe("list", () => {
-  it("thành viên xem được bài của workspace, người ngoài bị Forbidden", async () => {
+  it("thành viên xem được bài của workspace, người ngoài bị Forbidden [F-004/AC-09]", async () => {
     await make().schedule(input());
     expect(
       await make().list({ actorId: "member", workspaceId: ws }),

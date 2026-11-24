@@ -111,7 +111,7 @@ const sync = (over = {}) =>
   });
 
 describe("sync", () => {
-  it("nhập tin mới vào DB bằng khoá đã giải mã, hỏi mọi loại provider hỗ trợ", async () => {
+  it("nhập tin mới vào DB bằng khoá đã giải mã, hỏi mọi loại provider hỗ trợ [F-003/AC-01]", async () => {
     const r = await sync();
     expect(r.inserted).toBe(1);
     expect(listFn.mock.calls.map((c) => c[0].kind).sort()).toEqual([
@@ -136,7 +136,7 @@ describe("sync", () => {
     expect(row!.receivedAt.toISOString()).toBe("2026-11-22T08:00:00.000Z");
   });
 
-  it("đồng bộ lặp lại không tạo bản trùng và không ghi đè trạng thái đã xử lý", async () => {
+  it("đồng bộ lặp lại không tạo bản trùng và không ghi đè trạng thái đã xử lý [F-003/AC-02]", async () => {
     await sync();
     const [row] = await t.db.select().from(inboxItems);
     await svc().setStatus({
@@ -152,7 +152,13 @@ describe("sync", () => {
     expect(rows[0]!.status).toBe("handled");
   });
 
-  it("cùng id ở loại khác nhau là hai mục khác nhau", async () => {
+  it("hai lượt đồng bộ cùng tài khoản chạy cùng lúc: không bản trùng [F-003/AC-02]", async () => {
+    const results = await Promise.all([sync(), sync()]);
+    expect(results.reduce((n, r) => n + r.inserted, 0)).toBe(1);
+    expect(await t.db.select().from(inboxItems)).toHaveLength(1);
+  });
+
+  it("cùng id ở loại khác nhau là hai mục khác nhau [F-003/AC-02]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) =>
       q.kind === "dm" || q.kind === "comment"
         ? [item({ id: "same", kind: q.kind })]
@@ -161,7 +167,7 @@ describe("sync", () => {
     expect((await sync()).inserted).toBe(2);
   });
 
-  it("loại chưa cài đặt được báo skipped, loại khác vẫn nhập", async () => {
+  it("loại chưa cài đặt được báo skipped, loại khác vẫn nhập [F-003/AC-10]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) => {
       if (q.kind === "review")
         throw new UnsupportedError("facebook", "reviews", "not_implemented");
@@ -171,7 +177,7 @@ describe("sync", () => {
     expect(r).toMatchObject({ inserted: 1, skipped: ["review"], failed: [] });
   });
 
-  it("một loại lỗi chỉ ghi mã an toàn, không lộ nội dung lỗi, loại khác vẫn nhập", async () => {
+  it("một loại lỗi chỉ ghi mã an toàn, không lộ nội dung lỗi, loại khác vẫn nhập [F-003/AC-10]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) => {
       if (q.kind === "comment")
         throw new SocialApiError("token sk-live-abc sai", 401, "http.401");
@@ -189,7 +195,7 @@ describe("sync", () => {
     expect(JSON.stringify(r)).not.toMatch(/sk-live|pw@/);
   });
 
-  it("bỏ qua mục sai: id rỗng, ngày không hợp lệ, kind lệch; đếm rejected", async () => {
+  it("bỏ qua mục sai: id rỗng, ngày không hợp lệ, kind lệch; đếm rejected [F-003/AC-10]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) =>
       q.kind === "dm"
         ? [
@@ -207,7 +213,7 @@ describe("sync", () => {
     expect(rows.map((x) => x.externalId)).toEqual(["ok"]);
   });
 
-  it("chuẩn hoá NFC, cắt tên, giới hạn độ dài nội dung 10000 ký tự", async () => {
+  it("chuẩn hoá NFC, cắt tên, giới hạn độ dài nội dung 10000 ký tự [F-003/AC-01]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) =>
       q.kind === "dm"
         ? [item({ author: "  Café ", text: "x".repeat(20_000) })]
@@ -219,7 +225,7 @@ describe("sync", () => {
     expect(row!.text).toHaveLength(10_000);
   });
 
-  it("nội dung rỗng vẫn nhập được (tin chỉ có ảnh), nhưng không phải null", async () => {
+  it("nội dung rỗng vẫn nhập được (tin chỉ có ảnh), nhưng không phải null [F-003/AC-01]", async () => {
     listFn.mockImplementation(async (q: InboxQuery) =>
       q.kind === "dm" ? [item({ text: "" })] : [],
     );
@@ -228,7 +234,7 @@ describe("sync", () => {
     expect(row!.text).toBe("");
   });
 
-  it("provider đọc được hội thoại thì DM đi đường hội thoại + tin nhắn, không dùng listInbox cho DM", async () => {
+  it("provider đọc được hội thoại thì DM đi đường hội thoại + tin nhắn, không dùng listInbox cho DM [F-003/AC-01]", async () => {
     const withConv = (): SocialProvider => ({
       ...provider(),
       listConversations: async () => ({
@@ -271,7 +277,7 @@ describe("sync", () => {
     expect(row).toMatchObject({ kind: "dm", externalId: "conv-1" });
   });
 
-  it("người ngoài bị Forbidden; tài khoản workspace khác hoặc id lạ là NotFound", async () => {
+  it("người ngoài bị Forbidden; tài khoản workspace khác hoặc id lạ là NotFound [F-003/AC-09]", async () => {
     await expect(sync({ actorId: "outsider" })).rejects.toBeInstanceOf(
       ForbiddenError,
     );
@@ -301,7 +307,7 @@ describe("list", () => {
     }
   }
 
-  it("mới nhất trước; phân trang bằng cursor không sót, không lặp kể cả khi trùng giờ", async () => {
+  it("mới nhất trước; phân trang bằng cursor không sót, không lặp kể cả khi trùng giờ [F-003/AC-04]", async () => {
     await seedMany(7);
     const seen: string[] = [];
     let cursor: string | undefined;
@@ -328,7 +334,7 @@ describe("list", () => {
     );
   });
 
-  it("lọc theo loại và trạng thái", async () => {
+  it("lọc theo loại và trạng thái [F-003/AC-04]", async () => {
     await seedMany(6);
     const dm = await svc().list({
       actorId: "member",
@@ -345,7 +351,7 @@ describe("list", () => {
     expect(handled.items).toHaveLength(0);
   });
 
-  it("limit bị kẹp vào 1..100; cursor hỏng là ValidationError", async () => {
+  it("limit bị kẹp vào 1..100; cursor hỏng là ValidationError [F-003/AC-04]", async () => {
     await seedMany(3);
     const big = await svc().list({
       actorId: "member",
@@ -370,7 +376,7 @@ describe("list", () => {
     }
   });
 
-  it("người ngoài bị Forbidden; không thấy mục của workspace khác", async () => {
+  it("người ngoài bị Forbidden; không thấy mục của workspace khác [F-003/AC-09]", async () => {
     await seedMany(2);
     await expect(
       svc().list({ actorId: "outsider", workspaceId: ws }),
@@ -379,7 +385,7 @@ describe("list", () => {
 });
 
 describe("setStatus", () => {
-  it("đánh dấu đã xử lý rồi mở lại; ghi người xử lý", async () => {
+  it("đánh dấu đã xử lý rồi mở lại; ghi người xử lý [F-003/AC-05]", async () => {
     await sync();
     const [row] = await t.db.select().from(inboxItems);
     const s = svc();
@@ -402,7 +408,7 @@ describe("setStatus", () => {
     expect(reopened).toMatchObject({ status: "open", handledBy: null });
   });
 
-  it("mục của workspace khác hoặc id lạ là NotFound; trạng thái lạ là ValidationError", async () => {
+  it("mục của workspace khác hoặc id lạ là NotFound; trạng thái lạ là ValidationError [F-003/AC-09]", async () => {
     await sync();
     const [row] = await t.db.select().from(inboxItems);
     await expect(

@@ -122,7 +122,7 @@ describe("rollback, smoke, migration trong runbook (WF-REL-004/007, DB-MIG-011)"
   });
 });
 
-describe("sao lưu và khôi phục (DB-BACKUP-002/003, OPS-DR-008)", () => {
+describe("sao lưu và khôi phục (DB-BACKUP-002/003, OPS-DR-008) [F-005/AC-08]", () => {
   const backup = read("scripts/backup.sh");
 
   it("sao lưu chạy theo lịch (cron mẫu trong runbook) và có xoay vòng", () => {

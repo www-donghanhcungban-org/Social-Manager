@@ -41,7 +41,7 @@ describe("không băm mật khẩu bằng hàm băm nhanh (BE-AUTH-001)", () => 
 });
 
 describe("băm mật khẩu Argon2id (BE-AUTH-001)", () => {
-  it("hash là chuỗi PHC argon2id với tham số ≥ OWASP (m=19456, t=2, p=1)", async () => {
+  it("hash là chuỗi PHC argon2id với tham số ≥ OWASP (m=19456, t=2, p=1) [F-001/AC-01]", async () => {
     const h = await hashPassword("mat-khau-du-dai-123");
     expect(h).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
     expect(h).not.toContain("mat-khau-du-dai-123");
@@ -70,7 +70,7 @@ describe("băm mật khẩu Argon2id (BE-AUTH-001)", () => {
     }
   });
 
-  it("mật khẩu Unicode (NFC/NFD) và dài > 72 byte đều phân biệt được", async () => {
+  it("mật khẩu Unicode (NFC/NFD) và dài > 72 byte đều phân biệt được [F-001/AC-01]", async () => {
     const nfc = "Mật khẩu tiếng Việt rất dài 🇻🇳".normalize("NFC");
     const h = await hashPassword(nfc);
     expect(await verifyPassword({ hash: h, password: nfc })).toBe(true);

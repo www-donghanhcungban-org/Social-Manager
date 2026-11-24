@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { checkHealth } from "@/src/http/health";
 
-describe("checkHealth", () => {
+describe("checkHealth [F-005/AC-06]", () => {
   it("CSDL trả lời → 200 ok", async () => {
     expect(await checkHealth(async () => {}, 100)).toEqual({
       status: 200,

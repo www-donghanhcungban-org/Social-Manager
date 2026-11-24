@@ -42,7 +42,7 @@ function failingSecondStep(db: typeof t.db): typeof t.db {
 }
 
 describe("all-or-nothing (QA-UNIT-010)", () => {
-  it("lỗi ở bước 2 (ghi owner) hoàn tác bước 1: không còn workspace mồ côi", async () => {
+  it("lỗi ở bước 2 (ghi owner) hoàn tác bước 1: không còn workspace mồ côi [F-001/AC-02]", async () => {
     const svc = createWorkspaceService({ db: failingSecondStep(t.db) });
     await expect(
       svc.create({ actorId: "u1", name: "Cửa hàng A" }),

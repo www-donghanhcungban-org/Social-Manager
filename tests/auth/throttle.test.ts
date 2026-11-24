@@ -6,7 +6,7 @@ import { createLoginThrottle, lockSeconds } from "@/src/auth/throttle";
 import { createTestDb } from "../db/helpers";
 
 describe("lockSeconds (trì hoãn luỹ tiến, BE-AUTH-003)", () => {
-  it("không khoá khi còn dưới ngưỡng, rồi tăng gấp đôi và có trần", () => {
+  it("không khoá khi còn dưới ngưỡng, rồi tăng gấp đôi và có trần [F-001/AC-04]", () => {
     expect([1, 2, 3, 4].map(lockSeconds)).toEqual([0, 0, 0, 0]);
     expect([5, 6, 7, 8].map(lockSeconds)).toEqual([1, 2, 4, 8]);
     expect(lockSeconds(20)).toBe(900);
@@ -27,7 +27,7 @@ afterEach(async () => {
 });
 
 describe("createLoginThrottle", () => {
-  it("20 lần sai liên tiếp → bị chặn; email chưa đăng ký bị đối xử giống hệt", async () => {
+  it("20 lần sai liên tiếp → bị chặn; email chưa đăng ký bị đối xử giống hệt [F-001/AC-04]", async () => {
     for (const email of ["co@example.com", "khong-co@example.com"]) {
       for (let i = 0; i < 20; i++) await th().recordFailure(email);
       expect(await th().isLocked(email)).toBe(true);
@@ -74,7 +74,7 @@ describe("createLoginThrottle", () => {
     expect(row!.keyHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("nhiều lần sai song song vẫn đếm đủ (không mất cập nhật)", async () => {
+  it("nhiều lần sai song song vẫn đếm đủ (không mất cập nhật) [F-001/AC-04]", async () => {
     await Promise.all(
       Array.from({ length: 10 }, () => th().recordFailure("p@example.com")),
     );
@@ -82,7 +82,7 @@ describe("createLoginThrottle", () => {
     expect(row!.failures).toBe(10);
   });
 
-  it("bộ đếm cũ hơn 24 giờ bắt đầu lại từ đầu", async () => {
+  it("bộ đếm cũ hơn 24 giờ bắt đầu lại từ đầu [F-001/AC-04]", async () => {
     for (let i = 0; i < 20; i++) await th().recordFailure("a@example.com");
     await t.db.update(loginThrottle).set({
       updatedAt: new Date(Date.now() - 25 * 3600 * 1000),

@@ -62,7 +62,7 @@ test("sai mật khẩu: báo lỗi chung, ở lại trang đăng nhập", async 
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("người khác không mở được workspace của mình (trang không tìm thấy, không lộ tên)", async ({
+test("người khác không mở được workspace của mình (trang không tìm thấy, không lộ tên) [F-001/AC-05]", async ({
   browser,
 }) => {
   const a = await (await browser.newContext()).newPage();

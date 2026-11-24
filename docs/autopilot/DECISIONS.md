@@ -218,3 +218,10 @@
 - Chọn: Chỉ phục vụ Việt Nam; CMP-INTL miễn có điều kiện kiểm được (test cấm cấu hình EU/UK)
 - Lý do (tiêu chí chất lượng cuối): Sản phẩm là công cụ nội bộ của Chi nhánh Bình Khí tại Việt Nam, không có dữ liệu hay người dùng ngoài Việt Nam; làm đủ vùng khác là phạm vi không có người dùng, tăng bề mặt sai (số Điều chưa đối chiếu). Cách hiểu chặt: runbook vẫn lấy hạn 72 giờ của luật Việt Nam, và test đỏ nếu mã có cấu hình GDPR/EU.
 - Đường lùi: Mở cho người dùng nước khác: bỏ dấu miễn ở 4 MUST CMP-INTL, làm bảng hạn theo vùng ở data-breach.md, hồ sơ SCC/TIA.
+
+### D-032 · 2026-11-24T03:09:33+00:00 · Duyệt 5 spec F-001..F-005 và chỉnh theo hành vi đã triển khai (T-560)
+
+- Phương án: (1) Giữ spec cũ, chỉ thêm ID · (2) Viết lại theo mẫu khung, theo code thật, phiên chính tự duyệt
+- Chọn: Viết lại theo mẫu khung, theo code thật, phiên chính tự duyệt
+- Lý do (tiêu chí chất lượng cuối): Đúng và an toàn: spec phải mô tả hành vi thật, kiểm được bằng test truy vết AC; ADR-0008 cho phiên chính tự duyệt
+- Đường lùi: Khôi phục docs/specs từ commit 48013e9

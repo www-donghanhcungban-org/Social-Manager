@@ -113,7 +113,7 @@ function setup() {
 }
 
 describe("createJobRunner", () => {
-  it("start tạo hàng đợi, đặt lịch và đăng ký worker cho mọi loại việc", async () => {
+  it("start tạo hàng đợi, đặt lịch và đăng ký worker cho mọi loại việc [F-003/AC-03] [F-004/AC-05]", async () => {
     const { q, runner } = setup();
     await runner.start();
     // Mỗi hàng đợi có thêm một hàng chết `<tên>.dlq` (BE-JOB-004).
@@ -186,7 +186,7 @@ describe("createJobRunner", () => {
     expect(retention.purgeExpired).toHaveBeenCalledTimes(20);
   });
 
-  it("job runDue gọi dịch vụ đăng bài và ghi log kết quả", async () => {
+  it("job runDue gọi dịch vụ đăng bài và ghi log kết quả [F-004/AC-05]", async () => {
     const { q, runner, posts, lines } = setup();
     await runner.start();
     await q.run(QUEUES.runDue);
@@ -198,7 +198,7 @@ describe("createJobRunner", () => {
     });
   });
 
-  it("job confirmSubmitted xác nhận theo lô với hạn 24 giờ và ghi log kết quả", async () => {
+  it("job confirmSubmitted xác nhận theo lô với hạn 24 giờ và ghi log kết quả [F-004/AC-08]", async () => {
     const { q, runner, posts, lines } = setup();
     await runner.start();
     await q.run(QUEUES.confirmSubmitted);
@@ -257,7 +257,7 @@ describe("createJobRunner", () => {
     });
   });
 
-  it("job recoverStuck dùng ngưỡng 15 phút", async () => {
+  it("job recoverStuck dùng ngưỡng 15 phút [F-004/AC-07]", async () => {
     const { q, runner, posts } = setup();
     await runner.start();
     await q.run(QUEUES.recoverStuck);
@@ -266,7 +266,7 @@ describe("createJobRunner", () => {
     });
   });
 
-  it("syncAll rải mỗi tài khoản thành một job riêng, chống trùng bằng singletonKey", async () => {
+  it("syncAll rải mỗi tài khoản thành một job riêng, chống trùng bằng singletonKey [F-003/AC-03]", async () => {
     const { q, runner } = setup();
     await runner.start();
     await q.run(QUEUES.syncAll);
@@ -284,7 +284,7 @@ describe("createJobRunner", () => {
     ]);
   });
 
-  it("syncAccount gọi syncAsSystem đúng tài khoản; dữ liệu job sai bị từ chối, không gọi dịch vụ", async () => {
+  it("syncAccount gọi syncAsSystem đúng tài khoản; dữ liệu job sai bị từ chối, không gọi dịch vụ [F-003/AC-03]", async () => {
     const { q, runner, inbox } = setup();
     await runner.start();
     await q.run(QUEUES.syncAccount, { workspaceId: "w1", accountId: "a1" });

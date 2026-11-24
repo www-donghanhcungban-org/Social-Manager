@@ -17,7 +17,7 @@ const own = (f: string) =>
 describe("container chạy không bằng root (BASE-SEC-006)", () => {
   const lines = read("Dockerfile").split("\n");
 
-  it("tầng cuối có USER không phải root, đặt trước CMD", () => {
+  it("tầng cuối có USER không phải root, đặt trước CMD [F-005/AC-03]", () => {
     const user = lines.findLastIndex((l) => /^USER\s+/.test(l));
     const cmd = lines.findLastIndex((l) => /^CMD\s+/.test(l));
     expect(user).toBeGreaterThan(-1);
@@ -26,12 +26,12 @@ describe("container chạy không bằng root (BASE-SEC-006)", () => {
     expect(who).not.toMatch(/^(root|0)(:|$)/);
   });
 
-  it("không dùng sudo trong script runtime", () => {
+  it("không dùng sudo trong script runtime [F-005/AC-03]", () => {
     for (const f of ["Dockerfile", "scripts/migrate.mjs", "docker-compose.yml"])
       expect(read(f), f).not.toMatch(/\bsudo\b/);
   });
 
-  it(".dockerignore giữ bí mật và lịch sử ngoài image", () => {
+  it(".dockerignore giữ bí mật và lịch sử ngoài image [F-005/AC-05]", () => {
     const ignore = read(".dockerignore").split("\n");
     for (const p of [".git", ".env", ".env.*", "*.pem", "node_modules"])
       expect(ignore, p).toContain(p);
@@ -44,19 +44,19 @@ describe("cổng mạng (BASE-SEC-010)", () => {
     (m) => m[1]!,
   );
 
-  it("mọi cổng publish trong compose chỉ ra 127.0.0.1", () => {
+  it("mọi cổng publish trong compose chỉ ra 127.0.0.1 [F-005/AC-07]", () => {
     expect(ports.length).toBeGreaterThan(0);
     for (const p of ports) expect(p, p).toMatch(/^127\.0\.0\.1:/);
   });
 
-  it("không publish cổng CSDL (5432) ra host", () => {
+  it("không publish cổng CSDL (5432) ra host [F-005/AC-07]", () => {
     expect(compose).not.toMatch(/:5432"?\s*$/m);
     const db = /^ {2}db:\n([\s\S]*?)(?=^ {2}\S|^\S|(?![\s\S]))/m.exec(compose);
     expect(db, "thiếu service db").not.toBeNull();
     expect(db![1]).not.toMatch(/^\s*ports:/m);
   });
 
-  it("`npm start` ngoài container bind loopback; chỉ CMD của container mới 0.0.0.0", () => {
+  it("`npm start` ngoài container bind loopback; chỉ CMD của container mới 0.0.0.0 [F-005/AC-07]", () => {
     const pkg = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>;
     };
@@ -80,7 +80,7 @@ describe("cổng mạng (BASE-SEC-010)", () => {
 });
 
 describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngoài (BASE-SEC-004/005)", () => {
-  it("kho bằng chứng có volume bền: compose mount blobdata vào BLOB_DIR, Dockerfile cấp thư mục cho người dùng không phải root", () => {
+  it("kho bằng chứng có volume bền: compose mount blobdata vào BLOB_DIR, Dockerfile cấp thư mục cho người dùng không phải root [F-005/AC-03]", () => {
     const compose = read("docker-compose.yml");
     const d = read("Dockerfile");
     expect(compose).toMatch(/BLOB_DIR:\s*\/data\/blobs/);
@@ -94,7 +94,7 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
     );
   });
 
-  it("compose chuyển cấu hình AI và gửi tin vào container, mặc định TẮT (không có thì giá trị trong file env không tới được app)", () => {
+  it("compose chuyển cấu hình AI và gửi tin vào container, mặc định TẮT (không có thì giá trị trong file env không tới được app) [F-005/AC-05]", () => {
     const compose = read("docker-compose.yml");
     expect(compose).toMatch(/AI_BASE_URL:\s*\$\{AI_BASE_URL:-\}/);
     expect(compose).toMatch(/AI_MODEL:\s*\$\{AI_MODEL:-\}/);
@@ -102,7 +102,7 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
     expect(compose).toMatch(/OUTBOUND_LIVE:\s*\$\{OUTBOUND_LIVE:-false\}/);
   });
 
-  it("compose bắt buộc đặt bí mật: thiếu là dừng, không có giá trị mặc định", () => {
+  it("compose bắt buộc đặt bí mật: thiếu là dừng, không có giá trị mặc định [F-005/AC-04]", () => {
     const compose = read("docker-compose.yml");
     for (const v of [
       "POSTGRES_PASSWORD",
@@ -113,7 +113,7 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
       expect(compose, v).toMatch(new RegExp(`\\$\\{${v}:\\?`));
   });
 
-  it("không có cặp tài khoản/mật khẩu mặc định trong mã và cấu hình", () => {
+  it("không có cặp tài khoản/mật khẩu mặc định trong mã và cấu hình [F-005/AC-05]", () => {
     const hits = tracked()
       .filter(
         (f) =>
@@ -131,7 +131,7 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
     expect(hits).toEqual([]);
   });
 
-  it("không có cờ tắt xác minh chứng chỉ TLS", () => {
+  it("không có cờ tắt xác minh chứng chỉ TLS [F-005/AC-05]", () => {
     const re =
       /NODE_TLS_REJECT_UNAUTHORIZED\s*[=:]\s*["']?0|rejectUnauthorized\s*:\s*false|verify\s*=\s*False|InsecureSkipVerify/;
     const hits = tracked()
@@ -145,7 +145,7 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
     expect(hits).toEqual([]);
   });
 
-  it("URL dịch vụ ngoài phải là https: http:// bị từ chối khi nạp cấu hình", () => {
+  it("URL dịch vụ ngoài phải là https: http:// bị từ chối khi nạp cấu hình [F-005/AC-04]", () => {
     const base = {
       DATABASE_URL: "postgres://u:p@db:5432/x",
       BETTER_AUTH_SECRET: "x".repeat(40),
@@ -163,7 +163,15 @@ describe("không mặc định, không bí mật cứng, bắt buộc TLS ra ngo
 });
 
 describe("tệp triển khai có đủ và khớp nhau", () => {
-  it("Dockerfile chạy migrate trước khi nghe cổng và có healthcheck", () => {
+  it("app chỉ khởi động khi db qua healthcheck pg_isready [F-005/AC-01]", () => {
+    const compose = read("docker-compose.yml");
+    expect(compose).toMatch(
+      /depends_on:\n\s+db:\n\s+condition:\s*service_healthy/,
+    );
+    expect(compose).toMatch(/healthcheck:\n\s+test:.*pg_isready/);
+  });
+
+  it("Dockerfile chạy migrate trước khi nghe cổng và có healthcheck [F-005/AC-01] [F-005/AC-06]", () => {
     const d = read("Dockerfile");
     expect(d).toMatch(/node scripts\/migrate\.mjs && exec .*next start/);
     expect(d).toMatch(/^HEALTHCHECK/m);

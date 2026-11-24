@@ -124,7 +124,7 @@ afterEach(async () => {
 });
 
 describe("nhận webhook", () => {
-  it("chữ ký đúng → nhập tin vào đúng workspace/tài khoản, 200", async () => {
+  it("chữ ký đúng → nhập tin vào đúng workspace/tài khoản, 200 [F-003/AC-06]", async () => {
     const r = await call(dm());
     expect(r).toEqual({ status: 200, body: { status: "ok", inserted: 1 } });
     const [row] = await t.db.select().from(inboxItems);
@@ -140,14 +140,14 @@ describe("nhận webhook", () => {
     expect(row!.receivedAt.toISOString()).toBe("2026-11-22T08:00:00.000Z");
   });
 
-  it("gửi lại cùng delivery (SocialAPI giao ít nhất một lần) → không trùng, vẫn 200", async () => {
+  it("gửi lại cùng delivery (SocialAPI giao ít nhất một lần) → không trùng, vẫn 200 [F-003/AC-06] [F-003/AC-02]", async () => {
     await call(dm());
     const again = await call(dm());
     expect(again).toEqual({ status: 200, body: { status: "ok", inserted: 0 } });
     expect(await t.db.select().from(inboxItems)).toHaveLength(1);
   });
 
-  it("tin đã được đánh dấu xử lý không bị mở lại khi nhận trùng", async () => {
+  it("tin đã được đánh dấu xử lý không bị mở lại khi nhận trùng [F-003/AC-06]", async () => {
     await call(dm());
     await t.db.update(inboxItems).set({ status: "handled" });
     await call(dm());
@@ -155,7 +155,7 @@ describe("nhận webhook", () => {
     expect(row!.status).toBe("handled");
   });
 
-  it("sự kiện không thuộc hộp thư → 200 bỏ qua, không ghi gì", async () => {
+  it("sự kiện không thuộc hộp thư → 200 bỏ qua, không ghi gì [F-003/AC-06]", async () => {
     const body = JSON.stringify({ event: "post.published", data: {} });
     expect(await call(body)).toEqual({
       status: 200,
@@ -174,7 +174,7 @@ describe("nhận webhook", () => {
 describe("từ chối (không lộ kết nối nào tồn tại)", () => {
   const unauthorized = { status: 401, body: { status: "unauthorized" } };
 
-  it("sai chữ ký, thiếu chữ ký, timestamp cũ → cùng một phản hồi 401, không ghi gì", async () => {
+  it("sai chữ ký, thiếu chữ ký, timestamp cũ → cùng một phản hồi 401, không ghi gì [F-003/AC-07]", async () => {
     expect(
       await call(dm(), { signature: sign(dm(), TS, "x".repeat(64)) }),
     ).toEqual(unauthorized);
@@ -186,7 +186,7 @@ describe("từ chối (không lộ kết nối nào tồn tại)", () => {
     expect(await t.db.select().from(inboxItems)).toHaveLength(0);
   });
 
-  it("kết nối không tồn tại, id không phải UUID, kết nối chưa bật webhook, kết nối provider khác → đều 401 giống nhau", async () => {
+  it("kết nối không tồn tại, id không phải UUID, kết nối chưa bật webhook, kết nối provider khác → đều 401 giống nhau [F-003/AC-07]", async () => {
     const [demo] = await t.db
       .insert(providerConnections)
       .values({
@@ -209,7 +209,7 @@ describe("từ chối (không lộ kết nối nào tồn tại)", () => {
       );
   });
 
-  it("secret của kết nối B không dùng được cho kết nối A (chữ ký chéo)", async () => {
+  it("secret của kết nối B không dùng được cho kết nối A (chữ ký chéo) [F-003/AC-07]", async () => {
     await createConnectionService({
       db: t.db,
       box,
@@ -224,12 +224,12 @@ describe("từ chối (không lộ kết nối nào tồn tại)", () => {
     expect(r.status).toBe(401);
   });
 
-  it("thân quá lớn → 413 trước khi chạm CSDL", async () => {
+  it("thân quá lớn → 413 trước khi chạm CSDL [F-003/AC-08]", async () => {
     const big = "x".repeat(300_000);
     expect((await call(big, { signature: sign(big) })).status).toBe(413);
   });
 
-  it("chữ ký đúng nhưng thân hỏng → 400 (JSON hỏng, thiếu trường, thời gian sai)", async () => {
+  it("chữ ký đúng nhưng thân hỏng → 400 (JSON hỏng, thiếu trường, thời gian sai) [F-003/AC-08]", async () => {
     for (const body of [
       "{không phải json",
       "[]",
@@ -241,7 +241,7 @@ describe("từ chối (không lộ kết nối nào tồn tại)", () => {
   });
 });
 
-describe("đặt secret webhook (setWebhookSecret)", () => {
+describe("đặt secret webhook (setWebhookSecret) [F-002/AC-10]", () => {
   const svc = () =>
     createConnectionService({ db: t.db, box, registry: createRegistry() });
 
@@ -370,7 +370,7 @@ describe("dm.received theo hội thoại (cùng khoá với đồng bộ)", () =
     expect(items[0]!.text).toHaveLength(10_000);
   });
 
-  it("webhook trước rồi đồng bộ: chỉ một tin, một mục", async () => {
+  it("webhook trước rồi đồng bộ: chỉ một tin, một mục [F-003/AC-02]", async () => {
     await call(withConv());
     const r = await syncOnce();
     expect(r.messages).toBe(0);
@@ -379,7 +379,7 @@ describe("dm.received theo hội thoại (cùng khoá với đồng bộ)", () =
     expect(items).toHaveLength(1);
   });
 
-  it("đồng bộ trước rồi webhook: chỉ một tin, mục đã xử lý không bị mở lại vì tin cũ", async () => {
+  it("đồng bộ trước rồi webhook: chỉ một tin, mục đã xử lý không bị mở lại vì tin cũ [F-003/AC-02]", async () => {
     await syncOnce();
     await t.db
       .update(inboxItems)

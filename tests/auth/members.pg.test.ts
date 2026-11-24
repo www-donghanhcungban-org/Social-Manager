@@ -61,7 +61,7 @@ d("khoá workspace trên Postgres thật (invariant: luôn còn ≥ 1 owner)", (
         .where(and(eq(members.workspaceId, ws), eq(members.role, "owner")))
     ).length;
 
-  it("hai owner cùng hạ nhau song song: sau 30 lượt luôn còn đúng 1 owner", async () => {
+  it("hai owner cùng hạ nhau song song: sau 30 lượt luôn còn đúng 1 owner [F-001/AC-07]", async () => {
     for (let i = 0; i < 30; i++) {
       const ws = await freshWorkspace();
       const results = await Promise.allSettled([
@@ -83,7 +83,7 @@ d("khoá workspace trên Postgres thật (invariant: luôn còn ≥ 1 owner)", (
     }
   });
 
-  it("hai owner cùng tự rời song song: không bao giờ còn 0 owner", async () => {
+  it("hai owner cùng tự rời song song: không bao giờ còn 0 owner [F-001/AC-07]", async () => {
     for (let i = 0; i < 30; i++) {
       const ws = await freshWorkspace();
       await Promise.allSettled([
