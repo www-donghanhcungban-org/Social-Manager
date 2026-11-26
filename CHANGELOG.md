@@ -2,6 +2,13 @@
 
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/); phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.0.1](https://github.com/www-donghanhcungban-org/X-Workspace/compare/v1.0.0...v1.0.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* đợt 1 harden — đường gửi tin, CI Postgres, SECURITY.md, miễn/tick MUST (T-502..T-512) ([#37](https://github.com/www-donghanhcungban-org/X-Workspace/issues/37)) ([e84b931](https://github.com/www-donghanhcungban-org/X-Workspace/commit/e84b931ed7a0cad007d8c935b87bac6ab8b1a74b))
+
 ## 1.0.0 (2026-11-23)
 
 
